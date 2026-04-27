@@ -1,0 +1,9 @@
+﻿node_modules/
+dist/
+.env
+.env.local
+backup_*/
+*.bak
+*.bak_*
+src/**/*.bak
+src/**/*.bak_*
