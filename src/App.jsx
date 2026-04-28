@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.0.3'
+const FLOWDESK_APP_VERSION = '20.0.4'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
+
+function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
+  if (typeof window === 'undefined') return true
+  return window.confirm(`確定要刪除「${label || '這筆資料'}」？\n${detail}`)
+}
+
+function confirmResetAction(message) {
+  if (typeof window === 'undefined') return true
+  return window.confirm(message)
+}
 
 const initialModules = [
   { id: 'home', name: '總覽', icon: 'overview' },
@@ -396,6 +406,8 @@ function FlowDeskShell({ authSession, onLogout }) {
   }
 
   function deleteWorkItem(itemId) {
+    const target = workItems.find((item) => item.id === itemId)
+    if (!confirmDestructiveAction(target?.title || itemId || '工作項目')) return
     setWorkItems((current) => {
       const next = current.filter((item) => item.id !== itemId)
       setSelected(next[0] || null)
@@ -1664,9 +1676,15 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   }
 
   function savePurchase(form) {
-    const next = normalizePurchase(form)
-    const before = purchases.find((row) => row.id === next.id)
-    setPurchases((rows) => rows.map((row) => isSamePurchase(row, next) ? next : row))
+    const source = editingPurchase || form
+    const next = normalizePurchase({
+      ...source,
+      ...form,
+      id: form.id || source?.id,
+      _purchaseKey: form._purchaseKey || source?._purchaseKey || source?.uid || source?.key,
+    })
+    const before = purchases.find((row) => isSamePurchase(row, source)) || purchases.find((row) => row.id && row.id === next.id)
+    setPurchases((rows) => rows.map((row) => isSamePurchase(row, source) || (row.id && row.id === next.id && !source?._purchaseKey) ? next : row))
     if (before?.status !== next.status) {
       writeHistory(next.id, next.item, `狀態由「${before?.status || '未設定'}」改為「${next.status}」。`)
     } else {
@@ -1714,6 +1732,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   function deletePurchase(targetRow) {
     const target = typeof targetRow === 'object' ? targetRow : purchases.find((row) => row.id === targetRow)
     if (!target) return
+    const deleteLabel = [target.id, purchaseTitle(target)].filter(Boolean).join(' ')
+    if (!confirmDestructiveAction(deleteLabel || '採購紀錄')) return
     setPurchases((rows) => {
       let removed = false
       const nextRows = rows.filter((row) => {
@@ -1830,15 +1850,18 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   function removeStage(stageId) {
     const target = purchaseStages.find((stage) => stage.id === stageId)
     if (target?.locked) return
+    if (!confirmDestructiveAction(target?.name || '採購流程狀態')) return
     setPurchaseStages((stages) => stages.filter((stage) => stage.id !== stageId))
   }
 
   function resetStages() {
+    if (!confirmResetAction('確定要恢復預設採購流程？目前自訂流程會被覆蓋。')) return
     setPurchaseStages(initialPurchaseStages)
     window.localStorage.removeItem('flowdesk-purchase-stages')
   }
 
   function resetPurchases() {
+    if (!confirmResetAction('確定要重置採購資料？目前採購紀錄與歷程會被覆蓋。')) return
     setPurchases(initialPurchases)
     setSelectedPurchase(null)
     setPurchaseHistory([])
@@ -2371,6 +2394,8 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
   }
 
   function removeTask(id) {
+    const target = tasks.find((task) => task.id === id)
+    if (!confirmDestructiveAction(target?.title || id || '任務')) return
     setTasks((current) => current.filter((task) => task.id !== id))
   }
 
@@ -2735,6 +2760,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function removeProjectTask(projectId, taskIndex) {
     const project = projects.find((item) => item.id === projectId)
     if (!project) return
+    const target = (project.tasks || [])[taskIndex]
+    if (!confirmDestructiveAction(target?.name || '專案任務')) return
     const tasks = (project.tasks || []).filter((_, index) => index !== taskIndex)
     updateProject(projectId, { tasks }, '刪除專案任務。')
   }
@@ -2756,6 +2783,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function removeProjectMilestone(projectId, milestoneIndex) {
     const project = projects.find((item) => item.id === projectId)
     if (!project) return
+    const target = (project.milestones || [])[milestoneIndex]
+    if (!confirmDestructiveAction(target?.name || '里程碑')) return
     const milestones = (project.milestones || []).filter((_, index) => index !== milestoneIndex)
     updateProject(projectId, { milestones }, '刪除里程碑。')
   }
@@ -2775,6 +2804,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function deleteProject(projectId) {
+    const target = projects.find((project) => project.id === projectId)
+    if (!confirmDestructiveAction(target?.name || projectId || '專案')) return
     setProjects((rows) => {
       const next = rows.filter((project) => project.id !== projectId)
       setSelectedId(next[0]?.id)
@@ -2852,6 +2883,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function removeProjectMeeting(projectId, meetingId) {
     const project = projects.find((item) => item.id === projectId)
     if (!project) return
+    const target = (project.meetings || []).find((meeting) => meeting.id === meetingId)
+    if (!confirmDestructiveAction(target?.title || '會議紀錄')) return
     const meetings = (project.meetings || []).filter((meeting) => meeting.id !== meetingId)
     updateProject(projectId, { meetings }, '刪除會議紀錄。')
   }
@@ -2873,6 +2906,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function removeProjectDecision(projectId, decisionId) {
     const project = projects.find((item) => item.id === projectId)
     if (!project) return
+    const target = (project.decisions || []).find((decision) => decision.id === decisionId)
+    if (!confirmDestructiveAction(target?.title || '決議事項')) return
     const decisions = (project.decisions || []).filter((decision) => decision.id !== decisionId)
     updateProject(projectId, { decisions }, '刪除決議事項。')
   }
@@ -3641,10 +3676,13 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   }
 
   function removeReminder(id) {
+    const target = reminders.find((item) => item.id === id)
+    if (!confirmDestructiveAction(target?.title || id || '提醒')) return
     setReminders((current) => current.filter((item) => item.id !== id))
   }
 
   function resetDemoReminders() {
+    if (!confirmResetAction('確定要清空並重置提醒資料？')) return
     setReminders(initialReminders)
     window.localStorage.removeItem('flowdesk-reminders-v193')
   }
@@ -3941,6 +3979,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
   }
 
   function resetPurchaseDemo() {
+    if (!confirmResetAction('確定要清空採購資料？採購紀錄、歷程與流程設定會被移除。')) return
     window.localStorage.removeItem('flowdesk-purchases-v19')
     window.localStorage.removeItem('flowdesk-purchase-history-v19')
     window.localStorage.removeItem('flowdesk-purchase-stages')
@@ -3957,6 +3996,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
   }
 
   function resetIconSettings() {
+    if (!confirmResetAction('確定要恢復預設圖示？目前自訂圖示會被覆蓋。')) return
     setModuleIcons(defaultModuleIcons)
     setBaseTableIcons(defaultBaseTableIcons)
     setIconStyleMode('auto')
@@ -4007,6 +4047,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
   function removeCollection(collectionId) {
     const target = collections.find((item) => item.id === collectionId)
     if (target?.locked) return
+    if (!confirmDestructiveAction(target?.name || '資料集合')) return
     setCollections((current) => current.filter((item) => item.id !== collectionId))
     setBaseTableIcons((current) => {
       const next = { ...current }
@@ -4016,6 +4057,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
   }
 
   function resetCollections() {
+    if (!confirmResetAction('確定要恢復預設資料集合？目前自訂集合會被覆蓋。')) return
     setCollections(baseTables.map((item) => ({ ...item })))
     setBaseTableIcons(defaultBaseTableIcons)
     window.localStorage.removeItem('flowdesk-collections-v194')
@@ -4023,6 +4065,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
   }
 
   function resetReminderDemo() {
+    if (!confirmResetAction('確定要清空提醒資料？此動作會清除提醒中心資料。')) return
     setReminders([])
     window.localStorage.removeItem('flowdesk-reminders-v193')
     if (flowdeskCloud) flowdeskCloud.setWorkspaceData('reminders', []).catch(() => null)
@@ -4452,6 +4495,7 @@ function normalizePurchaseList(rows = []) {
 function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) {
   const [form, setForm] = useState(() => ({
     id: initial?.id,
+    _purchaseKey: initial?._purchaseKey || initial?.uid || initial?.key,
     item: initial ? purchaseTitle(initial) : '',
     items: initial ? getPurchaseItems(initial) : [{ id: `line-${Date.now()}`, name: '', quantity: 1, unitPrice: 0, note: '' }],
     department: initial?.department || '',
@@ -4513,6 +4557,8 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
   }
 
   function removeItem(itemId) {
+    const target = form.items.find((item) => item.id === itemId)
+    if (!confirmDestructiveAction(target?.name || '品項')) return
     setForm((current) => ({
       ...current,
       items: current.items.length > 1 ? current.items.filter((item) => item.id !== itemId) : current.items,
