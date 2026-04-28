@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.3'
+const FLOWDESK_APP_VERSION = '20.3.4'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function ChineseTextField({ value = '', onCommit, multiline = false, ...props }) {
@@ -2689,6 +2689,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [dropProjectId, setDropProjectId] = useState(null)
   const [manualRecordText, setManualRecordText] = useState('')
   const [ganttDragRange, setGanttDragRange] = useState(null)
+  const [ganttDragPreview, setGanttDragPreview] = useState(null)
+  const [ganttProgressEditor, setGanttProgressEditor] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -3020,6 +3022,80 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setManualRecordText('')
   }
 
+  function openGanttProgressEditor(scope, projectId, taskIndex, value, event) {
+    event.preventDefault()
+    event.stopPropagation()
+    setGanttProgressEditor(null)
+    setGanttProgressEditor({
+      scope,
+      projectId,
+      taskIndex,
+      value: clampPercent(value),
+    })
+  }
+
+  function closeGanttProgressEditor(event) {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+    setGanttProgressEditor(null)
+  }
+
+  function applyGanttProgressValue(scope, projectId, taskIndex, nextValue) {
+    const safeValue = clampPercent(nextValue)
+    setGanttProgressEditor((current) => current ? { ...current, value: safeValue } : current)
+    if (scope === 'project') {
+      updateProject(projectId, { progress: safeValue })
+      return
+    }
+    updateProjectTask(projectId, taskIndex, { progress: safeValue })
+  }
+
+  function renderGanttProgressEditor(scope, projectId, taskIndex, value, label) {
+    const isActive = ganttProgressEditor?.scope === scope && ganttProgressEditor?.projectId === projectId && ganttProgressEditor?.taskIndex === taskIndex
+    if (!isActive) return null
+    return (
+      <div className="fd203-gantt-progress-pop" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+        <div className="fd203-gantt-progress-pop-head">
+          <strong>{label}</strong>
+          <button type="button" onClick={closeGanttProgressEditor}>完成</button>
+        </div>
+        <div className="fd203-gantt-progress-pop-body">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={ganttProgressEditor?.value ?? value}
+            onChange={(event) => applyGanttProgressValue(scope, projectId, taskIndex, event.target.value)}
+            aria-label={`${label}進度`}
+          />
+          <div className="fd203-gantt-progress-inline">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={ganttProgressEditor?.value ?? value}
+              onChange={(event) => applyGanttProgressValue(scope, projectId, taskIndex, event.target.value)}
+              aria-label={`${label}進度百分比`}
+            />
+            <span>%</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  function updateGanttDragPreview(projectId, scope, taskIndex, start, end, edge) {
+    setGanttDragPreview({
+      projectId,
+      scope,
+      taskIndex,
+      start,
+      end,
+      edge,
+      label: `${formatMonthDayWeekday(start)} → ${formatMonthDayWeekday(end)}`,
+    })
+  }
+
   function startGanttDateDrag(project, scope, taskIndex, edge, event) {
     event.preventDefault()
     event.stopPropagation()
@@ -3040,6 +3116,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const originalTaskEnd = originalTask?.end || originalProjectEnd
     const originalTaskDuration = Math.max(0, Math.round((parseDate(originalTaskEnd) - parseDate(originalTaskStart)) / 86400000))
 
+    updateGanttDragPreview(
+      safeProject.id,
+      scope,
+      taskIndex,
+      scope === 'project' ? originalProjectStart : originalTaskStart,
+      scope === 'project' ? originalProjectEnd : originalTaskEnd,
+      edge,
+    )
     document.body.classList.add('gantt-date-dragging')
 
     const clampTaskMoveDelta = (deltaDays) => {
@@ -3063,12 +3147,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             ...milestone,
             date: addDaysToDateValue(milestone.date || originalProjectEnd, deltaDays),
           }))
+          updateGanttDragPreview(safeProject.id, 'project', null, nextStart, nextEnd, edge)
           updateProject(safeProject.id, { startDate: nextStart, endDate: nextEnd, tasks: shiftedTasks, milestones: shiftedMilestones })
         } else if (edge === 'start') {
           const nextStart = minIsoDate(addDaysToDateValue(originalProjectStart, deltaDays), originalProjectEnd)
+          updateGanttDragPreview(safeProject.id, 'project', null, nextStart, originalProjectEnd, edge)
           updateProject(safeProject.id, { startDate: nextStart })
         } else {
           const nextEnd = maxIsoDate(addDaysToDateValue(originalProjectEnd, deltaDays), originalProjectStart)
+          updateGanttDragPreview(safeProject.id, 'project', null, originalProjectStart, nextEnd, edge)
           updateProject(safeProject.id, { endDate: nextEnd })
         }
         return
@@ -3079,12 +3166,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           const safeDelta = clampTaskMoveDelta(deltaDays)
           const nextStart = addDaysToDateValue(originalTaskStart, safeDelta)
           const nextEnd = addDaysToDateValue(nextStart, originalTaskDuration)
+          updateGanttDragPreview(safeProject.id, 'task', taskIndex, nextStart, nextEnd, edge)
           updateProjectTask(safeProject.id, taskIndex, { start: nextStart, end: nextEnd })
         } else if (edge === 'start') {
           const nextStart = clampIsoDate(addDaysToDateValue(originalTaskStart, deltaDays), originalProjectStart, originalTaskEnd)
+          updateGanttDragPreview(safeProject.id, 'task', taskIndex, nextStart, originalTaskEnd, edge)
           updateProjectTask(safeProject.id, taskIndex, { start: nextStart })
         } else {
           const nextEnd = clampIsoDate(addDaysToDateValue(originalTaskEnd, deltaDays), originalTaskStart, originalProjectEnd)
+          updateGanttDragPreview(safeProject.id, 'task', taskIndex, originalTaskStart, nextEnd, edge)
           updateProjectTask(safeProject.id, taskIndex, { end: nextEnd })
         }
       }
@@ -3093,6 +3183,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const stopMove = () => {
       document.body.classList.remove('gantt-date-dragging')
       setGanttDragRange(null)
+      setGanttDragPreview(null)
       window.removeEventListener('pointermove', applyMove)
       window.removeEventListener('pointerup', stopMove)
       const actionText = edge === 'move' ? '平移' : '調整'
@@ -3184,6 +3275,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const displayEnd = frozenRange?.end || addDaysToDateValue(project.endDate, 14)
     const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
     const weekCellWidth = 140
+    const activeProjectPreview = ganttDragPreview?.projectId === project.id && ganttDragPreview?.scope === 'project' ? ganttDragPreview : null
+    const activeProjectEditor = ganttProgressEditor?.scope === 'project' && ganttProgressEditor?.projectId === project.id ? ganttProgressEditor : null
     return (
       <div className="fd203-gantt-panel">
         <div className="fd203-gantt-summary">
@@ -3216,8 +3309,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             </div>
             <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
               <span className={`fd203-gantt-bar project ${project.tone || 'blue'}`} style={ganttStyle(project.startDate, project.endDate, displayStart, displayEnd)} onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'move', event)} title="拖曳中間可整段平移；拖曳左右端可調整日期">
+                {activeProjectPreview ? <span className="fd203-gantt-drag-tip">{activeProjectPreview.label}</span> : null}
+                {renderGanttProgressEditor('project', project.id, null, project.progress, '專案進度')}
                 <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整專案開始日" onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'start', event)} />
-                <span>{project.progress}%</span>
+                <button type="button" className={`fd203-gantt-progress-trigger${activeProjectEditor ? ' active' : ''}`} onClick={(event) => openGanttProgressEditor('project', project.id, null, project.progress, event)}>{project.progress}%</button>
                 <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label="調整專案結束日" onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'end', event)} />
               </span>
               {(project.milestones || []).map((milestone, index) => (
@@ -3230,6 +3325,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const taskStart = task.start || project.startDate
             const taskEnd = task.end || project.endDate
             const progress = clampPercent(task.progress)
+            const activeTaskPreview = ganttDragPreview?.projectId === project.id && ganttDragPreview?.scope === 'task' && ganttDragPreview?.taskIndex === index ? ganttDragPreview : null
+            const activeTaskEditor = ganttProgressEditor?.scope === 'task' && ganttProgressEditor?.projectId === project.id && ganttProgressEditor?.taskIndex === index ? ganttProgressEditor : null
             return (
               <div className="fd203-gantt-grid fd203-gantt-row task" key={`${task.name}-${index}`} style={{ gridTemplateColumns: `180px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))` }}>
                 <div className="fd203-gantt-label">
@@ -3246,8 +3343,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 </div>
                 <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                   <span className="fd203-gantt-bar task" style={ganttStyle(taskStart, taskEnd, displayStart, displayEnd)} onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'move', event)} title="拖曳中間可整段平移；拖曳左右端可調整日期">
+                    {activeTaskPreview ? <span className="fd203-gantt-drag-tip">{activeTaskPreview.label}</span> : null}
+                    {renderGanttProgressEditor('task', project.id, index, progress, task.name || '任務進度')}
                     <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整任務開始日" onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'start', event)} />
-                    <span>{progress}%</span>
+                    <button type="button" className={`fd203-gantt-progress-trigger${activeTaskEditor ? ' active' : ''}`} onClick={(event) => openGanttProgressEditor('task', project.id, index, progress, event)}>{progress}%</button>
                     <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label="調整任務結束日" onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'end', event)} />
                   </span>
                 </div>
