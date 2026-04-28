@@ -395,6 +395,53 @@ function FlowDeskShell({ authSession, onLogout }) {
     })
   }
 
+  function createWorkItemFromSource(payload = {}) {
+    const nextItem = {
+      id: getNextWorkItemId(),
+      title: payload.title || '未命名工作',
+      type: payload.type || '一般工作',
+      lane: payload.lane || '待分類',
+      priority: payload.priority || '中',
+      channel: payload.channel || '手動新增',
+      relation: payload.relation || '未設定',
+      requester: payload.requester || 'Kyle',
+      owner: payload.owner || 'Kyle',
+      due: payload.due || todayDate(),
+      health: Number.isFinite(Number(payload.health)) ? Number(payload.health) : 85,
+      note: payload.note || '',
+      tags: Array.isArray(payload.tags) ? payload.tags.filter(Boolean) : [],
+    }
+    setWorkItems((current) => {
+      const duplicate = current.find((item) => item.relation === nextItem.relation && item.type === nextItem.type && item.channel === nextItem.channel)
+      if (duplicate && nextItem.relation !== '未設定') {
+        setSelected(duplicate)
+        return current
+      }
+      return [nextItem, ...current]
+    })
+    setSelected(nextItem)
+    return nextItem
+  }
+
+  function createReminderFromSource(payload = {}) {
+    const nextReminder = {
+      id: `REM-${String(Date.now()).slice(-5)}`,
+      title: payload.title || '未命名提醒',
+      type: payload.type || '追蹤提醒',
+      priority: payload.priority || '中',
+      status: payload.status || '待處理',
+      dueDate: payload.dueDate || addDaysDate(3),
+      sourceType: payload.sourceType || '一般',
+      sourceTitle: payload.sourceTitle || '',
+      note: payload.note || '',
+    }
+    setReminders((current) => {
+      const duplicate = current.find((item) => item.status !== '已完成' && item.title === nextReminder.title && item.sourceTitle === nextReminder.sourceTitle)
+      return duplicate ? current : [nextReminder, ...current]
+    })
+    return nextReminder
+  }
+
   const filteredItems = useMemo(() => {
     const keyword = query.trim().toLowerCase()
     if (!keyword) return workItems
@@ -538,7 +585,7 @@ function FlowDeskShell({ authSession, onLogout }) {
 
         {active === 'home' && <HomePage metrics={metrics} items={filteredItems} reminders={reminders} setActive={setActive} setSelected={setSelected} />}
         {active === 'board' && <BoardPage items={filteredItems} view={view} setView={setView} selected={selected} setSelected={setSelected} onAddItem={addWorkItem} onUpdateItem={updateWorkItem} onDeleteItem={deleteWorkItem} onDuplicateItem={duplicateWorkItem} />}
-        {active === 'base' && <BasePage tables={visibleCollections} records={records} activeTable={activeBaseTable} />}
+        {active === 'base' && <BasePage tables={visibleCollections} records={records} activeTable={activeBaseTable} onCreateWorkItem={createWorkItemFromSource} onCreateReminder={createReminderFromSource} />}
         {active === 'desk' && <DeskPage tickets={tickets} />}
         {active === 'roadmap' && <RoadmapPage projects={projects} />}
         {active === 'docs' && <DocsPage docs={docs} />}
@@ -960,7 +1007,7 @@ function BoardInlinePreview({ selected }) {
 }
 
 
-function BasePage({ tables, records, activeTable }) {
+function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateReminder }) {
   const [purchases, setPurchases] = useState(() => {
     if (typeof window === 'undefined') return initialPurchases
     try {
@@ -1207,6 +1254,76 @@ function BasePage({ tables, records, activeTable }) {
     if (selectedPurchase?.id === id) setSelectedPurchase(null)
   }
 
+  function duplicatePurchase(row) {
+    if (!row) return
+    const next = normalizePurchase({
+      ...row,
+      id: getNextPurchaseId(purchases),
+      status: activeStages[0]?.name || row.status || '需求確認',
+      requestDate: todayDate(),
+      orderDate: '',
+      arrivalDate: '',
+      note: [row.note, `由 ${row.id} 複製。`].filter(Boolean).join('\n'),
+    })
+    setPurchases((rows) => [next, ...rows])
+    setSelectedPurchase(next)
+    writeHistory(next.id, purchaseTitle(next), `由 ${row.id} 複製採購。`)
+  }
+
+  function createPurchaseWorkItem(row) {
+    if (!row || !onCreateWorkItem) return
+    const amount = calculatePurchase(row)
+    onCreateWorkItem({
+      title: `追蹤 ${purchaseTitle(row)}`,
+      type: '採購追蹤',
+      lane: doneStages.includes(row.status) ? '已完成' : '待分類',
+      priority: row.status?.includes('簽核') || row.status?.includes('確認') ? '高' : '中',
+      channel: '採購管理',
+      relation: row.id,
+      requester: row.requester || 'Kyle',
+      owner: 'Kyle',
+      due: row.arrivalDate || row.orderDate || row.requestDate || todayDate(),
+      health: doneStages.includes(row.status) ? 100 : 82,
+      note: [row.vendor, purchaseTitle(row), formatMoney(amount.taxedTotal), row.note].filter(Boolean).join('｜'),
+      tags: ['採購', row.vendor, row.status].filter(Boolean),
+    })
+    writeHistory(row.id, purchaseTitle(row), '建立工作看板追蹤。')
+  }
+
+  function createPurchaseReminder(row) {
+    if (!row || !onCreateReminder) return
+    const dueDate = row.arrivalDate || row.orderDate || row.requestDate || addDaysDate(3)
+    onCreateReminder({
+      title: `追蹤 ${purchaseTitle(row)}`,
+      type: row.status?.includes('到貨') ? '到貨提醒' : '追蹤提醒',
+      priority: row.status?.includes('簽核') || row.status?.includes('確認') ? '高' : '中',
+      dueDate,
+      sourceType: '採購',
+      sourceTitle: `${row.id} ${purchaseTitle(row)}`,
+      note: [row.vendor, row.status, row.note].filter(Boolean).join('｜'),
+    })
+    writeHistory(row.id, purchaseTitle(row), '建立提醒事項。')
+  }
+
+  function exportFilteredPurchases() {
+    const headers = ['編號', '品項', '廠商', '部門', '申請人', '狀態', '申請日', '下單日', '到貨日', '未稅', '稅額', '含稅', '品項明細', '備註']
+    const rows = filteredPurchases.map((row) => {
+      const amount = calculatePurchase(row)
+      const itemsText = getPurchaseItems(row).map((item) => `${item.name || '未命名'} x ${item.quantity || 0} @ ${item.unitPrice || 0}`).join('；')
+      return [row.id, purchaseTitle(row), row.vendor, row.department, row.requester, row.status, row.requestDate, row.orderDate, row.arrivalDate, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, itemsText, row.note]
+    })
+    const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `FlowDesk採購資料_${todayDate()}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   function cancelPurchase(row) {
     const cancelStage = purchaseStages.find((stage) => stage.cancel || stage.name.includes('取消'))?.name || '已取消'
     const next = { ...row, status: cancelStage }
@@ -1285,6 +1402,7 @@ function BasePage({ tables, records, activeTable }) {
                   <summary>更多操作</summary>
                   <div>
                     <button type="button" onClick={() => setShowStageSettings((value) => !value)}>採購流程設定</button>
+                    <button type="button" onClick={exportFilteredPurchases}>匯出目前採購</button>
                     <button type="button" onClick={resetPurchases}>重置資料</button>
                   </div>
                 </details>
@@ -1399,7 +1517,7 @@ function BasePage({ tables, records, activeTable }) {
               <aside className="purchase-side-panel">
                 <section className="purchase-detail-card compact-detail-card">
                   <PanelTitle eyebrow="採購明細" title={selectedPurchase ? purchaseTitle(selectedPurchase) : '請選擇採購項目'} />
-                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
+                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} onDuplicate={() => duplicatePurchase(selectedPurchase)} onCreateTask={() => createPurchaseWorkItem(selectedPurchase)} onCreateReminder={() => createPurchaseReminder(selectedPurchase)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
                 </section>
                 <section className="purchase-history-card compact-history-card">
                   <PanelTitle eyebrow="狀態歷程" title="最近變更" />
@@ -2029,6 +2147,53 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
     }))
   }
 
+  function updateProjectTask(projectId, taskIndex, patch) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const tasks = (project.tasks || []).map((task, index) => index === taskIndex ? { ...task, ...patch } : task)
+    updateProject(projectId, { tasks })
+  }
+
+  function addProjectTask(projectId) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const tasks = [...(project.tasks || []), { name: '新增任務', owner: project.owner || 'Kyle', start: project.startDate || todayDate(), end: project.endDate || addDaysDate(14), progress: 0, tone: 'blue' }]
+    updateProject(projectId, { tasks }, '新增專案任務。')
+    setExpandedProjects((previous) => {
+      const next = new Set(previous)
+      next.add(projectId)
+      return next
+    })
+  }
+
+  function removeProjectTask(projectId, taskIndex) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const tasks = (project.tasks || []).filter((_, index) => index !== taskIndex)
+    updateProject(projectId, { tasks }, '刪除專案任務。')
+  }
+
+  function updateProjectMilestone(projectId, milestoneIndex, patch) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const milestones = (project.milestones || []).map((milestone, index) => index === milestoneIndex ? { ...milestone, ...patch } : milestone)
+    updateProject(projectId, { milestones })
+  }
+
+  function addProjectMilestone(projectId) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const milestones = [...(project.milestones || []), { name: '新增里程碑', date: project.endDate || addDaysDate(14), done: false }]
+    updateProject(projectId, { milestones }, '新增里程碑。')
+  }
+
+  function removeProjectMilestone(projectId, milestoneIndex) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const milestones = (project.milestones || []).filter((_, index) => index !== milestoneIndex)
+    updateProject(projectId, { milestones }, '刪除里程碑。')
+  }
+
   function duplicateProject(project) {
     if (!project) return
     const next = {
@@ -2208,9 +2373,19 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
                 <article><span>結束</span><strong>{selectedProject.endDate}</strong></article>
               </div>
               <section className="detail-block project-task-block">
-                <p className="eyebrow">專案任務 / 甘特項目</p>
-                <div className="project-task-list-v2">
-                  {selectedProject.tasks.map((task) => <div key={task.name}><strong>{task.name}</strong><span>{task.owner} · {task.start} - {task.end}</span><small>{task.progress}%</small></div>)}
+                <div className="detail-block-headline"><p className="eyebrow">專案任務 / 甘特項目</p><button type="button" onClick={() => addProjectTask(selectedProject.id)}>新增任務</button></div>
+                <div className="project-task-list-v2 project-task-editor-list">
+                  {(selectedProject.tasks || []).map((task, index) => (
+                    <div key={`${task.name}-${index}`} className="project-task-editor-row">
+                      <input value={task.name} onChange={(event) => updateProjectTask(selectedProject.id, index, { name: event.target.value })} aria-label="任務名稱" />
+                      <input value={task.owner} onChange={(event) => updateProjectTask(selectedProject.id, index, { owner: event.target.value })} aria-label="負責人" />
+                      <input type="date" value={task.start} onChange={(event) => updateProjectTask(selectedProject.id, index, { start: event.target.value })} aria-label="開始日" />
+                      <input type="date" value={task.end} onChange={(event) => updateProjectTask(selectedProject.id, index, { end: event.target.value })} aria-label="結束日" />
+                      <input type="number" min="0" max="100" value={task.progress} onChange={(event) => updateProjectTask(selectedProject.id, index, { progress: Math.max(0, Math.min(100, Number(event.target.value || 0))) })} aria-label="進度" />
+                      <button type="button" onClick={() => removeProjectTask(selectedProject.id, index)}>刪除</button>
+                    </div>
+                  ))}
+                  {!selectedProject.tasks?.length && <div className="flow-empty-card">目前沒有專案任務。</div>}
                 </div>
               </section>
               <section className="detail-block">
@@ -2220,9 +2395,17 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
                 </div>
               </section>
               <section className="detail-block">
-                <p className="eyebrow">里程碑</p>
-                <div className="milestone-list-v2 milestone-list-v3">
-                  {selectedProject.milestones.map((milestone) => <div key={milestone.name} className={milestone.done ? 'done' : ''}><span /> <strong>{milestone.name}</strong><small>{milestone.date}</small></div>)}
+                <div className="detail-block-headline"><p className="eyebrow">里程碑</p><button type="button" onClick={() => addProjectMilestone(selectedProject.id)}>新增里程碑</button></div>
+                <div className="milestone-list-v2 milestone-list-v3 milestone-editor-list">
+                  {(selectedProject.milestones || []).map((milestone, index) => (
+                    <div key={`${milestone.name}-${index}`} className={milestone.done ? 'done milestone-editor-row' : 'milestone-editor-row'}>
+                      <input value={milestone.name} onChange={(event) => updateProjectMilestone(selectedProject.id, index, { name: event.target.value })} aria-label="里程碑名稱" />
+                      <input type="date" value={milestone.date} onChange={(event) => updateProjectMilestone(selectedProject.id, index, { date: event.target.value })} aria-label="里程碑日期" />
+                      <label><input type="checkbox" checked={Boolean(milestone.done)} onChange={(event) => updateProjectMilestone(selectedProject.id, index, { done: event.target.checked })} />完成</label>
+                      <button type="button" onClick={() => removeProjectMilestone(selectedProject.id, index)}>刪除</button>
+                    </div>
+                  ))}
+                  {!selectedProject.milestones?.length && <div className="flow-empty-card">目前沒有里程碑。</div>}
                 </div>
               </section>
               <section className="detail-block">
@@ -3132,7 +3315,12 @@ function roundAmounts(amounts) {
   return Object.fromEntries(Object.entries(amounts).map(([key, value]) => [key, Math.round(Number(value || 0))]))
 }
 
-function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onComplete }) {
+function csvEscape(value) {
+  const text = String(value ?? '')
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
+
+function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder }) {
   const amount = calculatePurchase(row)
   const items = getPurchaseItems(row)
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -3149,6 +3337,9 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
         <button type="button" onClick={onEdit}>編輯採購</button>
         <button type="button" onClick={onAdvance}>下一流程</button>
         <button type="button" onClick={onComplete}>視為完成</button>
+        <button type="button" onClick={onCreateTask}>建立追蹤工作</button>
+        <button type="button" onClick={onCreateReminder}>建立提醒</button>
+        <button type="button" onClick={onDuplicate}>複製採購</button>
       </div>
 
       <div className="detail-money-summary">
