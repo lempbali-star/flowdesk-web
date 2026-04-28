@@ -296,11 +296,18 @@ function FlowDeskShell({ authSession, onLogout }) {
     }
   }, [selected, workItems])
 
+  function getNextWorkItemId(current = workItems) {
+    const maxNumber = current.reduce((max, item) => {
+      const matched = String(item.id || '').match(/TASK-(\d+)/)
+      return matched ? Math.max(max, Number(matched[1])) : max
+    }, 0)
+    return `TASK-${String(maxNumber + 1).padStart(3, '0')}`
+  }
+
   function addWorkItem() {
     const now = new Date()
-    const nextId = `TASK-${String(workItems.length + 1).padStart(3, '0')}`
     const nextItem = {
-      id: nextId,
+      id: getNextWorkItemId(),
       title: '未命名工作',
       type: '一般工作',
       lane: '待分類',
@@ -317,6 +324,39 @@ function FlowDeskShell({ authSession, onLogout }) {
     setWorkItems((current) => [nextItem, ...current])
     setSelected(nextItem)
     setView('看板')
+  }
+
+  function updateWorkItem(itemId, patch) {
+    setWorkItems((current) => current.map((item) => {
+      if (item.id !== itemId) return item
+      const next = { ...item, ...patch }
+      setSelected(next)
+      return next
+    }))
+  }
+
+  function duplicateWorkItem(itemId) {
+    setWorkItems((current) => {
+      const target = current.find((item) => item.id === itemId)
+      if (!target) return current
+      const next = {
+        ...target,
+        id: getNextWorkItemId(current),
+        title: `${target.title || '未命名工作'} 複本`,
+        lane: '待分類',
+      }
+      setSelected(next)
+      setView('看板')
+      return [next, ...current]
+    })
+  }
+
+  function deleteWorkItem(itemId) {
+    setWorkItems((current) => {
+      const next = current.filter((item) => item.id !== itemId)
+      setSelected(next[0] || null)
+      return next
+    })
   }
 
   const filteredItems = useMemo(() => {
@@ -459,7 +499,7 @@ function FlowDeskShell({ authSession, onLogout }) {
         </header>
 
         {active === 'home' && <HomePage metrics={metrics} items={filteredItems} reminders={reminders} setActive={setActive} setSelected={setSelected} />}
-        {active === 'board' && <BoardPage items={filteredItems} view={view} setView={setView} selected={selected} setSelected={setSelected} onAddItem={addWorkItem} />}
+        {active === 'board' && <BoardPage items={filteredItems} view={view} setView={setView} selected={selected} setSelected={setSelected} onAddItem={addWorkItem} onUpdateItem={updateWorkItem} onDeleteItem={deleteWorkItem} onDuplicateItem={duplicateWorkItem} />}
         {active === 'base' && <BasePage tables={visibleCollections} records={records} activeTable={activeBaseTable} />}
         {active === 'desk' && <DeskPage tickets={tickets} />}
         {active === 'roadmap' && <RoadmapPage projects={projects} />}
@@ -472,7 +512,7 @@ function FlowDeskShell({ authSession, onLogout }) {
 
       {active === 'board' && (
         <aside className="context-panel">
-          <ContextPanel selected={selected} />
+          <ContextPanel selected={selected} onUpdateItem={updateWorkItem} onDeleteItem={deleteWorkItem} onDuplicateItem={duplicateWorkItem} />
         </aside>
       )}
 
@@ -786,7 +826,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
   )
 }
 
-function BoardPage({ items, view, setView, selected, setSelected, onAddItem }) {
+function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onUpdateItem, onDeleteItem, onDuplicateItem }) {
   return (
     <div className="page-stack board-page">
       <section className="surface-toolbar board-toolbar">
@@ -2349,8 +2389,31 @@ function IconPickerRow({ title, currentIcon, onSelect }) {
 }
 
 
-function ContextPanel({ selected }) {
-  if (!selected) {
+function ContextPanel({ selected, onUpdateItem, onDeleteItem, onDuplicateItem }) {
+  const [draft, setDraft] = useState(null)
+
+  useEffect(() => {
+    if (!selected) {
+      setDraft(null)
+      return
+    }
+    setDraft({
+      title: selected.title || '',
+      lane: selected.lane || '待分類',
+      priority: selected.priority || '中',
+      type: selected.type || '一般工作',
+      owner: selected.owner || '',
+      requester: selected.requester || '',
+      due: selected.due || '',
+      health: Number.isFinite(Number(selected.health)) ? Number(selected.health) : 100,
+      relation: selected.relation || '',
+      channel: selected.channel || '',
+      note: selected.note || '',
+      tagsText: Array.isArray(selected.tags) ? selected.tags.join('、') : '',
+    })
+  }, [selected])
+
+  if (!selected || !draft) {
     return (
       <div className="context-inner context-empty">
         <p className="eyebrow">詳細預覽</p>
@@ -2360,8 +2423,19 @@ function ContextPanel({ selected }) {
     )
   }
 
+  const updateDraft = (field, value) => setDraft((current) => ({ ...current, [field]: value }))
+
+  const saveDraft = () => {
+    onUpdateItem?.(selected.id, {
+      ...draft,
+      title: draft.title.trim() || '未命名工作',
+      health: Math.max(0, Math.min(100, Number(draft.health) || 0)),
+      tags: draft.tagsText.split(/[、,，\n]/).map((tag) => tag.trim()).filter(Boolean),
+    })
+  }
+
   return (
-    <div className="context-inner">
+    <div className="context-inner editable-context-panel">
       <p className="eyebrow">詳細預覽</p>
       <h2>{selected.title}</h2>
       <div className="context-meta">
@@ -2369,22 +2443,30 @@ function ContextPanel({ selected }) {
         <Badge value={selected.priority} />
         <span>{selected.id}</span>
       </div>
-      <p>{selected.note}</p>
-      <div className="context-section">
-        <strong>關聯資訊</strong>
-        <span>{selected.relation}</span>
-        <span>{selected.channel}</span>
-        <span>{selected.requester}</span>
+
+      <div className="work-edit-form">
+        <label className="work-edit-wide"><span>標題</span><input value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} /></label>
+        <label><span>狀態</span><select value={draft.lane} onChange={(event) => updateDraft('lane', event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
+        <label><span>優先級</span><select value={draft.priority} onChange={(event) => updateDraft('priority', event.target.value)}>{['緊急', '高', '中', '低'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+        <label><span>類型</span><input value={draft.type} onChange={(event) => updateDraft('type', event.target.value)} /></label>
+        <label><span>負責人</span><input value={draft.owner} onChange={(event) => updateDraft('owner', event.target.value)} /></label>
+        <label><span>提出人</span><input value={draft.requester} onChange={(event) => updateDraft('requester', event.target.value)} /></label>
+        <label><span>到期日</span><input type="date" value={draft.due} onChange={(event) => updateDraft('due', event.target.value)} /></label>
+        <label><span>健康度</span><input type="number" min="0" max="100" value={draft.health} onChange={(event) => updateDraft('health', event.target.value)} /></label>
+        <label><span>來源</span><input value={draft.channel} onChange={(event) => updateDraft('channel', event.target.value)} /></label>
+        <label className="work-edit-wide"><span>關聯資訊</span><input value={draft.relation} onChange={(event) => updateDraft('relation', event.target.value)} /></label>
+        <label className="work-edit-wide"><span>標籤</span><input value={draft.tagsText} onChange={(event) => updateDraft('tagsText', event.target.value)} placeholder="以頓號或逗號分隔" /></label>
+        <label className="work-edit-wide"><span>處理備註</span><textarea value={draft.note} onChange={(event) => updateDraft('note', event.target.value)} rows={4} /></label>
       </div>
-      <div className="context-section">
-        <strong>欄位資料</strong>
-        <div className="field-line"><span>負責人</span><b>{selected.owner}</b></div>
-        <div className="field-line"><span>到期日</span><b>{selected.due}</b></div>
-        <div className="field-line"><span>健康度</span><b>{selected.health}%</b></div>
+
+      <div className="context-quick-lanes">
+        {lanes.map((lane) => <button key={lane.id} type="button" className={draft.lane === lane.id ? 'active' : ''} onClick={() => updateDraft('lane', lane.id)}>{lane.title}</button>)}
       </div>
-      <div className="context-section">
-        <strong>標籤</strong>
-        <div className="tag-list">{(Array.isArray(selected.tags) ? selected.tags : []).map((tag) => <span key={tag}>{tag}</span>)}</div>
+
+      <div className="context-action-row">
+        <button className="primary-btn" type="button" onClick={saveDraft}>儲存</button>
+        <button type="button" onClick={() => onDuplicateItem?.(selected.id)}>複製</button>
+        <button className="danger" type="button" onClick={() => onDeleteItem?.(selected.id)}>刪除</button>
       </div>
     </div>
   )
