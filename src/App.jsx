@@ -1160,9 +1160,15 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
   const [priorityFilter, setPriorityFilter] = useState('全部')
   const [ownerFilter, setOwnerFilter] = useState('全部')
   const [sortMode, setSortMode] = useState('到期日')
+  const [selectedIds, setSelectedIds] = useState([])
+  const [bulkLane, setBulkLane] = useState('處理中')
+  const [bulkPriority, setBulkPriority] = useState('中')
+  const [bulkOwner, setBulkOwner] = useState('Kyle')
+  const [hideDone, setHideDone] = useState(false)
   const ownerOptions = useMemo(() => ['全部', ...Array.from(new Set(items.map((item) => item.owner).filter(Boolean)))], [items])
   const scopedItems = useMemo(() => {
     const next = items
+      .filter((item) => !hideDone || item.lane !== '已完成')
       .filter((item) => laneFilter === '全部' || item.lane === laneFilter)
       .filter((item) => priorityFilter === '全部' || item.priority === priorityFilter)
       .filter((item) => ownerFilter === '全部' || item.owner === ownerFilter)
@@ -1176,19 +1182,55 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
       return String(a.due || '').localeCompare(String(b.due || ''))
     })
     return next
-  }, [items, laneFilter, priorityFilter, ownerFilter, sortMode])
+  }, [items, laneFilter, priorityFilter, ownerFilter, sortMode, hideDone])
   const boardSummary = useMemo(() => ({
     total: items.length,
     open: items.filter((item) => item.lane !== '已完成').length,
     waiting: items.filter((item) => item.lane === '等待回覆').length,
     urgent: items.filter((item) => ['緊急', '高'].includes(item.priority)).length,
   }), [items])
+  const focusRows = useMemo(() => {
+    const today = todayDate()
+    return [
+      { id: 'today', label: '今日到期', count: items.filter((item) => item.due === today && item.lane !== '已完成').length, action: () => { setLaneFilter('全部'); setPriorityFilter('全部'); setOwnerFilter('全部'); setSortMode('到期日'); setHideDone(true) } },
+      { id: 'waiting', label: '等待回覆', count: items.filter((item) => item.lane === '等待回覆').length, action: () => { setLaneFilter('等待回覆'); setPriorityFilter('全部'); setOwnerFilter('全部'); setHideDone(false) } },
+      { id: 'urgent', label: '高優先', count: items.filter((item) => ['緊急', '高'].includes(item.priority)).length, action: () => { setLaneFilter('全部'); setPriorityFilter('高'); setOwnerFilter('全部'); setHideDone(false) } },
+      { id: 'done', label: hideDone ? '顯示已完成' : '收合已完成', count: items.filter((item) => item.lane === '已完成').length, action: () => setHideDone((value) => !value) },
+    ]
+  }, [items, hideDone])
+
+  function toggleSelectedId(itemId) {
+    setSelectedIds((current) => current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId])
+  }
+
+  function clearBoardSelection() {
+    setSelectedIds([])
+  }
+
+  function selectScopedItems() {
+    setSelectedIds(scopedItems.map((item) => item.id))
+  }
+
+  function applyBulkPatch(patch) {
+    if (!selectedIds.length) return
+    selectedIds.forEach((id) => onUpdateItem(id, patch))
+    clearBoardSelection()
+  }
+
+  function exportBoardCsv() {
+    const headers = ['編號', '標題', '狀態', '優先級', '負責人', '到期日', '來源', '關聯', '健康度', '備註']
+    const rows = scopedItems.map((item) => [item.id, item.title, item.lane, item.priority, item.owner, item.due, item.channel, item.relation, item.health, item.note])
+    const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
+    downloadFlowdeskText(`FlowDesk工作看板_${todayDate()}.csv`, `\ufeff${csv}`, 'text/csv;charset=utf-8;')
+  }
 
   function clearBoardFilters() {
     setLaneFilter('全部')
     setPriorityFilter('全部')
     setOwnerFilter('全部')
     setSortMode('到期日')
+    setHideDone(false)
+    clearBoardSelection()
   }
 
   return (
@@ -1225,6 +1267,30 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         <div className="board-result-hint">目前顯示 {scopedItems.length} / {items.length} 筆</div>
       </section>
 
+      <section className="board-focus-strip v199-focus-strip">
+        {focusRows.map((row) => (
+          <button key={row.id} type="button" onClick={row.action}>
+            <span>{row.label}</span>
+            <strong>{row.count}</strong>
+          </button>
+        ))}
+      </section>
+
+      <section className="board-bulk-panel v199-bulk-panel">
+        <div><strong>批次處理</strong><span>已選取 {selectedIds.length} 筆 / 目前視圖 {scopedItems.length} 筆</span></div>
+        <div className="bulk-actions-grid">
+          <button type="button" onClick={selectScopedItems} disabled={!scopedItems.length}>選取目前視圖</button>
+          <button type="button" onClick={clearBoardSelection} disabled={!selectedIds.length}>取消選取</button>
+          <label>狀態<select value={bulkLane} onChange={(event) => setBulkLane(event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
+          <button type="button" onClick={() => applyBulkPatch({ lane: bulkLane })} disabled={!selectedIds.length}>套用狀態</button>
+          <label>優先<select value={bulkPriority} onChange={(event) => setBulkPriority(event.target.value)}>{['緊急', '高', '中', '低'].map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+          <button type="button" onClick={() => applyBulkPatch({ priority: bulkPriority })} disabled={!selectedIds.length}>套用優先</button>
+          <label>負責<input value={bulkOwner} onChange={(event) => setBulkOwner(event.target.value)} /></label>
+          <button type="button" onClick={() => applyBulkPatch({ owner: bulkOwner || 'Kyle' })} disabled={!selectedIds.length}>套用負責人</button>
+          <button type="button" onClick={exportBoardCsv}>匯出目前視圖</button>
+        </div>
+      </section>
+
       {!items.length && (
         <section className="board-empty-state">
           <strong>目前沒有工作項目</strong>
@@ -1255,7 +1321,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
                 </div>
                 <div className="lane-cards">
                   {laneItems.length ? laneItems.map((item) => (
-                    <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} />
+                    <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} selectable checked={selectedIds.includes(item.id)} onToggleSelect={() => toggleSelectedId(item.id)} />
                   )) : <div className="lane-empty">尚無項目</div>}
                 </div>
               </article>
@@ -1264,8 +1330,8 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         </section>
       )}
 
-      {view === '表格' && <WorkGrid items={scopedItems} selected={selected} setSelected={setSelected} />}
-      {view === '卡片' && <CardWall items={scopedItems} selected={selected} setSelected={setSelected} />}
+      {view === '表格' && <WorkGrid items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} />}
+      {view === '卡片' && <CardWall items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} />}
     </div>
   )
 }
@@ -2650,6 +2716,24 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
   const avgProgress = Math.round(projects.reduce((sum, project) => sum + project.progress, 0) / Math.max(projects.length, 1))
   const riskCount = projects.filter((project) => project.tone === 'red' || String(project.health || '').includes('待')).length
 
+  function exportProjectSummary() {
+    const headers = ['編號', '專案', '階段', '負責人', '開始', '結束', '進度', '健康度', '下一步', '任務數', '里程碑數']
+    const rows = filteredProjects.map((project) => [
+      project.id, project.name, project.phase, project.owner, project.startDate, project.endDate, project.progress, project.health, project.next,
+      (project.tasks || []).length, (project.milestones || []).length,
+    ])
+    const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
+    downloadFlowdeskText(`FlowDesk專案摘要_${todayDate()}.csv`, `\ufeff${csv}`, 'text/csv;charset=utf-8;')
+  }
+
+  function autoEstimateSelectedProject() {
+    if (!selectedProject) return
+    const tasks = selectedProject.tasks || []
+    if (!tasks.length) return
+    const nextProgress = Math.round(tasks.reduce((sum, task) => sum + Number(task.progress || 0), 0) / tasks.length)
+    updateProject(selectedProject.id, { progress: nextProgress }, `依 ${tasks.length} 個任務平均進度估算為 ${nextProgress}%。`)
+  }
+
   return (
     <div className="project-workspace page-stack flowdesk-module-shell project-responsive project-reflow project-compact-screen project-smallscreen-simple">
       <section className="flow-toolbar flowdesk-toolbar-v2 project-toolbar-v2">
@@ -2660,7 +2744,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
         </div>
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">平均進度 {avgProgress}%</span>
-          <button className="ghost-btn" type="button">清單</button>
+          <button className="ghost-btn" type="button" onClick={exportProjectSummary}>匯出摘要</button>
+          <button className="ghost-btn" type="button" onClick={autoEstimateSelectedProject} disabled={!selectedProject?.tasks?.length}>依任務估進度</button>
           <button className="ghost-btn" type="button" onClick={createProject}>新增專案</button>
           <button className="primary-btn" type="button">甘特圖</button>
         </div>
@@ -3357,6 +3442,13 @@ function RemindersPage({ reminders, setReminders }) {
       return [item.id, item.title, item.type, item.priority, item.status, item.sourceType, item.sourceTitle, item.note].join(' ').toLowerCase().includes(q)
     })
     .sort((a, b) => (toDateOnly(a.dueDate)?.getTime() || 0) - (toDateOnly(b.dueDate)?.getTime() || 0))
+  const reminderGroups = [
+    { id: 'overdue', title: '逾期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days < 0) },
+    { id: 'today', title: '今日', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 0) },
+    { id: 'week', title: '本週', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 0 && getReminderDueInfo(item.dueDate).days <= 7) },
+    { id: 'later', title: '之後', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7) },
+    { id: 'done', title: '已完成', rows: filtered.filter((item) => item.status === '已完成') },
+  ].filter((group) => group.rows.length)
 
   function updateDraft(key, value) {
     setDraft((current) => ({ ...current, [key]: value }))
@@ -3372,6 +3464,14 @@ function RemindersPage({ reminders, setReminders }) {
 
   function updateReminder(id, patch) {
     setReminders((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item))
+  }
+
+  function deferReminder(id, days = 3) {
+    updateReminder(id, { status: '延後', dueDate: addDaysDate(days) })
+  }
+
+  function completeAllOverdue() {
+    setReminders((current) => current.map((item) => getReminderDueInfo(item.dueDate).days < 0 ? { ...item, status: '已完成' } : item))
   }
 
   function removeReminder(id) {
@@ -3426,31 +3526,40 @@ function RemindersPage({ reminders, setReminders }) {
           <label>類型<select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="全部">全部</option>{reminderTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <button className="ghost-btn" type="button" onClick={() => { setKeyword(''); setStatusFilter('全部'); setTypeFilter('全部') }}>清除篩選</button>
         </div>
-        <div className="reminder-card-list">
-          {filtered.map((item) => {
-            const due = getReminderDueInfo(item.dueDate)
-            return (
-              <article className={`reminder-card ${item.status === '已完成' ? 'done' : ''}`} key={item.id}>
-                <div className="reminder-card-main">
-                  <span className="record-id">{item.id}</span>
-                  <strong>{item.title}</strong>
-                  <small>{item.sourceType} · {item.sourceTitle || '未指定'} · {item.type}</small>
-                  <p>{item.note}</p>
-                </div>
-                <div className="reminder-card-meta">
-                  <Badge value={item.priority} />
-                  <span className={`due-chip ${due.tone}`}>{due.label}</span>
-                  <select value={item.status} onChange={(event) => updateReminder(item.id, { status: event.target.value })}>{reminderStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>
-                </div>
-                <div className="reminder-card-actions">
-                  <button type="button" onClick={() => updateReminder(item.id, { status: item.status === '已完成' ? '待處理' : '已完成' })}>{item.status === '已完成' ? '重新開啟' : '完成'}</button>
-                  <button type="button" onClick={() => updateReminder(item.id, { status: '延後' })}>延後</button>
-                  <button className="danger" type="button" onClick={() => removeReminder(item.id)}>刪除</button>
-                </div>
-              </article>
-            )
-          })}
-          {!filtered.length && <div className="purchase-empty-state">沒有符合條件的提醒事項</div>}
+        <div className="reminder-bulk-actions">
+          <button type="button" onClick={() => { setStatusFilter('全部'); setTypeFilter('全部'); setKeyword('') }}>全部提醒</button>
+          <button type="button" onClick={completeAllOverdue} disabled={!summary.overdue}>逾期全部完成</button>
+        </div>
+        <div className="reminder-card-list reminder-grouped-list">
+          {reminderGroups.length ? reminderGroups.map((group) => (
+            <section className="reminder-date-group" key={group.id}>
+              <div className="reminder-date-head"><strong>{group.title}</strong><span>{group.rows.length} 筆</span></div>
+              {group.rows.map((item) => {
+                const due = getReminderDueInfo(item.dueDate)
+                return (
+                  <article className={`reminder-card ${item.status === '已完成' ? 'done' : ''}`} key={item.id}>
+                    <div className="reminder-card-main">
+                      <span className="record-id">{item.id}</span>
+                      <strong>{item.title}</strong>
+                      <small>{item.sourceType} · {item.sourceTitle || '未指定'} · {item.type}</small>
+                      <p>{item.note}</p>
+                    </div>
+                    <div className="reminder-card-meta">
+                      <Badge value={item.priority} />
+                      <span className={`due-chip ${due.tone}`}>{due.label}</span>
+                      <select value={item.status} onChange={(event) => updateReminder(item.id, { status: event.target.value })}>{reminderStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>
+                    </div>
+                    <div className="reminder-card-actions">
+                      <button type="button" onClick={() => updateReminder(item.id, { status: item.status === '已完成' ? '待處理' : '已完成' })}>{item.status === '已完成' ? '重新開啟' : '完成'}</button>
+                      <button type="button" onClick={() => deferReminder(item.id, 1)}>明天</button>
+                      <button type="button" onClick={() => deferReminder(item.id, 7)}>下週</button>
+                      <button className="danger" type="button" onClick={() => removeReminder(item.id)}>刪除</button>
+                    </div>
+                  </article>
+                )
+              })}
+            </section>
+          )) : <div className="purchase-empty-state">沒有符合條件的提醒事項</div>}
         </div>
       </section>
     </div>
@@ -3539,7 +3648,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
 
       downloadBackupFile({
         app: 'FlowDesk',
-        version: '19.7.5',
+        version: '19.9.0',
         exportedAt: new Date().toISOString(),
         cloudEnabled: Boolean(flowdeskCloud),
         local,
@@ -3692,7 +3801,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     { id: 'icons', title: '圖示設定', eyebrow: 'ICONS', summary: `目前風格：${iconStyleMode === 'auto' ? '跟隨 UI 主題' : activeIconStyle.name}`, icon: '✨' },
     { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與資料整理', icon: '🔔' },
     { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原與清空工作資料', icon: '💾' },
-    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.7.5', icon: '⚙️' },
+    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.9.0', icon: '⚙️' },
   ]
 
   return (
@@ -3887,7 +3996,9 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="系統資訊" title="FlowDesk v19.7.5" />
           <div className="settings-info-list">
-            <div><span>版本狀態</span><strong>雲端登入 / 雲端資料 / 備份中心</strong></div>
+            <div><span>版本狀態</span><strong>雲端登入 / 雲端資料 / 備份中心 / 批次操作</strong></div>
+            <div><span>雲端同步</span><strong>{flowdeskCloud ? '已啟用' : '本機模式'}</strong></div>
+            <div><span>Supabase 設定</span><strong>{hasSupabaseConfig ? '已設定' : '未設定'}</strong></div>
             <div><span>目前主題</span><strong>{activeTheme.name}</strong></div>
             <div><span>圖示風格</span><strong>{iconStyleMode === 'auto' ? `跟隨 UI 主題（${activeIconStyle.name}）` : activeIconStyle.name}</strong></div>
             <div><span>提醒中心</span><strong>獨立運作</strong></div>
@@ -4355,10 +4466,16 @@ function ScrollTopButton() {
   )
 }
 
-function WorkCard({ item, onSelect, selected }) {
+function WorkCard({ item, onSelect, selected, selectable = false, checked = false, onToggleSelect }) {
   const isSelected = selected?.id === item.id
   return (
     <article className={isSelected ? 'work-card-shell selected' : 'work-card-shell'}>
+      {selectable && (
+        <label className="work-select-check" onClick={(event) => event.stopPropagation()}>
+          <input type="checkbox" checked={checked} onChange={onToggleSelect} />
+          <span>選取</span>
+        </label>
+      )}
       <button className="work-card" type="button" onClick={onSelect}>
         <div className="card-top"><span>{item.id}</span><Badge value={item.priority} /></div>
         <strong>{item.title}</strong>
@@ -4372,17 +4489,18 @@ function WorkCard({ item, onSelect, selected }) {
 }
 
 
-function WorkGrid({ items, selected, setSelected }) {
+function WorkGrid({ items, selected, setSelected, selectedIds = [], onToggleSelect }) {
   return (
     <section className="work-grid">
-      <div className="work-grid-head">
-        <span>編號</span><span>標題</span><span>狀態</span><span>優先級</span><span>關聯</span><span>到期日</span>
+      <div className="work-grid-head work-grid-head-v199">
+        <span>選取</span><span>編號</span><span>標題</span><span>狀態</span><span>優先級</span><span>關聯</span><span>到期日</span>
       </div>
       {items.map((item) => {
         const isSelected = selected?.id === item.id
         return (
           <article className={isSelected ? 'work-grid-shell selected' : 'work-grid-shell'} key={item.id}>
-            <button className="work-grid-row" type="button" onClick={() => setSelected(item)}>
+            <button className="work-grid-row work-grid-row-v199" type="button" onClick={() => setSelected(item)}>
+              <label className="grid-select-check" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => onToggleSelect?.(item.id)} /></label>
               <span className="work-grid-id" data-label="編號">{item.id}</span>
               <strong className="work-grid-title" data-label="標題">{item.title}</strong>
               <span className="work-grid-status" data-label="狀態"><Badge value={item.lane} /></span>
@@ -4399,11 +4517,11 @@ function WorkGrid({ items, selected, setSelected }) {
 }
 
 
-function CardWall({ items, selected, setSelected }) {
+function CardWall({ items, selected, setSelected, selectedIds = [], onToggleSelect }) {
   return (
     <section className="card-wall board-card-view">
       {items.map((item) => (
-        <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} />
+        <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} selectable checked={selectedIds.includes(item.id)} onToggleSelect={() => onToggleSelect?.(item.id)} />
       ))}
     </section>
   )
