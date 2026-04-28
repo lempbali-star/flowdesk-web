@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
 const initialModules = [
   { id: 'home', name: '總覽', icon: 'overview' },
@@ -214,6 +214,8 @@ function FlowDeskShell({ authSession, onLogout }) {
       return initialWorkItems
     }
   })
+  const [shellCloudReady, setShellCloudReady] = useState(!flowdeskCloud)
+  const shellCloudSaveTimers = useRef({})
 
   const resolvedIconStyle = iconStyleMode === 'auto' ? (iconAutoStyleByTheme[uiTheme] || 'soft') : iconStyleMode
 
@@ -282,9 +284,43 @@ function FlowDeskShell({ authSession, onLogout }) {
   }, [activeBaseTable, visibleCollections])
 
   useEffect(() => {
+    let cancelled = false
+    async function loadCloudWorkspaceData() {
+      if (!flowdeskCloud) {
+        setShellCloudReady(true)
+        return
+      }
+      const [workResult, reminderResult, collectionResult] = await Promise.all([
+        flowdeskCloud.getWorkspaceData('work_items'),
+        flowdeskCloud.getWorkspaceData('reminders'),
+        flowdeskCloud.getWorkspaceData('collections'),
+      ])
+      if (cancelled) return
+      if (Array.isArray(workResult.data)) setWorkItems(workResult.data)
+      if (Array.isArray(reminderResult.data)) setReminders(reminderResult.data)
+      if (Array.isArray(collectionResult.data) && collectionResult.data.length) setCollections(collectionResult.data)
+      setShellCloudReady(true)
+    }
+    loadCloudWorkspaceData()
+    return () => {
+      cancelled = true
+      Object.values(shellCloudSaveTimers.current).forEach((timer) => clearTimeout(timer))
+    }
+  }, [])
+
+  function queueShellCloudSave(dataKey, payload) {
+    if (!shellCloudReady || !flowdeskCloud) return
+    clearTimeout(shellCloudSaveTimers.current[dataKey])
+    shellCloudSaveTimers.current[dataKey] = window.setTimeout(() => {
+      flowdeskCloud.setWorkspaceData(dataKey, payload).catch(() => null)
+    }, 600)
+  }
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
     window.localStorage.setItem('flowdesk-work-items-v196', JSON.stringify(workItems))
-  }, [workItems])
+    queueShellCloudSave('work_items', workItems)
+  }, [workItems, shellCloudReady])
 
   useEffect(() => {
     if (!workItems.length) {
@@ -406,12 +442,14 @@ function FlowDeskShell({ authSession, onLogout }) {
   useEffect(() => {
     if (typeof window === 'undefined') return
     window.localStorage.setItem('flowdesk-reminders-v193', JSON.stringify(reminders))
-  }, [reminders])
+    queueShellCloudSave('reminders', reminders)
+  }, [reminders, shellCloudReady])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     window.localStorage.setItem('flowdesk-collections-v194', JSON.stringify(collections))
-  }, [collections])
+    queueShellCloudSave('collections', collections)
+  }, [collections, shellCloudReady])
 
   function resetModuleOrder() {
     setModules(normalizeModuleOrder(initialModules))
@@ -983,12 +1021,47 @@ function BasePage({ tables, records, activeTable }) {
       return initialPurchaseStages
     }
   })
+  const [purchaseCloudReady, setPurchaseCloudReady] = useState(!flowdeskCloud)
+  const purchaseCloudSaveTimers = useRef({})
 
   const activeStages = purchaseStages.filter((stage) => stage.enabled)
   const doneStages = purchaseStages.filter((stage) => stage.done || stage.name.includes('完成')).map((stage) => stage.name)
   const arrivedStages = purchaseStages.filter((stage) => stage.done || stage.name.includes('到貨') || stage.name.includes('完成')).map((stage) => stage.name)
   const activeCollection = tables.find((table) => table.name === activeTable) || tables[0]
   const collectionView = collectionViews[activeCollection?.id] || activeCollection?.defaultView || 'list'
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadPurchaseCloudData() {
+      if (!flowdeskCloud) {
+        setPurchaseCloudReady(true)
+        return
+      }
+      const [purchaseResult, historyResult, stageResult] = await Promise.all([
+        flowdeskCloud.getWorkspaceData('purchases'),
+        flowdeskCloud.getWorkspaceData('purchase_history'),
+        flowdeskCloud.getWorkspaceData('purchase_stages'),
+      ])
+      if (cancelled) return
+      if (Array.isArray(purchaseResult.data)) setPurchases(purchaseResult.data)
+      if (Array.isArray(historyResult.data)) setPurchaseHistory(historyResult.data)
+      if (Array.isArray(stageResult.data) && stageResult.data.length) setPurchaseStages(stageResult.data)
+      setPurchaseCloudReady(true)
+    }
+    loadPurchaseCloudData()
+    return () => {
+      cancelled = true
+      Object.values(purchaseCloudSaveTimers.current).forEach((timer) => clearTimeout(timer))
+    }
+  }, [])
+
+  function queuePurchaseCloudSave(dataKey, payload) {
+    if (!purchaseCloudReady || !flowdeskCloud) return
+    clearTimeout(purchaseCloudSaveTimers.current[dataKey])
+    purchaseCloudSaveTimers.current[dataKey] = window.setTimeout(() => {
+      flowdeskCloud.setWorkspaceData(dataKey, payload).catch(() => null)
+    }, 600)
+  }
   const vendors = ['全部', ...Array.from(new Set(purchases.map((row) => row.vendor).filter(Boolean)))]
   const months = ['全部', ...Array.from(new Set(purchases.map((row) => (row.requestDate || '').slice(0, 7)).filter(Boolean))).sort().reverse()]
   const filteredPurchases = purchases.filter((row) => {
@@ -1031,15 +1104,18 @@ function BasePage({ tables, records, activeTable }) {
 
   useEffect(() => {
     window.localStorage.setItem('flowdesk-purchase-stages', JSON.stringify(purchaseStages))
-  }, [purchaseStages])
+    queuePurchaseCloudSave('purchase_stages', purchaseStages)
+  }, [purchaseStages, purchaseCloudReady])
 
   useEffect(() => {
     window.localStorage.setItem('flowdesk-purchases-v19', JSON.stringify(purchases))
-  }, [purchases])
+    queuePurchaseCloudSave('purchases', purchases)
+  }, [purchases, purchaseCloudReady])
 
   useEffect(() => {
     window.localStorage.setItem('flowdesk-purchase-history-v19', JSON.stringify(purchaseHistory))
-  }, [purchaseHistory])
+    queuePurchaseCloudSave('purchase_history', purchaseHistory)
+  }, [purchaseHistory, purchaseCloudReady])
 
   useEffect(() => {
     window.localStorage.setItem('flowdesk-purchase-page-size', String(purchasePageSize))
@@ -1072,9 +1148,17 @@ function BasePage({ tables, records, activeTable }) {
     setPurchaseHistory((rows) => [{ id: `H-${Date.now()}`, purchaseId, title, message, time: new Date().toLocaleString('zh-TW', { hour12: false }) }, ...rows].slice(0, 80))
   }
 
+  function getNextPurchaseId(current = purchases) {
+    const maxNumber = current.reduce((max, item) => {
+      const matched = String(item.id || '').match(/PO-(\d+)/)
+      return matched ? Math.max(max, Number(matched[1])) : max
+    }, 0)
+    return `PO-${String(maxNumber + 1).padStart(3, '0')}`
+  }
+
   function addPurchase(form) {
     const next = normalizePurchase({
-      id: `PO-${String(purchases.length + 1).padStart(3, '0')}`,
+      id: getNextPurchaseId(purchases),
       ...form,
     })
     setPurchases((rows) => [next, ...rows])
@@ -1569,11 +1653,44 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
   )
 }
 
-function ProjectManagementPage({ projects }) {
-  const [selectedId, setSelectedId] = useState(projects[0]?.id)
+function ProjectManagementPage({ projects: initialProjectRows = [] }) {
+  const [projects, setProjects] = useState(() => initialProjectRows)
+  const [projectsCloudReady, setProjectsCloudReady] = useState(!flowdeskCloud)
+  const projectsCloudSaveTimer = useRef(null)
+  const [selectedId, setSelectedId] = useState(initialProjectRows[0]?.id)
   const [expandedProjects, setExpandedProjects] = useState(() => new Set())
   const [pinnedProjects, setPinnedProjects] = useState(() => new Set())
   const [previewProjectId, setPreviewProjectId] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadProjectsFromCloud() {
+      if (!flowdeskCloud) {
+        setProjectsCloudReady(true)
+        return
+      }
+      const { data } = await flowdeskCloud.getWorkspaceData('projects')
+      if (cancelled) return
+      if (Array.isArray(data)) {
+        setProjects(data)
+        setSelectedId(data[0]?.id)
+      }
+      setProjectsCloudReady(true)
+    }
+    loadProjectsFromCloud()
+    return () => {
+      cancelled = true
+      clearTimeout(projectsCloudSaveTimer.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!projectsCloudReady || !flowdeskCloud) return
+    clearTimeout(projectsCloudSaveTimer.current)
+    projectsCloudSaveTimer.current = window.setTimeout(() => {
+      flowdeskCloud.setWorkspaceData('projects', projects).catch(() => null)
+    }, 600)
+  }, [projects, projectsCloudReady])
 
   const isDesktopPointer = () => typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
 
@@ -1630,6 +1747,43 @@ function ProjectManagementPage({ projects }) {
     })
   }
 
+  function getNextProjectId(current = projects) {
+    const maxNumber = current.reduce((max, item) => {
+      const matched = String(item.id || '').match(/PRJ-(\d+)/)
+      return matched ? Math.max(max, Number(matched[1])) : max
+    }, 0)
+    return `PRJ-${String(maxNumber + 1).padStart(3, '0')}`
+  }
+
+  function createProject() {
+    const today = new Date().toISOString().slice(0, 10)
+    const nextMonth = new Date()
+    nextMonth.setDate(nextMonth.getDate() + 30)
+    const next = {
+      id: getNextProjectId(),
+      name: '未命名專案',
+      phase: '規劃中',
+      owner: 'Kyle',
+      startDate: today,
+      endDate: nextMonth.toISOString().slice(0, 10),
+      progress: 0,
+      health: '待確認',
+      tone: 'blue',
+      next: '補上專案目標、時程與負責人。',
+      related: [],
+      tasks: [{ name: '專案啟動', owner: 'Kyle', start: today, end: nextMonth.toISOString().slice(0, 10), progress: 0, tone: 'blue' }],
+      milestones: [{ name: '啟動確認', date: today, done: false }],
+      records: ['建立專案。'],
+    }
+    setProjects((rows) => [next, ...rows])
+    setSelectedId(next.id)
+    setExpandedProjects((previous) => {
+      const expanded = new Set(previous)
+      expanded.add(next.id)
+      return expanded
+    })
+  }
+
   const selectedProject = projects.find((project) => project.id === selectedId) || projects[0]
   const avgProgress = Math.round(projects.reduce((sum, project) => sum + project.progress, 0) / Math.max(projects.length, 1))
   const riskCount = projects.filter((project) => project.tone === 'red' || project.health.includes('待')).length
@@ -1645,6 +1799,7 @@ function ProjectManagementPage({ projects }) {
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">平均進度 {avgProgress}%</span>
           <button className="ghost-btn" type="button">清單</button>
+          <button className="ghost-btn" type="button" onClick={createProject}>新增專案</button>
           <button className="primary-btn" type="button">甘特圖</button>
         </div>
       </section>
@@ -1659,6 +1814,7 @@ function ProjectManagementPage({ projects }) {
       <div className="project-layout-v2 project-layout-v3">
         <aside className="project-list-panel project-list-panel-v2">
           <div className="project-list-head"><div><strong>專案清單</strong><span>{projects.length} 件</span></div><small>選取後同步甘特與右側抽屜</small></div>
+          {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
           {projects.map((project) => (
             <button key={project.id} type="button" className={selectedProject?.id === project.id ? 'project-list-card project-list-card-v2 active' : 'project-list-card project-list-card-v2'} onClick={() => setSelectedId(project.id)}>
               <div className="project-card-title"><strong>{project.name}</strong><Badge value={project.health} /></div>

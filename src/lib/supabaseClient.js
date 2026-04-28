@@ -19,6 +19,10 @@ function getAuthEndpoint(path) {
   return `${normalizeUrl(supabaseUrl)}/auth/v1/${path.replace(/^\//, '')}`
 }
 
+function getRestEndpoint(path) {
+  return `${normalizeUrl(supabaseUrl)}/rest/v1/${path.replace(/^\//, '')}`
+}
+
 function getHeaders(accessToken) {
   return {
     apikey: supabaseAnonKey,
@@ -69,6 +73,34 @@ async function requestAuth(path, body, accessToken) {
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
     return { data: null, error: { message: payload?.msg || payload?.message || '登入服務發生錯誤' } }
+  }
+  return { data: payload, error: null }
+}
+
+async function requestRest(path, options = {}) {
+  const session = readSession()
+  const accessToken = session?.access_token
+  if (!accessToken) return { data: null, error: { message: '尚未登入' } }
+
+  const response = await fetch(getRestEndpoint(path), {
+    method: options.method || 'GET',
+    headers: {
+      ...getHeaders(accessToken),
+      ...(options.prefer ? { Prefer: options.prefer } : {}),
+    },
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+  })
+
+  const text = await response.text()
+  let payload = null
+  try {
+    payload = text ? JSON.parse(text) : null
+  } catch {
+    payload = text
+  }
+
+  if (!response.ok) {
+    return { data: null, error: { message: payload?.message || payload?.msg || '資料庫連線失敗', details: payload } }
   }
   return { data: payload, error: null }
 }
@@ -145,6 +177,38 @@ export const supabase = hasSupabaseConfig
           notify('SIGNED_OUT', null)
           return { error: null }
         },
+      },
+    }
+  : null
+
+export const flowdeskCloud = hasSupabaseConfig
+  ? {
+      async getWorkspaceData(dataKey) {
+        const query = `flowdesk_workspace_data?data_key=eq.${encodeURIComponent(dataKey)}&select=data_key,payload,updated_at&limit=1`
+        const { data, error } = await requestRest(query)
+        if (error) return { data: null, error }
+        const row = Array.isArray(data) ? data[0] : null
+        return { data: row?.payload ?? null, error: null }
+      },
+
+      async setWorkspaceData(dataKey, payload) {
+        const update = await requestRest(`flowdesk_workspace_data?data_key=eq.${encodeURIComponent(dataKey)}`, {
+          method: 'PATCH',
+          prefer: 'return=representation',
+          body: { payload, updated_at: new Date().toISOString() },
+        })
+
+        if (!update.error && Array.isArray(update.data) && update.data.length) {
+          return { data: update.data[0], error: null }
+        }
+
+        const insert = await requestRest('flowdesk_workspace_data', {
+          method: 'POST',
+          prefer: 'return=representation',
+          body: { data_key: dataKey, payload },
+        })
+        if (insert.error) return insert
+        return { data: Array.isArray(insert.data) ? insert.data[0] : insert.data, error: null }
       },
     }
   : null
