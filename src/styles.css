@@ -10190,3 +10190,149 @@ button {
     flex-direction: column;
   }
 }
+
+
+/* v19.7.4 採購管理實戰補強：只針對採購模組 */
+.purchase-v1974-status-row {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.purchase-insight-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: -2px 0 14px;
+}
+
+.purchase-insight-strip article {
+  display: grid;
+  gap: 6px;
+  padding: 13px 15px;
+  border: 1px solid rgba(226, 232, 240, .88);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(248,251,255,.9));
+  box-shadow: 0 12px 26px rgba(44,65,110,.055);
+}
+
+.purchase-insight-strip span {
+  color: #738098;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.purchase-insight-strip strong {
+  color: #172033;
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -.04em;
+}
+
+.purchase-quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+
+.purchase-quick-filters button,
+.purchase-progress-actions button {
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,.86);
+  color: #536176;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.purchase-quick-filters button.active,
+.purchase-progress-actions button.active {
+  border-color: rgba(53, 107, 255, .24);
+  background: var(--theme-soft);
+  color: var(--theme-primary-strong);
+  box-shadow: 0 8px 18px rgba(53,107,255,.08);
+}
+
+.purchase-progress-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(226, 232, 240, .8);
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.purchase-vendor-rank-card {
+  padding: 16px;
+}
+
+.purchase-vendor-rank {
+  display: grid;
+  gap: 8px;
+}
+
+.purchase-vendor-rank article {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: #f7f9fc;
+  border: 1px solid rgba(226, 232, 240, .74);
+}
+
+.purchase-vendor-rank div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.purchase-vendor-rank strong {
+  color: #22304a;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purchase-vendor-rank span {
+  color: #8792a6;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.purchase-vendor-rank b {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .purchase-v1974-status-row,
+  .purchase-insight-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .purchase-v1974-status-row,
+  .purchase-insight-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .purchase-progress-actions,
+  .purchase-quick-filters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+
+  .purchase-progress-actions button,
+  .purchase-quick-filters button {
+    flex: 0 0 auto;
+  }
+}

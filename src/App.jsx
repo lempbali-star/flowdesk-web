@@ -137,6 +137,9 @@ const stageColorOptions = [
 ]
 
 const purchasePageSizeOptions = [5, 10, 20, 40]
+const purchasePaymentStatusOptions = ['未付款', '請款中', '已付款']
+const purchaseArrivalStatusOptions = ['未到貨', '部分到貨', '已到貨']
+const purchaseAcceptanceStatusOptions = ['未驗收', '驗收中', '已驗收']
 
 const tickets = []
 
@@ -1033,6 +1036,9 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const [showStageSettings, setShowStageSettings] = useState(false)
   const [stageDragId, setStageDragId] = useState(null)
   const [statusFilter, setStatusFilter] = useState('全部')
+  const [paymentFilter, setPaymentFilter] = useState('全部')
+  const [arrivalFilter, setArrivalFilter] = useState('全部')
+  const [acceptanceFilter, setAcceptanceFilter] = useState('全部')
   const [vendorFilter, setVendorFilter] = useState('全部')
   const [monthFilter, setMonthFilter] = useState('全部')
   const [purchaseKeyword, setPurchaseKeyword] = useState('')
@@ -1120,14 +1126,20 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       row.requester,
       row.vendor,
       row.status,
+      row.paymentStatus,
+      row.arrivalStatus,
+      row.acceptanceStatus,
       row.note,
       ...getPurchaseItems(row).flatMap((item) => [item.name, item.note]),
     ].join(' ').toLowerCase()
     const byKeyword = !keyword || searchText.includes(keyword)
     const byStatus = statusFilter === '全部' || row.status === statusFilter
+    const byPayment = paymentFilter === '全部' || (row.paymentStatus || '未付款') === paymentFilter
+    const byArrival = arrivalFilter === '全部' || (row.arrivalStatus || '未到貨') === arrivalFilter
+    const byAcceptance = acceptanceFilter === '全部' || (row.acceptanceStatus || '未驗收') === acceptanceFilter
     const byVendor = vendorFilter === '全部' || row.vendor === vendorFilter
     const byMonth = monthFilter === '全部' || (row.requestDate || '').startsWith(monthFilter)
-    return byKeyword && byStatus && byVendor && byMonth
+    return byKeyword && byStatus && byPayment && byArrival && byAcceptance && byVendor && byMonth
   })
   const purchasePageCount = Math.max(1, Math.ceil(filteredPurchases.length / purchasePageSize))
   const safePurchasePage = Math.min(purchasePage, purchasePageCount)
@@ -1137,7 +1149,22 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const totalAmount = filteredPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
   const waitingQuote = purchases.filter((row) => row.status.includes('詢價') || row.status.includes('報價')).length
   const pendingApproval = purchases.filter((row) => row.status.includes('簽核') || row.status.includes('核准') || row.status.includes('確認')).length
-  const notArrived = purchases.filter((row) => !arrivedStages.includes(row.status)).length
+  const notArrived = purchases.filter((row) => !arrivedStages.includes(row.status) && (row.arrivalStatus || '未到貨') !== '已到貨').length
+  const paymentPending = purchases.filter((row) => (row.paymentStatus || '未付款') !== '已付款' && !doneStages.includes(row.status)).length
+  const acceptancePending = purchases.filter((row) => (row.acceptanceStatus || '未驗收') !== '已驗收' && !doneStages.includes(row.status)).length
+  const completedPurchases = purchases.filter((row) => doneStages.includes(row.status)).length
+  const currentMonthKey = todayDate().slice(0, 7)
+  const thisMonthTotal = purchases
+    .filter((row) => (row.requestDate || '').startsWith(currentMonthKey))
+    .reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
+  const vendorSpendRanking = Array.from(purchases.reduce((map, row) => {
+    const vendor = row.vendor || '未指定廠商'
+    const current = map.get(vendor) || { vendor, amount: 0, count: 0 }
+    current.amount += calculatePurchase(row).taxedTotal
+    current.count += 1
+    map.set(vendor, current)
+    return map
+  }, new Map()).values()).sort((a, b) => b.amount - a.amount).slice(0, 5)
 
   function getPurchaseRelatedTasks(row) {
     if (!row) return []
@@ -1184,7 +1211,14 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   useEffect(() => {
     setPurchasePage(1)
-  }, [statusFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
+  }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
+
+  useEffect(() => {
+    if (!selectedPurchase) return
+    const refreshed = purchases.find((row) => row.id === selectedPurchase.id)
+    if (refreshed && refreshed !== selectedPurchase) setSelectedPurchase(refreshed)
+    if (!refreshed) setSelectedPurchase(null)
+  }, [purchases, selectedPurchase])
 
   function updateCollectionView(viewId) {
     if (!activeCollection) return
@@ -1228,10 +1262,24 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   function updatePurchaseStatus(row, status) {
     if (!row || !status) return
-    const next = { ...row, status }
+    const patch = { status }
+    if (arrivedStages.includes(status) && (row.arrivalStatus || '未到貨') === '未到貨') patch.arrivalStatus = '已到貨'
+    if (doneStages.includes(status)) {
+      if ((row.arrivalStatus || '未到貨') !== '已到貨') patch.arrivalStatus = '已到貨'
+      if ((row.acceptanceStatus || '未驗收') !== '已驗收') patch.acceptanceStatus = '已驗收'
+    }
+    const next = normalizePurchase({ ...row, ...patch })
     setPurchases((rows) => rows.map((item) => item.id === row.id ? next : item))
     setSelectedPurchase(next)
     writeHistory(row.id, purchaseTitle(row), `狀態改為「${status}」。`)
+  }
+
+  function updatePurchaseMeta(row, patch, message) {
+    if (!row) return
+    const next = normalizePurchase({ ...row, ...patch })
+    setPurchases((rows) => rows.map((item) => item.id === row.id ? next : item))
+    setSelectedPurchase(next)
+    writeHistory(row.id, purchaseTitle(row), message || '更新採購追蹤欄位。')
   }
 
   function advancePurchase(row) {
@@ -1306,11 +1354,11 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   }
 
   function exportFilteredPurchases() {
-    const headers = ['編號', '品項', '廠商', '部門', '申請人', '狀態', '申請日', '下單日', '到貨日', '未稅', '稅額', '含稅', '品項明細', '備註']
+    const headers = ['編號', '品項', '廠商', '部門', '申請人', '流程狀態', '付款狀態', '到貨狀態', '驗收狀態', '申請日', '下單日', '到貨日', '未稅', '稅額', '含稅', '品項明細', '備註']
     const rows = filteredPurchases.map((row) => {
       const amount = calculatePurchase(row)
       const itemsText = getPurchaseItems(row).map((item) => `${item.name || '未命名'} x ${item.quantity || 0} @ ${item.unitPrice || 0}`).join('；')
-      return [row.id, purchaseTitle(row), row.vendor, row.department, row.requester, row.status, row.requestDate, row.orderDate, row.arrivalDate, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, itemsText, row.note]
+      return [row.id, purchaseTitle(row), row.vendor, row.department, row.requester, row.status, row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', row.acceptanceStatus || '未驗收', row.requestDate, row.orderDate, row.arrivalDate, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, itemsText, row.note]
     })
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
     const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
@@ -1326,7 +1374,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   function cancelPurchase(row) {
     const cancelStage = purchaseStages.find((stage) => stage.cancel || stage.name.includes('取消'))?.name || '已取消'
-    const next = { ...row, status: cancelStage }
+    const next = normalizePurchase({ ...row, status: cancelStage })
     setPurchases((rows) => rows.map((item) => item.id === row.id ? next : item))
     setSelectedPurchase(next)
     writeHistory(row.id, purchaseTitle(row), `狀態改為「${cancelStage}」。`)
@@ -1436,15 +1484,33 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
             </div>
             <div className="purchase-filter-bar">
               <label className="purchase-search-field">搜尋<input value={purchaseKeyword} onChange={(event) => setPurchaseKeyword(event.target.value)} placeholder="編號、品項、廠商、申請人..." /></label>
-              <label>狀態<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="全部">全部</option>{activeStages.map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+              <label>流程<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="全部">全部</option>{activeStages.map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+              <label>付款<select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}><option value="全部">全部</option>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>到貨<select value={arrivalFilter} onChange={(event) => setArrivalFilter(event.target.value)}><option value="全部">全部</option>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>驗收<select value={acceptanceFilter} onChange={(event) => setAcceptanceFilter(event.target.value)}><option value="全部">全部</option>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>廠商<select value={vendorFilter} onChange={(event) => setVendorFilter(event.target.value)}>{vendors.map((vendor) => <option key={vendor} value={vendor}>{vendor}</option>)}</select></label>
               <label>月份<select value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)}>{months.map((month) => <option key={month} value={month}>{month}</option>)}</select></label>
-              <button type="button" className="ghost-btn" onClick={() => { setPurchaseKeyword(''); setStatusFilter('全部'); setVendorFilter('全部'); setMonthFilter('全部') }}>清除篩選</button>
+              <button type="button" className="ghost-btn" onClick={() => { setPurchaseKeyword(''); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setVendorFilter('全部'); setMonthFilter('全部') }}>清除篩選</button>
             </div>
-            <div className="purchase-v15-status-row">
+            <div className="purchase-quick-filters">
+              <button type="button" className={statusFilter === '全部' && paymentFilter === '全部' && arrivalFilter === '全部' && acceptanceFilter === '全部' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部') }}>全部</button>
+              <button type="button" className={arrivalFilter === '未到貨' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setArrivalFilter('未到貨'); setPaymentFilter('全部'); setAcceptanceFilter('全部') }}>未到貨</button>
+              <button type="button" className={paymentFilter === '未付款' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('未付款'); setArrivalFilter('全部'); setAcceptanceFilter('全部') }}>未付款</button>
+              <button type="button" className={acceptanceFilter === '未驗收' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setAcceptanceFilter('未驗收'); setPaymentFilter('全部'); setArrivalFilter('全部') }}>未驗收</button>
+              <button type="button" className={statusFilter === '已完成' ? 'active' : ''} onClick={() => { setStatusFilter('已完成'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部') }}>已完成</button>
+            </div>
+            <div className="purchase-v15-status-row purchase-v1974-status-row">
               <article><span>等待報價</span><strong>{waitingQuote}</strong></article>
               <article><span>待確認 / 簽核</span><strong>{pendingApproval}</strong></article>
               <article><span>尚未到貨</span><strong>{notArrived}</strong></article>
+              <article><span>未付款</span><strong>{paymentPending}</strong></article>
+              <article><span>未驗收</span><strong>{acceptancePending}</strong></article>
+              <article><span>已完成</span><strong>{completedPurchases}</strong></article>
+            </div>
+            <div className="purchase-insight-strip">
+              <article><span>本月採購</span><strong>{formatMoney(thisMonthTotal)}</strong></article>
+              <article><span>篩選總額</span><strong>{formatMoney(totalAmount)}</strong></article>
+              <article><span>篩選筆數</span><strong>{filteredPurchases.length}</strong></article>
             </div>
 
             <div className="purchase-workspace-layout">
@@ -1483,6 +1549,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                             <span>申請人<b>{row.requester || '—'}</b></span>
                             <span>日期<b>{row.requestDate || '未填日期'}</b></span>
                             <span>品項<b>{getPurchaseItems(row).length} 項</b></span>
+                            <span>付款<b>{row.paymentStatus || '未付款'}</b></span>
+                            <span>到貨<b>{row.arrivalStatus || '未到貨'}</b></span>
                           </div>
                           <div className="purchase-item-preview">
                             {getPurchaseItems(row).slice(0, 3).map((item) => (
@@ -1517,12 +1585,23 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <aside className="purchase-side-panel">
                 <section className="purchase-detail-card compact-detail-card">
                   <PanelTitle eyebrow="採購明細" title={selectedPurchase ? purchaseTitle(selectedPurchase) : '請選擇採購項目'} />
-                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} onDuplicate={() => duplicatePurchase(selectedPurchase)} onCreateTask={() => createPurchaseWorkItem(selectedPurchase)} onCreateReminder={() => createPurchaseReminder(selectedPurchase)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
+                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} onDuplicate={() => duplicatePurchase(selectedPurchase)} onCreateTask={() => createPurchaseWorkItem(selectedPurchase)} onCreateReminder={() => createPurchaseReminder(selectedPurchase)} onUpdateMeta={(patch, message) => updatePurchaseMeta(selectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
                 </section>
                 <section className="purchase-history-card compact-history-card">
                   <PanelTitle eyebrow="狀態歷程" title="最近變更" />
                   <div className="history-list">
                     {purchaseHistory.length ? purchaseHistory.slice(0, 6).map((entry) => <article key={entry.id}><strong>{entry.title}</strong><span>{entry.message}</span><small>{entry.time}</small></article>) : <p>尚無變更紀錄。</p>}
+                  </div>
+                </section>
+                <section className="purchase-vendor-rank-card">
+                  <PanelTitle eyebrow="廠商統計" title="採購金額排行" />
+                  <div className="purchase-vendor-rank">
+                    {vendorSpendRanking.length ? vendorSpendRanking.map((vendor) => (
+                      <article key={vendor.vendor}>
+                        <div><strong>{vendor.vendor}</strong><span>{vendor.count} 筆</span></div>
+                        <b>{formatMoney(vendor.amount)}</b>
+                      </article>
+                    )) : <p>尚無廠商採購資料。</p>}
                   </div>
                 </section>
               </aside>
@@ -3121,6 +3200,9 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
     taxRate: initial?.taxRate ?? 5,
     quoteAmount: initial?.quoteAmount || 0,
     status: initial?.status || stages?.[0]?.name || '需求確認',
+    paymentStatus: initial?.paymentStatus || '未付款',
+    arrivalStatus: initial?.arrivalStatus || '未到貨',
+    acceptanceStatus: initial?.acceptanceStatus || '未驗收',
     requestDate: initial?.requestDate || new Date().toISOString().slice(0, 10),
     orderDate: initial?.orderDate || '',
     arrivalDate: initial?.arrivalDate || '',
@@ -3199,7 +3281,10 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
             <label>使用單位<input value={form.department} onChange={(event) => update('department', event.target.value)} placeholder="例如 高雄營業所" /></label>
             <label>申請人<input value={form.requester} onChange={(event) => update('requester', event.target.value)} /></label>
             <label>廠商<input value={form.vendor} onChange={(event) => update('vendor', event.target.value)} /></label>
-            <label>狀態<select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+            <label>流程狀態<select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+            <label>付款狀態<select value={form.paymentStatus} onChange={(event) => update('paymentStatus', event.target.value)}>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+            <label>到貨狀態<select value={form.arrivalStatus} onChange={(event) => update('arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+            <label>驗收狀態<select value={form.acceptanceStatus} onChange={(event) => update('acceptanceStatus', event.target.value)}>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
           </div>
 
           <section className="purchase-items-editor">
@@ -3271,6 +3356,9 @@ function normalizePurchase(row) {
     taxRate: Number(row.taxRate ?? 5),
     quoteAmount: Number(row.quoteAmount || 0),
     taxMode: row.taxMode || '未稅',
+    paymentStatus: row.paymentStatus || '未付款',
+    arrivalStatus: row.arrivalStatus || '未到貨',
+    acceptanceStatus: row.acceptanceStatus || '未驗收',
   }
 }
 
@@ -3320,7 +3408,7 @@ function csvEscape(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
-function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder }) {
+function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder, onUpdateMeta }) {
   const amount = calculatePurchase(row)
   const items = getPurchaseItems(row)
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -3332,6 +3420,9 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
         <StageBadge value={row.status} stages={stages} />
         <span>{row.department || '未填部門'}</span>
         <span>{row.requester || '未填申請人'}</span>
+        <span>{row.paymentStatus || '未付款'}</span>
+        <span>{row.arrivalStatus || '未到貨'}</span>
+        <span>{row.acceptanceStatus || '未驗收'}</span>
       </div>
       <div className="purchase-detail-actions">
         <button type="button" onClick={onEdit}>編輯採購</button>
@@ -3340,6 +3431,12 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
         <button type="button" onClick={onCreateTask}>建立追蹤工作</button>
         <button type="button" onClick={onCreateReminder}>建立提醒</button>
         <button type="button" onClick={onDuplicate}>複製採購</button>
+      </div>
+
+      <div className="purchase-progress-actions">
+        <button type="button" className={(row.paymentStatus || '未付款') === '已付款' ? 'active' : ''} onClick={() => onUpdateMeta?.({ paymentStatus: (row.paymentStatus || '未付款') === '已付款' ? '未付款' : '已付款' }, (row.paymentStatus || '未付款') === '已付款' ? '付款狀態改為未付款。' : '付款狀態改為已付款。')}>付款完成</button>
+        <button type="button" className={(row.arrivalStatus || '未到貨') === '已到貨' ? 'active' : ''} onClick={() => onUpdateMeta?.({ arrivalStatus: (row.arrivalStatus || '未到貨') === '已到貨' ? '未到貨' : '已到貨', arrivalDate: (row.arrivalStatus || '未到貨') === '已到貨' ? row.arrivalDate : (row.arrivalDate || todayDate()) }, (row.arrivalStatus || '未到貨') === '已到貨' ? '到貨狀態改為未到貨。' : '到貨狀態改為已到貨。')}>到貨完成</button>
+        <button type="button" className={(row.acceptanceStatus || '未驗收') === '已驗收' ? 'active' : ''} onClick={() => onUpdateMeta?.({ acceptanceStatus: (row.acceptanceStatus || '未驗收') === '已驗收' ? '未驗收' : '已驗收' }, (row.acceptanceStatus || '未驗收') === '已驗收' ? '驗收狀態改為未驗收。' : '驗收狀態改為已驗收。')}>驗收完成</button>
       </div>
 
       <div className="detail-money-summary">
@@ -3363,6 +3460,9 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
         <span>廠商<b>{row.vendor || '—'}</b></span>
         <span>品項數<b>{items.length} 項 / {totalQuantity} 件</b></span>
         <span>稅別<b>{row.taxMode || '未稅'} / {Number(row.taxRate || 0)}%</b></span>
+        <span>付款<b>{row.paymentStatus || '未付款'}</b></span>
+        <span>到貨<b>{row.arrivalStatus || '未到貨'}</b></span>
+        <span>驗收<b>{row.acceptanceStatus || '未驗收'}</b></span>
         <span>申請日<b>{row.requestDate || '—'}</b></span>
         <span>下單日<b>{row.orderDate || '—'}</b></span>
         <span>到貨日<b>{row.arrivalDate || '—'}</b></span>
