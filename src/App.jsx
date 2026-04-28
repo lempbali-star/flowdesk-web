@@ -315,7 +315,9 @@ function FlowDeskShell({ authSession, onLogout }) {
     if (!shellCloudReady || !flowdeskCloud) return
     clearTimeout(shellCloudSaveTimers.current[dataKey])
     shellCloudSaveTimers.current[dataKey] = window.setTimeout(() => {
-      flowdeskCloud.setWorkspaceData(dataKey, payload).catch(() => null)
+      flowdeskCloud.setWorkspaceData(dataKey, payload)
+        .then(() => window.localStorage.setItem('flowdesk-last-cloud-sync', new Date().toLocaleString('zh-TW', { hour12: false })))
+        .catch(() => null)
     }, 600)
   }
 
@@ -594,7 +596,19 @@ function FlowDeskShell({ authSession, onLogout }) {
         {active === 'docs' && <DocsPage docs={docs} />}
         {active === 'flow' && <FlowPage rules={rules} />}
         {active === 'insight' && <InsightPage metrics={metrics} records={records} tickets={tickets} />}
-        {active === 'reminders' && <RemindersPage reminders={reminders} setReminders={setReminders} />}
+        {active === 'reminders' && <RemindersPage reminders={reminders} setReminders={setReminders} onNavigateSource={(item) => {
+          const sourceType = item?.sourceType || ''
+          if (sourceType.includes('採購')) {
+            setActiveBaseTable('採購紀錄')
+            setActive('base')
+          } else if (sourceType.includes('專案')) {
+            setActive('roadmap')
+          } else if (sourceType.includes('任務')) {
+            setActive('desk')
+          } else {
+            setActive('board')
+          }
+        }} />}
         {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
       </main>
 
@@ -1478,7 +1492,9 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     if (!purchaseCloudReady || !flowdeskCloud) return
     clearTimeout(purchaseCloudSaveTimers.current[dataKey])
     purchaseCloudSaveTimers.current[dataKey] = window.setTimeout(() => {
-      flowdeskCloud.setWorkspaceData(dataKey, payload).catch(() => null)
+      flowdeskCloud.setWorkspaceData(dataKey, payload)
+        .then(() => window.localStorage.setItem('flowdesk-last-cloud-sync', new Date().toLocaleString('zh-TW', { hour12: false })))
+        .catch(() => null)
     }, 600)
   }
   const vendors = ['全部', ...Array.from(new Set(purchases.map((row) => row.vendor).filter(Boolean)))]
@@ -1982,7 +1998,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <aside className="purchase-side-panel">
                 <section className="purchase-detail-card compact-detail-card">
                   <PanelTitle eyebrow="採購明細" title={selectedPurchase ? purchaseTitle(selectedPurchase) : '請選擇採購項目'} />
-                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} onDuplicate={() => duplicatePurchase(selectedPurchase)} onCreateTask={() => createPurchaseWorkItem(selectedPurchase)} onCreateReminder={(kind) => createPurchaseReminder(selectedPurchase, kind)} onUpdateMeta={(patch, message) => updatePurchaseMeta(selectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
+                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} history={purchaseHistory.filter((entry) => entry.purchaseId === selectedPurchase.id)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} onDuplicate={() => duplicatePurchase(selectedPurchase)} onCreateTask={() => createPurchaseWorkItem(selectedPurchase)} onCreateReminder={(kind) => createPurchaseReminder(selectedPurchase, kind)} onUpdateMeta={(patch, message) => updatePurchaseMeta(selectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
                 </section>
                 <section className="purchase-history-card compact-history-card">
                   <PanelTitle eyebrow="狀態歷程" title="最近變更" />
@@ -3534,7 +3550,7 @@ function createEmptyReminder() {
   return { title: '', type: '追蹤提醒', priority: '中', status: '待處理', dueDate, sourceType: '一般', sourceTitle: '', note: '' }
 }
 
-function RemindersPage({ reminders, setReminders }) {
+function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   const [keyword, setKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState('全部')
   const [typeFilter, setTypeFilter] = useState('全部')
@@ -3599,7 +3615,7 @@ function RemindersPage({ reminders, setReminders }) {
           <h2>提醒事項工作區</h2>
         </div>
         <div className="record-actions">
-          <button className="ghost-btn" type="button" onClick={resetDemoReminders}>重載提醒範例</button>
+          <button className="ghost-btn" type="button" onClick={resetDemoReminders}>清空提醒資料</button>
           <button className="primary-btn" type="button" onClick={() => setShowForm((value) => !value)}>{showForm ? '收合新增' : '新增提醒'}</button>
         </div>
       </section>
@@ -3661,6 +3677,7 @@ function RemindersPage({ reminders, setReminders }) {
                       <button type="button" onClick={() => updateReminder(item.id, { status: item.status === '已完成' ? '待處理' : '已完成' })}>{item.status === '已完成' ? '重新開啟' : '完成'}</button>
                       <button type="button" onClick={() => deferReminder(item.id, 1)}>明天</button>
                       <button type="button" onClick={() => deferReminder(item.id, 7)}>下週</button>
+                      {item.sourceType !== '一般' && <button type="button" onClick={() => onNavigateSource?.(item)}>開啟關聯</button>}
                       <button className="danger" type="button" onClick={() => removeReminder(item.id)}>刪除</button>
                     </div>
                   </article>
@@ -3806,7 +3823,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     }
     downloadBackupFile({
       app: 'FlowDesk',
-      version: '19.9.1-before-restore',
+      version: '19.9.2-before-restore',
       exportedAt: new Date().toISOString(),
       reason: 'restore safety backup',
       local,
@@ -3976,7 +3993,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     { id: 'icons', title: '圖示設定', eyebrow: 'ICONS', summary: `目前風格：${iconStyleMode === 'auto' ? '跟隨 UI 主題' : activeIconStyle.name}`, icon: '✨' },
     { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與資料整理', icon: '🔔' },
     { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原與清空工作資料', icon: '💾' },
-    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.9.1', icon: '⚙️' },
+    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.9.2', icon: '⚙️' },
   ]
 
   return (
@@ -4180,11 +4197,12 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
 
       {settingsView === 'system' && (
         <section className="panel settings-panel settings-detail-panel">
-          <PanelTitle eyebrow="系統資訊" title="FlowDesk v19.9.1" />
+          <PanelTitle eyebrow="系統資訊" title="FlowDesk v19.9.2" />
           <div className="settings-info-list">
             <div><span>版本狀態</span><strong>雲端登入 / 雲端資料 / 備份中心 / 批次操作</strong></div>
             <div><span>雲端同步</span><strong>{flowdeskCloud ? '已啟用' : '本機模式'}</strong></div>
             <div><span>Supabase 設定</span><strong>{hasSupabaseConfig ? '已設定' : '未設定'}</strong></div>
+            <div><span>最後同步時間</span><strong>{typeof window !== 'undefined' ? (window.localStorage.getItem('flowdesk-last-cloud-sync') || '尚未完成同步') : '—'}</strong></div>
             <div><span>最後檢查</span><strong>{new Date().toLocaleString('zh-TW', { hour12: false })}</strong></div>
             <div><span>目前主題</span><strong>{activeTheme.name}</strong></div>
             <div><span>圖示風格</span><strong>{iconStyleMode === 'auto' ? `跟隨 UI 主題（${activeIconStyle.name}）` : activeIconStyle.name}</strong></div>
@@ -4565,7 +4583,7 @@ function csvEscape(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
-function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder, onUpdateMeta }) {
+function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder, onUpdateMeta }) {
   const amount = calculatePurchase(row)
   const items = getPurchaseItems(row)
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -4660,6 +4678,16 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
             <p>{task.next}</p>
           </article>
         )) : <p>目前沒有關聯任務，可於任務追蹤建立採購、廠商或專案關聯。</p>}
+      </div>
+
+      <div className="purchase-history-timeline">
+        <div className="line-detail-head"><strong>採購歷程時間軸</strong><span>{history.length} 筆</span></div>
+        {history.length ? history.map((entry) => (
+          <article key={entry.id}>
+            <i />
+            <div><strong>{entry.title}</strong><span>{entry.message}</span><small>{entry.time}</small></div>
+          </article>
+        )) : <p>尚無此採購單的歷程紀錄。</p>}
       </div>
 
       <div className="detail-note-box">
