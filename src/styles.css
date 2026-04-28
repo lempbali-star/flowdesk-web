@@ -12255,3 +12255,229 @@ button {
     border-radius: 18px;
   }
 }
+
+/* FlowDesk v20.1.6 Project inline gantt preview + date drag */
+.project-gantt-control-bar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.project-gantt-control-bar button,
+.project-board-actions-row button,
+.project-list-actions button {
+  border: 1px solid rgba(93, 129, 233, .18);
+  background: #fff;
+  color: #2d477d;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: .84rem;
+}
+
+.project-gantt-control-bar button:hover,
+.project-board-actions-row button:hover,
+.project-list-actions button:hover {
+  border-color: rgba(53, 107, 255, .32);
+  box-shadow: 0 8px 18px rgba(53, 107, 255, .12);
+}
+
+.project-gantt-control-bar span {
+  color: #70809d;
+  font-size: .86rem;
+}
+
+.project-board-grid-v2016 {
+  align-items: start;
+}
+
+.project-board-card-v2016 {
+  position: relative;
+  border-style: solid;
+}
+
+.project-board-card-v2016.gantt-open,
+.project-list-row-v2016.gantt-open {
+  border-color: rgba(53, 107, 255, .32);
+  box-shadow: 0 20px 42px rgba(53, 107, 255, .13);
+}
+
+.project-board-card-v2016.gantt-pinned,
+.project-list-row-v2016.gantt-pinned {
+  border-color: rgba(37, 214, 162, .34);
+  background: linear-gradient(180deg, #ffffff, #f5fffb);
+}
+
+.project-board-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.project-inline-gantt {
+  margin-top: 4px;
+  padding: 13px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f6f9ff);
+  border: 1px solid rgba(93, 129, 233, .14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+  cursor: default;
+}
+
+.project-inline-gantt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.project-inline-gantt-head div {
+  display: grid;
+  gap: 4px;
+}
+
+.project-inline-gantt-head strong {
+  color: #1f3d8f;
+}
+
+.project-inline-gantt-head span,
+.project-inline-gantt-head small {
+  color: #70809d;
+  font-size: .82rem;
+}
+
+.project-inline-gantt-scroll {
+  border-radius: 14px;
+  background: #f9fbff;
+  border: 1px solid rgba(93, 129, 233, .1);
+  padding: 8px;
+}
+
+.project-inline-gantt-grid {
+  min-width: 680px;
+}
+
+.project-inline-gantt-grid span {
+  font-size: .72rem;
+  white-space: nowrap;
+}
+
+.project-list-view-v2016 {
+  gap: 10px;
+}
+
+.project-list-row-v2016 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.project-list-row-main {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.5fr) minmax(160px, .9fr) minmax(150px, .8fr) minmax(120px, .65fr) minmax(140px, .75fr) minmax(120px, .65fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.project-list-actions {
+  display: flex !important;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gantt-bar-editable {
+  overflow: visible;
+  cursor: ew-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 30px;
+}
+
+.gantt-bar-editable > span {
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.gantt-resize-handle {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .94);
+  border: 1px solid rgba(32, 55, 116, .28);
+  box-shadow: 0 4px 10px rgba(20, 39, 96, .18);
+  cursor: ew-resize;
+  z-index: 4;
+}
+
+.gantt-resize-handle.start {
+  left: -6px;
+}
+
+.gantt-resize-handle.end {
+  right: -6px;
+}
+
+.gantt-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(53, 107, 255, .55);
+}
+
+.gantt-resize-handle:hover {
+  background: #fff;
+  border-color: rgba(53, 107, 255, .65);
+}
+
+.gantt-date-dragging,
+.gantt-date-dragging * {
+  cursor: ew-resize !important;
+  user-select: none !important;
+}
+
+@media (max-width: 1180px) {
+  .project-list-row-main {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .project-list-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .project-gantt-control-bar,
+  .project-board-actions-row,
+  .project-list-actions {
+    justify-content: stretch;
+  }
+
+  .project-gantt-control-bar button,
+  .project-board-actions-row button,
+  .project-list-actions button {
+    flex: 1 1 120px;
+  }
+
+  .project-list-row-main {
+    grid-template-columns: 1fr;
+  }
+
+  .project-inline-gantt {
+    padding: 10px;
+  }
+}

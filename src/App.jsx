@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.1.5'
+const FLOWDESK_APP_VERSION = '20.1.6'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
@@ -2642,6 +2642,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projectPage, setProjectPage] = useState(1)
   const [projectPageSize, setProjectPageSize] = useState(8)
   const [projectModalId, setProjectModalId] = useState(null)
+  const [previewProjectId, setPreviewProjectId] = useState(null)
+  const [pinnedGanttIds, setPinnedGanttIds] = useState(() => new Set())
+  const [allGanttExpanded, setAllGanttExpanded] = useState(false)
   const [draggingProjectId, setDraggingProjectId] = useState(null)
   const [dropProjectId, setDropProjectId] = useState(null)
 
@@ -2879,7 +2882,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const projectPageStart = (safeProjectPage - 1) * projectPageSize
   const paginatedProjects = filteredProjects.slice(projectPageStart, projectPageStart + projectPageSize)
   const selectedRelatedTasks = tickets.filter((task) => task.relatedProject === selectedProject?.id)
-  const selectedProjectTicks = selectedProject ? buildGanttTicks(selectedProject.startDate, selectedProject.endDate) : []
   const doneMilestones = (selectedProject?.milestones || []).filter((item) => item.done).length
 
   useEffect(() => {
@@ -2929,13 +2931,151 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     updateProject(selectedProject.id, { progress: nextProgress }, `依 ${tasks.length} 個任務平均進度估算為 ${nextProgress}%。`)
   }
 
+  function isProjectGanttExpanded(projectId) {
+    return Boolean(allGanttExpanded || pinnedGanttIds.has(projectId) || previewProjectId === projectId)
+  }
+
+  function toggleProjectGanttPin(projectId) {
+    setPinnedGanttIds((current) => {
+      const next = new Set(current)
+      if (next.has(projectId)) next.delete(projectId)
+      else next.add(projectId)
+      return next
+    })
+  }
+
+  function expandAllProjectGantts() {
+    setAllGanttExpanded(true)
+    setPreviewProjectId(null)
+  }
+
+  function collapseAllProjectGantts() {
+    setAllGanttExpanded(false)
+    setPinnedGanttIds(new Set())
+    setPreviewProjectId(null)
+  }
+
+  function getProjectHoverProps(projectId) {
+    return {
+      onMouseEnter: () => setPreviewProjectId(projectId),
+      onMouseLeave: () => setPreviewProjectId((current) => current === projectId ? null : current),
+      onFocus: () => setPreviewProjectId(projectId),
+      onBlur: () => setPreviewProjectId((current) => current === projectId ? null : current),
+    }
+  }
+
+  function handleProjectCardKeyDown(projectId, event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    openProjectDetail(projectId)
+  }
+
+  function startGanttDateDrag(project, scope, taskIndex, edge, event) {
+    event.preventDefault()
+    event.stopPropagation()
+    const track = event.currentTarget.closest('.gantt-track-v2')
+    const trackWidth = Math.max(track?.getBoundingClientRect?.().width || 1, 1)
+    const rangeStart = project.startDate || todayDate()
+    const rangeEnd = project.endDate || addDaysDate(30)
+    const rangeDays = Math.max(1, daysBetween(rangeStart, rangeEnd))
+    const pixelsPerDay = Math.max(2, trackWidth / rangeDays)
+    const startX = event.clientX
+    const originalProjectStart = rangeStart
+    const originalProjectEnd = rangeEnd
+    const originalTask = scope === 'task' ? (project.tasks || [])[taskIndex] : null
+    const originalTaskStart = originalTask?.start || originalProjectStart
+    const originalTaskEnd = originalTask?.end || originalProjectEnd
+
+    document.body.classList.add('gantt-date-dragging')
+
+    const applyMove = (moveEvent) => {
+      const deltaDays = Math.round((moveEvent.clientX - startX) / pixelsPerDay)
+      if (scope === 'project') {
+        if (edge === 'start') {
+          const nextStart = minIsoDate(addDaysToDateValue(originalProjectStart, deltaDays), originalProjectEnd)
+          updateProject(project.id, { startDate: nextStart })
+        } else {
+          const nextEnd = maxIsoDate(addDaysToDateValue(originalProjectEnd, deltaDays), originalProjectStart)
+          updateProject(project.id, { endDate: nextEnd })
+        }
+        return
+      }
+      if (scope === 'task' && originalTask) {
+        if (edge === 'start') {
+          const nextStart = clampIsoDate(addDaysToDateValue(originalTaskStart, deltaDays), originalProjectStart, originalTaskEnd)
+          updateProjectTask(project.id, taskIndex, { start: nextStart })
+        } else {
+          const nextEnd = clampIsoDate(addDaysToDateValue(originalTaskEnd, deltaDays), originalTaskStart, originalProjectEnd)
+          updateProjectTask(project.id, taskIndex, { end: nextEnd })
+        }
+      }
+    }
+
+    const stopMove = () => {
+      document.body.classList.remove('gantt-date-dragging')
+      window.removeEventListener('pointermove', applyMove)
+      window.removeEventListener('pointerup', stopMove)
+      updateProject(project.id, {}, scope === 'project' ? '使用甘特圖調整專案起訖日期。' : '使用甘特圖調整任務起訖日期。')
+    }
+
+    window.addEventListener('pointermove', applyMove)
+    window.addEventListener('pointerup', stopMove, { once: true })
+  }
+
+  function renderInlineProjectGantt(project) {
+    if (!project) return null
+    const ticks = buildGanttTicks(project.startDate, project.endDate)
+    return (
+      <div className="project-inline-gantt" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+        <div className="project-inline-gantt-head">
+          <div>
+            <strong>甘特圖</strong>
+            <span>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
+          </div>
+          <small>拖曳色條左右端可調整專案 / 任務起訖日期</small>
+        </div>
+        <div className="gantt-scroll project-gantt-scroll project-inline-gantt-scroll">
+          <div className="gantt-grid-head project-gantt-head project-inline-gantt-grid" style={{ gridTemplateColumns: `160px repeat(${ticks.length}, minmax(48px, 1fr))` }}>
+            <span>項目</span>
+            {ticks.map((tick) => <span key={tick}>{formatMonthDayWeekday(tick)}</span>)}
+          </div>
+          <div className="gantt-project-row gantt-project-row-v3">
+            <div className="gantt-row-label"><strong>專案總期程</strong><small>{project.phase}</small></div>
+            <div className="gantt-track-v2 gantt-track-v3">
+              <span className={`gantt-main-bar ${project.tone} gantt-bar-editable`} style={ganttStyle(project.startDate, project.endDate, project.startDate, project.endDate)} title="拖曳左右端調整專案起訖日期">
+                <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整專案開始日" onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'start', event)} />
+                <span>{project.progress}%</span>
+                <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label="調整專案結束日" onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'end', event)} />
+              </span>
+              {(project.milestones || []).map((milestone, index) => (
+                <i key={`${milestone.name}-${index}`} className={milestone.done ? 'milestone-dot done' : 'milestone-dot'} style={{ left: `${ganttPoint(milestone.date, project.startDate, project.endDate)}%` }} title={`${milestone.name}｜${formatMonthDayWeekday(milestone.date)}`} />
+              ))}
+            </div>
+          </div>
+          {(project.tasks || []).map((task, index) => (
+            <div className="gantt-task-row gantt-task-row-v3" key={`${task.name}-${index}`}>
+              <div className="gantt-row-label sub"><span>{task.name}</span><small>{task.owner}</small></div>
+              <div className="gantt-track-v2 soft gantt-track-soft-v3">
+                <span className="gantt-task-bar gantt-bar-editable" style={ganttStyle(task.start, task.end, project.startDate, project.endDate)} title="拖曳左右端調整任務起訖日期">
+                  <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整任務開始日" onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'start', event)} />
+                  <span>{task.progress}%</span>
+                  <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label="調整任務結束日" onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'end', event)} />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="project-workspace page-stack flowdesk-module-shell project-ux-shell">
       <section className="flow-toolbar flowdesk-toolbar-v2 project-toolbar-v2">
         <div>
           <p className="eyebrow">PROJECT FLOW</p>
           <h2>專案管理</h2>
-          <span>專案列表負責搜尋與排序；卡片點開後在彈窗內查看基本資料、甘特圖、任務與紀錄。</span>
+          <span>專案列表負責搜尋與排序；滑過卡片或清單可直接展開甘特圖，點擊則開啟明細彈窗。</span>
         </div>
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">平均進度 {avgProgress}%</span>
@@ -2958,7 +3098,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div>
             <p className="eyebrow">PROJECT BOARD</p>
             <h3>專案檢視</h3>
-            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；點開後在彈窗內完成查看與編輯。</small>
+            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；滑過可預覽甘特圖、固定後可長駐。</small>
           </div>
           <div className="project-board-controls">
             <div className="project-board-filters">
@@ -2971,27 +3111,40 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <button type="button" className={projectViewMode === 'cards' ? 'active' : ''} onClick={() => setProjectViewMode('cards')}>卡片</button>
               <button type="button" className={projectViewMode === 'list' ? 'active' : ''} onClick={() => setProjectViewMode('list')}>清單</button>
             </div>
+            <div className="project-gantt-control-bar" aria-label="甘特圖展開控制">
+              <button type="button" onClick={expandAllProjectGantts}>全部展開</button>
+              <button type="button" onClick={collapseAllProjectGantts}>全部收起</button>
+              <span>{allGanttExpanded ? '目前顯示全部甘特圖' : `${pinnedGanttIds.size} 個固定`}</span>
+            </div>
           </div>
         </div>
         {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
         {projects.length > 0 && !filteredProjects.length && <div className="flow-empty-card"><strong>沒有符合條件的專案</strong><span>請調整搜尋、階段或健康度條件。</span></div>}
         {projectViewMode === 'cards' ? (
-          <div className="project-board-grid project-board-grid-v2014">
+          <div className="project-board-grid project-board-grid-v2014 project-board-grid-v2016">
             {paginatedProjects.map((project) => {
               const estimated = estimateProjectProgress(project)
+              const ganttOpen = isProjectGanttExpanded(project.id)
+              const isPinned = pinnedGanttIds.has(project.id)
               return (
-                <button
+                <article
                   key={project.id}
-                  type="button"
                   {...getProjectDragProps(project.id)}
+                  {...getProjectHoverProps(project.id)}
+                  role="button"
+                  tabIndex={0}
                   className={[
                     'project-board-card',
+                    'project-board-card-v2016',
+                    ganttOpen ? 'gantt-open' : '',
+                    isPinned ? 'gantt-pinned' : '',
                     selectedProject?.id === project.id ? 'active' : '',
                     draggingProjectId === project.id ? 'dragging' : '',
                     dropProjectId === project.id ? 'drop-target' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => openProjectDetail(project.id)}
-                  title="點擊查看明細，拖曳調整順序"
+                  onKeyDown={(event) => handleProjectCardKeyDown(project.id, event)}
+                  title="滑過展開甘特圖，點擊查看明細，拖曳調整順序"
                 >
                   <div className="project-board-card-top">
                     <span className="record-id">☰ {project.id}</span>
@@ -3004,40 +3157,61 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div>
                     <strong>{project.progress}%</strong><small>估 {estimated}%</small>
                   </div>
-                  <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>點開編輯</span></div>
-                </button>
+                  <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>{ganttOpen ? '甘特圖已展開' : '滑過看甘特圖'}</span></div>
+                  <div className="project-board-actions-row" onClick={(event) => event.stopPropagation()}>
+                    <button type="button" onClick={(event) => { event.stopPropagation(); toggleProjectGanttPin(project.id) }}>{isPinned ? '取消固定' : '固定甘特圖'}</button>
+                    <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>明細</button>
+                  </div>
+                  {ganttOpen && renderInlineProjectGantt(project)}
+                </article>
               )
             })}
           </div>
         ) : (
-          <div className="project-list-view">
+          <div className="project-list-view project-list-view-v2016">
             <div className="project-list-head"><span>專案</span><span>負責 / 期間</span><span>進度</span><span>任務 / 里程碑</span><span>狀態</span></div>
             {paginatedProjects.map((project) => {
               const estimated = estimateProjectProgress(project)
+              const ganttOpen = isProjectGanttExpanded(project.id)
+              const isPinned = pinnedGanttIds.has(project.id)
               return (
-                <button
+                <article
                   key={project.id}
-                  type="button"
                   {...getProjectDragProps(project.id)}
+                  {...getProjectHoverProps(project.id)}
+                  role="button"
+                  tabIndex={0}
                   className={[
                     'project-list-row',
+                    'project-list-row-v2016',
+                    ganttOpen ? 'gantt-open' : '',
+                    isPinned ? 'gantt-pinned' : '',
                     selectedProject?.id === project.id ? 'active' : '',
                     draggingProjectId === project.id ? 'dragging' : '',
                     dropProjectId === project.id ? 'drop-target' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => openProjectDetail(project.id)}
-                  title="點擊查看明細，拖曳調整順序"
+                  onKeyDown={(event) => handleProjectCardKeyDown(project.id, event)}
+                  title="滑過展開甘特圖，點擊查看明細，拖曳調整順序"
                 >
-                  <span className="project-list-title"><small>☰ {project.id}</small><strong>{project.name}</strong><em>{project.next || '尚未設定下一步'}</em></span>
-                  <span><strong>{project.owner || '未指定'}</strong><small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small></span>
-                  <span className="project-list-progress"><div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div><small>{project.progress}% / 估 {estimated}%</small></span>
-                  <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.milestones?.length || 0} 里程碑</small></span>
-                  <span className="project-list-badges"><Badge value={project.phase} /><Badge value={project.health} /></span>
-                </button>
+                  <div className="project-list-row-main">
+                    <span className="project-list-title"><small>☰ {project.id}</small><strong>{project.name}</strong><em>{project.next || '尚未設定下一步'}</em></span>
+                    <span><strong>{project.owner || '未指定'}</strong><small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small></span>
+                    <span className="project-list-progress"><div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div><small>{project.progress}% / 估 {estimated}%</small></span>
+                    <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.milestones?.length || 0} 里程碑</small></span>
+                    <span className="project-list-badges"><Badge value={project.phase} /><Badge value={project.health} /></span>
+                    <span className="project-list-actions" onClick={(event) => event.stopPropagation()}>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); toggleProjectGanttPin(project.id) }}>{isPinned ? '取消固定' : '固定'}</button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>明細</button>
+                    </span>
+                  </div>
+                  {ganttOpen && renderInlineProjectGantt(project)}
+                </article>
               )
             })}
           </div>
         )}
+
         {filteredProjects.length > 0 && (
           <div className="project-pagination-bar">
             <div>
@@ -3117,7 +3291,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </div>
               <div className="project-segmented-tabs">
                 <button type="button" className={detailTab === 'overview' ? 'active' : ''} onClick={() => setDetailTab('overview')}>總覽</button>
-                <button type="button" className={detailTab === 'gantt' ? 'active' : ''} onClick={() => setDetailTab('gantt')}>甘特圖</button>
                 <button type="button" className={detailTab === 'tasks' ? 'active' : ''} onClick={() => setDetailTab('tasks')}>任務</button>
                 <button type="button" className={detailTab === 'milestones' ? 'active' : ''} onClick={() => setDetailTab('milestones')}>里程碑</button>
                 <button type="button" className={detailTab === 'records' ? 'active' : ''} onClick={() => setDetailTab('records')}>紀錄</button>
@@ -3150,60 +3323,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 </section>
               </div>
             )}
-
-            {detailTab === 'gantt' && (
-              <section className="project-timeline-shell project-timeline-shell-v2015 project-modal-gantt">
-                <div className="project-section-head compact">
-                  <div>
-                    <p className="eyebrow">PROJECT GANTT</p>
-                    <h3>專案甘特圖</h3>
-                    <small>甘特圖已收進專案彈窗內，日期顯示含星期；可在任務分頁調整任務起訖與進度。</small>
-                  </div>
-                </div>
-                <article className="project-timeline-card active">
-                  <div className="project-timeline-card-head">
-                    <div>
-                      <span className="record-id">{selectedProject.id}</span>
-                      <strong>{selectedProject.name}</strong>
-                      <small>{formatMonthDayWeekday(selectedProject.startDate)} → {formatMonthDayWeekday(selectedProject.endDate)}</small>
-                    </div>
-                    <div className="gantt-card-meta gantt-card-meta-compact">
-                      <Badge value={selectedProject.phase} />
-                      <Badge value={`${selectedProject.progress}%`} />
-                      <span className="gantt-mini-count">{selectedProject.tasks?.length || 0} 任務</span>
-                      <span className="gantt-mini-count">{selectedProject.milestones?.length || 0} 里程碑</span>
-                    </div>
-                  </div>
-                  <div className="gantt-scroll project-gantt-scroll">
-                    <div className="gantt-grid-head project-gantt-head" style={{ gridTemplateColumns: `180px repeat(${selectedProjectTicks.length}, minmax(58px, 1fr))` }}>
-                      <span>項目</span>
-                      {selectedProjectTicks.map((tick) => <span key={tick}>{formatMonthDayWeekday(tick)}</span>)}
-                    </div>
-                    <div className="gantt-project-row gantt-project-row-v3">
-                      <div className="gantt-row-label"><strong>專案總期程</strong><small>{selectedProject.phase}</small></div>
-                      <div className="gantt-track-v2 gantt-track-v3">
-                        <span className={`gantt-main-bar ${selectedProject.tone}`} style={ganttStyle(selectedProject.startDate, selectedProject.endDate, selectedProject.startDate, selectedProject.endDate)}>{selectedProject.progress}%</span>
-                        {(selectedProject.milestones || []).map((milestone, index) => (
-                          <i key={`${milestone.name}-${index}`} className={milestone.done ? 'milestone-dot done' : 'milestone-dot'} style={{ left: `${ganttPoint(milestone.date, selectedProject.startDate, selectedProject.endDate)}%` }} title={`${milestone.name}｜${formatMonthDayWeekday(milestone.date)}`} />
-                        ))}
-                      </div>
-                    </div>
-                    {(selectedProject.tasks || []).map((task, index) => (
-                      <div className="gantt-task-row gantt-task-row-v3" key={`${task.name}-${index}`}>
-                        <div className="gantt-row-label sub"><span>{task.name}</span><small>{task.owner}</small></div>
-                        <div className="gantt-track-v2 soft gantt-track-soft-v3"><span className="gantt-task-bar" style={ganttStyle(task.start, task.end, selectedProject.startDate, selectedProject.endDate)}>{task.progress}%</span></div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="project-timeline-foot">
-                    {(selectedProject.milestones || []).length ? (selectedProject.milestones || []).map((milestone, index) => (
-                      <span key={`${milestone.name}-${index}`} className={milestone.done ? 'done' : ''}>{milestone.name}｜{formatMonthDayWeekday(milestone.date)}</span>
-                    )) : <span>目前沒有里程碑</span>}
-                  </div>
-                </article>
-              </section>
-            )}
-
 
             {detailTab === 'tasks' && (
               <section className="detail-block project-task-block">
@@ -3278,6 +3397,28 @@ function RoadmapPage({ projects, onCreateWorkItem }) {
 
 function parseDate(value) {
   return new Date(value + 'T00:00:00')
+}
+
+function addDaysToDateValue(value, days) {
+  const date = parseDate(value)
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function minIsoDate(value, maxValue) {
+  if (!value) return maxValue
+  if (!maxValue) return value
+  return value > maxValue ? maxValue : value
+}
+
+function maxIsoDate(value, minValue) {
+  if (!value) return minValue
+  if (!minValue) return value
+  return value < minValue ? minValue : value
+}
+
+function clampIsoDate(value, minValue, maxValue) {
+  return minIsoDate(maxIsoDate(value, minValue), maxValue)
 }
 
 function daysBetween(start, end) {
