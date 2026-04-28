@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.0.4'
+const FLOWDESK_APP_VERSION = '20.1.0'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
@@ -17,14 +17,35 @@ function confirmResetAction(message) {
 const initialModules = [
   { id: 'home', name: '總覽', icon: 'overview' },
   { id: 'board', name: '工作看板', icon: 'kanban' },
-  { id: 'base', name: '紀錄中心', icon: 'records' },
-  { id: 'desk', name: '任務追蹤', icon: 'issue' },
+  { id: 'base', name: '採購與紀錄', icon: 'records' },
+  { id: 'desk', name: '跟進紀錄', icon: 'issue' },
   { id: 'roadmap', name: '專案管理', icon: 'project' },
-  { id: 'docs', name: '知識庫', icon: 'knowledge' },
-  { id: 'flow', name: '流程自動化', icon: 'automation' },
-  { id: 'insight', name: '報表分析', icon: 'report' },
+  { id: 'docs', name: '文件備忘', icon: 'knowledge' },
+  { id: 'flow', name: '流程規則', icon: 'automation' },
+  { id: 'insight', name: '分析摘要', icon: 'report' },
   { id: 'reminders', name: '提醒中心', icon: 'reminders' },
   { id: 'settings', name: '系統設定', icon: 'settings' },
+]
+
+
+const modulePurposeMap = {
+  home: { role: '總覽只做摘要與導引，不直接承接細節編輯。', scope: '今日重點、風險訊號、待處理摘要。', avoid: '不放完整報表、不塞所有操作。' },
+  board: { role: '工作看板只管理日常待辦與跟進事項。', scope: '今天要處理、需要追人、短期可完成的工作。', avoid: '不取代採購流程、不取代專案里程碑。' },
+  base: { role: '採購與紀錄負責資料本體與流程紀錄。', scope: '採購單、多品項、金額、廠商、付款、到貨與歷程。', avoid: '不把每個採購步驟都拆成獨立任務。' },
+  desk: { role: '跟進紀錄保留問題與處理脈絡。', scope: '需要紀錄處理狀況、原因、負責人與後續回覆的事項。', avoid: '不再做成第二個工作看板。' },
+  roadmap: { role: '專案管理只放有階段、里程碑與起迄時間的長期工作。', scope: '專案、甘特圖、階段、里程碑、專案任務與進度。', avoid: '不放零散小事與單純提醒。' },
+  docs: { role: '文件備忘只整理參考資料與範本。', scope: 'SOP、會議紀錄、設定筆記、常用範本。', avoid: '不承接待辦流程。' },
+  flow: { role: '流程規則只放提醒與自動化規則。', scope: '到期提醒、資料規則、重複動作規則。', avoid: '不放實際任務清單。' },
+  insight: { role: '分析摘要只做檢視，不做資料維護。', scope: '採購、工作、專案、提醒的統計與趨勢。', avoid: '不新增另一套資料入口。' },
+  reminders: { role: '提醒中心只負責時間提醒。', scope: '逾期、今日、明日、本週、延後與關聯開啟。', avoid: '不變成第二個任務管理。' },
+  settings: { role: '系統設定只處理外觀、備份與模組設定。', scope: '同步狀態、備份還原、主題、圖示、資料清理。', avoid: '不放日常工作內容。' },
+}
+
+const flowdeskFocusRules = [
+  { title: '工作看板', detail: '放日常待辦、追蹤事項、今天要推進的小工作。' },
+  { title: '採購與紀錄', detail: '放採購主檔、品項、金額、廠商、付款與到貨狀態。' },
+  { title: '專案管理', detail: '放有起訖、階段、里程碑、甘特圖的長期工作。' },
+  { title: '提醒中心', detail: '只提醒時間，不再重複管理任務本體。' },
 ]
 
 const defaultModuleIcons = {
@@ -587,6 +608,9 @@ function FlowDeskShell({ authSession, onLogout }) {
               <span className="version-pill">{FLOWDESK_VERSION_LABEL}</span>
               <span className={flowdeskCloud ? 'sync-state-pill online' : 'sync-state-pill local'}>{flowdeskCloud ? '雲端同步中' : '本機備援模式'}</span>
             </div>
+            <div className="module-purpose-line">
+              <span>{modulePurposeMap[active]?.role || '維持單一用途，避免功能重複。'}</span>
+            </div>
           </div>
           {active === 'base' && (
             <BaseCollectionSwitcher
@@ -606,6 +630,8 @@ function FlowDeskShell({ authSession, onLogout }) {
             <button className="primary-btn" type="button" onClick={() => setShowLauncher(true)}>新增</button>
           </div>
         </header>
+
+        <ModuleScopeBar active={active} />
 
         {active === 'home' && <HomePage metrics={metrics} items={filteredItems} reminders={reminders} setActive={setActive} setSelected={setSelected} />}
         {active === 'board' && <BoardPage items={filteredItems} view={view} setView={setView} selected={selected} setSelected={setSelected} onAddItem={addWorkItem} onUpdateItem={updateWorkItem} onDeleteItem={deleteWorkItem} onDuplicateItem={duplicateWorkItem} />}
@@ -1011,7 +1037,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
           <h2>雲端工作總覽</h2>
           <div className="hero-actions">
             <button type="button" onClick={() => setActive('board')}>工作看板</button>
-            <button type="button" onClick={() => setActive('base')}>採購管理</button>
+            <button type="button" onClick={() => setActive('base')}>採購與紀錄</button>
             <button type="button" onClick={() => setActive('roadmap')}>專案管理</button>
           </div>
         </div>
@@ -1020,6 +1046,15 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
           <Metric label="逾期工作" value={overdueWork} tone="red" />
           <Metric label="待處理採購" value={purchaseOpen} tone="amber" />
         </div>
+      </section>
+
+      <section className="flowdesk-focus-rules">
+        {flowdeskFocusRules.map((rule) => (
+          <article key={rule.title}>
+            <strong>{rule.title}</strong>
+            <span>{rule.detail}</span>
+          </article>
+        ))}
       </section>
 
       <section className="metric-strip home-cloud-kpis">
@@ -1155,7 +1190,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
           <button type="button" onClick={() => setActive('board')}><span><Icon name="kanban" /></span><strong>工作看板</strong></button>
           <button type="button" onClick={() => setActive('base')}><span><Icon name="records" /></span><strong>紀錄中心</strong></button>
           <button type="button" onClick={() => setActive('roadmap')}><span><Icon name="project" /></span><strong>專案管理</strong></button>
-          <button type="button" onClick={() => setActive('insight')}><span><Icon name="report" /></span><strong>報表分析</strong></button>
+          <button type="button" onClick={() => setActive('insight')}><span><Icon name="report" /></span><strong>分析摘要</strong></button>
           <button type="button" onClick={() => setActive('reminders')}><span>🔔</span><strong>提醒中心</strong></button>
         </div>
       </section>
@@ -4079,9 +4114,11 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     { id: 'icons', title: '圖示設定', eyebrow: 'ICONS', summary: `目前風格：${iconStyleMode === 'auto' ? '跟隨 UI 主題' : activeIconStyle.name}`, icon: '✨' },
     { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與資料整理', icon: '🔔' },
     { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原、清空與同步檢查', icon: '💾' },
+    { id: 'focus', title: '功能定位', eyebrow: 'FLOWDESK', summary: '收斂重複功能與模組用途', icon: '🧭' },
     { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: FLOWDESK_VERSION_LABEL, icon: '⚙️' },
   ]
   const v20Checklist = [
+    ['功能收斂', '工作看板、採購、專案、提醒中心用途重新劃分，避免互相重複'],
     ['採購管理', '多品項、稅額總額、PO/報價、預算差異、提醒、歷程與清單選取穩定化'],
     ['專案管理', '甘特圖、里程碑完成、建立工作、進度估算、摘要匯出'],
     ['提醒中心', '逾期、今日、明日、本週分組，支援延後與關聯開啟'],
@@ -4295,20 +4332,36 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
         </section>
       )}
 
+      {settingsView === 'focus' && (
+        <section className="panel wide settings-panel settings-detail-panel focus-definition-panel">
+          <PanelTitle eyebrow="功能定位" title="FlowDesk v20.1.0 收斂原則" />
+          <p className="settings-note">這版先把容易重複的入口重新定位：提醒只提醒、看板只做待辦、採購保留主流程、專案保留長期計畫。</p>
+          <div className="focus-definition-grid">
+            {Object.entries(modulePurposeMap).filter(([key]) => ['board', 'base', 'roadmap', 'reminders', 'desk', 'insight'].includes(key)).map(([key, item]) => (
+              <article key={key}>
+                <span>{pageTitle(key, modules)}</span>
+                <strong>{item.scope}</strong>
+                <p>{item.avoid}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       {settingsView === 'system' && (
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="系統資訊" title={FLOWDESK_VERSION_LABEL} />
           <div className="settings-info-list">
-            <div><span>版本狀態</span><strong>{FLOWDESK_VERSION_LABEL} 修正版</strong></div>
+            <div><span>版本狀態</span><strong>{FLOWDESK_VERSION_LABEL} 功能收斂版</strong></div>
             <div><span>雲端同步</span><strong>{flowdeskCloud ? '已啟用' : '本機模式'}</strong></div>
             <div><span>Supabase 設定</span><strong>{hasSupabaseConfig ? '已設定' : '未設定'}</strong></div>
             <div><span>最後同步時間</span><strong>{lastSyncText}</strong></div>
             <div><span>最後檢查</span><strong>{new Date().toLocaleString('zh-TW', { hour12: false })}</strong></div>
             <div><span>目前主題</span><strong>{activeTheme.name}</strong></div>
             <div><span>圖示風格</span><strong>{iconStyleMode === 'auto' ? `跟隨 UI 主題（${activeIconStyle.name}）` : activeIconStyle.name}</strong></div>
-            <div><span>提醒中心</span><strong>獨立運作</strong></div>
-            <div><span>採購資料</span><strong>獨立流程</strong></div>
-            <div><span>資料集合</span><strong>入口與視圖管理</strong></div>
+            <div><span>提醒中心</span><strong>只做時間提醒</strong></div>
+            <div><span>採購資料</span><strong>保留採購主流程</strong></div>
+            <div><span>資料集合</span><strong>改為輔助紀錄入口</strong></div>
           </div>
           <div className="flowdesk-v20-checklist">
             {v20Checklist.map(([title, detail]) => (
@@ -4442,7 +4495,7 @@ function CreateLauncher({ onClose }) {
           <button type="button" onClick={onClose}>✕</button>
         </div>
         <div className="launcher-grid">
-          {['任務', '採購', '專案', '廠商', '文件', '規則'].map((title) => <button type="button" key={title}><strong>{title}</strong></button>)}
+          {['工作待辦', '採購單', '專案', '廠商紀錄', '文件備忘', '提醒規則'].map((title) => <button type="button" key={title}><strong>{title}</strong></button>)}
         </div>
       </section>
     </div>
@@ -4942,6 +4995,27 @@ function CardWall({ items, selected, setSelected, selectedIds = [], onToggleSele
   )
 }
 
+
+function ModuleScopeBar({ active }) {
+  const purpose = modulePurposeMap[active]
+  if (!purpose) return null
+  return (
+    <section className="module-scope-bar">
+      <article>
+        <span>定位</span>
+        <strong>{purpose.role}</strong>
+      </article>
+      <article>
+        <span>應該放這裡</span>
+        <strong>{purpose.scope}</strong>
+      </article>
+      <article>
+        <span>避免重複</span>
+        <strong>{purpose.avoid}</strong>
+      </article>
+    </section>
+  )
+}
 
 function Metric({ label, value, tone }) {
   return <article className={`metric ${tone}`}><span>{label}</span><strong>{value}</strong></article>
