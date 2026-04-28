@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.2.1'
+const FLOWDESK_APP_VERSION = '20.2.2'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
@@ -2632,6 +2632,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projects, setProjects] = useState(() => initialProjectRows)
   const [projectsCloudReady, setProjectsCloudReady] = useState(!flowdeskCloud)
   const projectsCloudSaveTimer = useRef(null)
+  const selectedWorkspaceRef = useRef(null)
+  const selectedGanttRef = useRef(null)
   const [selectedId, setSelectedId] = useState(initialProjectRows[0]?.id)
   const [projectKeyword, setProjectKeyword] = useState('')
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
@@ -2822,6 +2824,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setPreviewProjectId(projectId)
     setTimelineMode('focus')
     setDetailTab('overview')
+    window.requestAnimationFrame(() => {
+      selectedWorkspaceRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   function getProjectDragProps(projectId) {
@@ -3102,7 +3107,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <div>
           <p className="eyebrow">PROJECT FLOW</p>
           <h2>專案管理</h2>
-          <span>專案列表負責搜尋與排序；點擊卡片或清單列才切換焦點甘特圖並開啟明細，避免滑過時亂跳。</span>
+          <span>專案列表只負責選取與排序；選取後上方會固定顯示專案資料與獨立甘特圖，不需要再滑到頁面底部。</span>
         </div>
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">平均進度 {avgProgress}%</span>
@@ -3253,7 +3258,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
 
       {selectedProject && (
-        <section className="project-selected-workspace-v2021">
+        <section className="project-selected-workspace-v2021 project-selected-workspace-v2022" ref={selectedWorkspaceRef}>
           <div className="project-selected-head-v2021">
             <div>
               <p className="eyebrow">PROJECT WORKSPACE</p>
@@ -3262,9 +3267,40 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             </div>
             <div className="project-selected-head-actions">
               <button type="button" onClick={autoEstimateSelectedProject}>估算進度</button>
-              <button type="button" onClick={() => setDetailTab('gantt')}>看甘特圖</button>
+              <button type="button" onClick={() => selectedGanttRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}>看甘特圖</button>
             </div>
           </div>
+
+          <section className="project-independent-gantt-v2022" ref={selectedGanttRef}>
+            <div className="project-section-head compact">
+              <div>
+                <p className="eyebrow">PROJECT GANTT</p>
+                <h3>獨立甘特圖</h3>
+                <small>{ganttPanelModeText} · 可直接拖曳調整專案 / 任務起訖日期，任務進度也可在圖上調整。</small>
+              </div>
+              <div className="project-selected-head-actions">
+                <button type="button" onClick={() => toggleProjectGanttPin(selectedProject.id)}>{pinnedGanttIds.has(selectedProject.id) ? '取消固定目前專案' : '固定目前專案'}</button>
+                <button type="button" onClick={expandAllProjectGantts}>全部展開</button>
+                <button type="button" onClick={collapseAllProjectGantts}>全部收起</button>
+              </div>
+            </div>
+            <div className="project-independent-gantt-stack">
+              {ganttPanelProjects.length ? ganttPanelProjects.map((project) => (
+                <article key={project.id} className={project.id === selectedProject.id ? 'project-independent-gantt-card active' : 'project-independent-gantt-card'}>
+                  <div className="project-independent-gantt-card-head">
+                    <div>
+                      <span className="record-id">{project.id}</span>
+                      <strong>{project.name}</strong>
+                      <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small>
+                    </div>
+                    <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>{project.progress || 0}%</span></div>
+                  </div>
+                  {renderInlineProjectGantt(project)}
+                </article>
+              )) : <div className="flow-empty-card">目前沒有可顯示的甘特圖。</div>}
+            </div>
+          </section>
+
           <section className="project-focus-shell">
             <article className="project-focus-summary-card">
               <div className="detail-hero-line"><span className="record-id">{selectedProject.id}</span><Badge value={selectedProject.health} /></div>
@@ -3315,7 +3351,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </div>
               <div className="project-segmented-tabs">
                 <button type="button" className={detailTab === 'overview' ? 'active' : ''} onClick={() => setDetailTab('overview')}>總覽</button>
-                <button type="button" className={detailTab === 'gantt' ? 'active' : ''} onClick={() => setDetailTab('gantt')}>甘特圖</button>
                 <button type="button" className={detailTab === 'tasks' ? 'active' : ''} onClick={() => setDetailTab('tasks')}>任務</button>
                 <button type="button" className={detailTab === 'milestones' ? 'active' : ''} onClick={() => setDetailTab('milestones')}>里程碑</button>
                 <button type="button" className={detailTab === 'records' ? 'active' : ''} onClick={() => setDetailTab('records')}>紀錄</button>
@@ -3347,16 +3382,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   </div>
                 </section>
               </div>
-            )}
-
-            {detailTab === 'gantt' && (
-              <section className="detail-block project-gantt-workspace-tab">
-                <div className="detail-block-headline">
-                  <p className="eyebrow">專案甘特圖</p>
-                  <button type="button" onClick={autoEstimateSelectedProject}>依任務估算進度</button>
-                </div>
-                {renderInlineProjectGantt(selectedProject)}
-              </section>
             )}
 
             {detailTab === 'tasks' && (

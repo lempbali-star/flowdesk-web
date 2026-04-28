@@ -12848,3 +12848,131 @@ button {
     justify-content: flex-start;
   }
 }
+
+
+/* FlowDesk v20.2.2 Project workspace / independent gantt layout */
+.project-ux-shell {
+  display: flex;
+  flex-direction: column;
+}
+.project-ux-shell .project-overview-strip-v2013 { order: 2; }
+.project-selected-workspace-v2022 {
+  order: 3;
+  scroll-margin-top: 18px;
+  margin-bottom: 18px;
+}
+.project-ux-shell .project-board-shell {
+  order: 4;
+  margin-bottom: 0;
+}
+.project-selected-workspace-v2022 .project-selected-head-v2021 {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,251,255,0.94));
+  backdrop-filter: blur(10px);
+  border-radius: 22px;
+  padding: 12px 12px 16px;
+}
+.project-independent-gantt-v2022 {
+  border: 1px solid rgba(80, 123, 255, 0.18);
+  border-radius: 26px;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(246,249,255,0.98), rgba(255,255,255,0.94));
+  box-shadow: 0 18px 42px rgba(47, 77, 150, 0.09);
+  margin-bottom: 16px;
+  scroll-margin-top: 18px;
+}
+.project-independent-gantt-v2022 .project-section-head {
+  align-items: center;
+}
+.project-independent-gantt-stack {
+  display: grid;
+  gap: 14px;
+  max-height: min(58vh, 660px);
+  overflow: auto;
+  padding-right: 4px;
+}
+.project-independent-gantt-card {
+  border: 1px solid rgba(124,151,255,0.18);
+  background: rgba(255,255,255,0.94);
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow: 0 12px 30px rgba(55, 85, 155, 0.07);
+}
+.project-independent-gantt-card.active {
+  border-color: rgba(49,109,255,0.42);
+  box-shadow: 0 18px 42px rgba(49,109,255,0.12);
+}
+.project-independent-gantt-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.project-independent-gantt-card-head > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+.project-independent-gantt-card-head strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+.project-independent-gantt-card-head small {
+  color: var(--muted);
+  font-weight: 750;
+}
+.project-independent-gantt-card .project-inline-gantt {
+  margin: 0;
+  border-radius: 18px;
+  box-shadow: none;
+}
+.project-independent-gantt-card .project-inline-gantt-head {
+  display: none;
+}
+.project-selected-workspace-v2022 .project-focus-shell {
+  grid-template-columns: minmax(280px, .82fr) minmax(430px, 1.18fr);
+}
+.project-selected-workspace-v2022 .project-detail-shell {
+  margin-top: 16px;
+}
+.project-board-card-v2016,
+.project-list-row-v2016 {
+  scroll-margin-top: 180px;
+}
+.project-board-card-v2016.active,
+.project-list-row-v2016.active {
+  outline: 3px solid rgba(49,109,255,0.14);
+  outline-offset: 3px;
+}
+.project-board-card-v2016 .project-board-actions-row,
+.project-list-row-v2016 .project-list-actions {
+  justify-content: flex-end;
+}
+.project-board-controls .project-gantt-control-bar span {
+  min-width: 90px;
+  text-align: right;
+}
+@media (max-width: 1280px) {
+  .project-selected-workspace-v2022 .project-focus-shell {
+    grid-template-columns: 1fr;
+  }
+  .project-independent-gantt-stack {
+    max-height: none;
+  }
+}
+@media (max-width: 760px) {
+  .project-independent-gantt-v2022 {
+    padding: 12px;
+    border-radius: 22px;
+  }
+  .project-independent-gantt-v2022 .project-section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .project-independent-gantt-card-head {
+    display: grid;
+  }
+}
