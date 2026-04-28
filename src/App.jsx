@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.1.7'
+const FLOWDESK_APP_VERSION = '20.1.8'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
@@ -2883,6 +2883,18 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const paginatedProjects = filteredProjects.slice(projectPageStart, projectPageStart + projectPageSize)
   const selectedRelatedTasks = tickets.filter((task) => task.relatedProject === selectedProject?.id)
   const doneMilestones = (selectedProject?.milestones || []).filter((item) => item.done).length
+  const ganttPanelProjects = useMemo(() => {
+    if (allGanttExpanded) return filteredProjects
+    const ids = []
+    const pushId = (projectId) => {
+      if (projectId && !ids.includes(projectId)) ids.push(projectId)
+    }
+    Array.from(pinnedGanttIds).forEach(pushId)
+    pushId(previewProjectId)
+    pushId(selectedProject?.id)
+    return ids.map((projectId) => projects.find((project) => project.id === projectId)).filter(Boolean)
+  }, [allGanttExpanded, filteredProjects, pinnedGanttIds, previewProjectId, projects, selectedProject?.id])
+  const ganttPanelModeText = allGanttExpanded ? '全部專案' : pinnedGanttIds.size ? `固定 ${pinnedGanttIds.size} 個專案` : '焦點專案'
 
   useEffect(() => {
     setProjectPage((current) => Math.min(current, projectPageTotal))
@@ -2936,6 +2948,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function toggleProjectGanttPin(projectId) {
+    setPreviewProjectId(projectId)
+    setSelectedId(projectId)
     setPinnedGanttIds((current) => {
       const next = new Set(current)
       if (next.has(projectId)) next.delete(projectId)
@@ -2952,15 +2966,19 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function collapseAllProjectGantts() {
     setAllGanttExpanded(false)
     setPinnedGanttIds(new Set())
-    setPreviewProjectId(null)
+    setPreviewProjectId(selectedProject?.id || null)
   }
 
   function getProjectHoverProps(projectId) {
     return {
-      onMouseEnter: () => setPreviewProjectId(projectId),
-      onMouseLeave: () => setPreviewProjectId((current) => current === projectId ? null : current),
-      onFocus: () => setPreviewProjectId(projectId),
-      onBlur: () => setPreviewProjectId((current) => current === projectId ? null : current),
+      onMouseEnter: () => {
+        setSelectedId(projectId)
+        if (!allGanttExpanded) setPreviewProjectId(projectId)
+      },
+      onFocus: () => {
+        setSelectedId(projectId)
+        if (!allGanttExpanded) setPreviewProjectId(projectId)
+      },
     }
   }
 
@@ -3075,7 +3093,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <div>
           <p className="eyebrow">PROJECT FLOW</p>
           <h2>專案管理</h2>
-          <span>專案列表負責搜尋與排序；滑過卡片或清單可直接展開甘特圖，點擊則開啟明細彈窗。</span>
+          <span>專案列表負責搜尋與排序；滑過卡片或清單會切換上方焦點甘特圖，點擊則開啟明細彈窗。</span>
         </div>
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">平均進度 {avgProgress}%</span>
@@ -3098,7 +3116,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div>
             <p className="eyebrow">PROJECT BOARD</p>
             <h3>專案檢視</h3>
-            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；滑過可預覽甘特圖、固定後可長駐；展開時自動改為整列時程面板，避免右側超出畫面。</small>
+            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；甘特圖統一顯示在固定預覽區，避免卡片展開跑版或閃爍。</small>
           </div>
           <div className="project-board-controls">
             <div className="project-board-filters">
@@ -3119,7 +3137,29 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           </div>
         </div>
         {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
-        {projects.length > 0 && !filteredProjects.length && <div className="flow-empty-card"><strong>沒有符合條件的專案</strong><span>請調整搜尋、階段或健康度條件。</span></div>}
+        {projects.length > 0 && filteredProjects.length > 0 && (
+          <section className="project-gantt-focus-panel" aria-label="焦點甘特圖預覽">
+            <div className="project-gantt-focus-head">
+              <div>
+                <p className="eyebrow">GANTT PREVIEW</p>
+                <h3>{allGanttExpanded ? '全部專案甘特圖' : (ganttPanelProjects[0]?.name || '焦點甘特圖')}</h3>
+                <small>{ganttPanelModeText} · 滑過卡片 / 清單會切換焦點；固定後可保留多個專案時程。</small>
+              </div>
+              <div className="project-gantt-focus-actions">
+                {previewProjectId && <button type="button" onClick={() => toggleProjectGanttPin(previewProjectId)}>{pinnedGanttIds.has(previewProjectId) ? '取消固定目前專案' : '固定目前專案'}</button>}
+                <button type="button" onClick={expandAllProjectGantts}>全部展開</button>
+                <button type="button" onClick={collapseAllProjectGantts}>全部收起</button>
+              </div>
+            </div>
+            <div className="project-gantt-focus-stack">
+              {ganttPanelProjects.map((project) => (
+                <article key={project.id} className="project-gantt-focus-item">
+                  {renderInlineProjectGantt(project)}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
         {projectViewMode === 'cards' ? (
           <div className="project-board-grid project-board-grid-v2014 project-board-grid-v2016">
             {paginatedProjects.map((project) => {
@@ -3144,7 +3184,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   ].filter(Boolean).join(' ')}
                   onClick={() => openProjectDetail(project.id)}
                   onKeyDown={(event) => handleProjectCardKeyDown(project.id, event)}
-                  title="滑過展開甘特圖，點擊查看明細，拖曳調整順序"
+                  title="滑過切換甘特圖預覽，點擊查看明細，拖曳調整順序"
                 >
                   <div className="project-board-card-top">
                     <span className="record-id">☰ {project.id}</span>
@@ -3157,12 +3197,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div>
                     <strong>{project.progress}%</strong><small>估 {estimated}%</small>
                   </div>
-                  <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>{ganttOpen ? '甘特圖已展開' : '滑過看甘特圖'}</span></div>
+                  <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>{ganttOpen ? '甘特圖預覽中' : '滑過切換甘特圖'}</span></div>
                   <div className="project-board-actions-row" onClick={(event) => event.stopPropagation()}>
                     <button type="button" onClick={(event) => { event.stopPropagation(); toggleProjectGanttPin(project.id) }}>{isPinned ? '取消固定' : '固定甘特圖'}</button>
                     <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>明細</button>
                   </div>
-                  {ganttOpen && renderInlineProjectGantt(project)}
                 </article>
               )
             })}
@@ -3192,7 +3231,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   ].filter(Boolean).join(' ')}
                   onClick={() => openProjectDetail(project.id)}
                   onKeyDown={(event) => handleProjectCardKeyDown(project.id, event)}
-                  title="滑過展開甘特圖，點擊查看明細，拖曳調整順序"
+                  title="滑過切換甘特圖預覽，點擊查看明細，拖曳調整順序"
                 >
                   <div className="project-list-row-main">
                     <span className="project-list-title"><small>☰ {project.id}</small><strong>{project.name}</strong><em>{project.next || '尚未設定下一步'}</em></span>
@@ -3205,7 +3244,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>明細</button>
                     </span>
                   </div>
-                  {ganttOpen && renderInlineProjectGantt(project)}
                 </article>
               )
             })}
