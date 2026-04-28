@@ -12648,3 +12648,78 @@ button {
     max-height: 65vh;
   }
 }
+
+
+/* FlowDesk v20.1.9 Project gantt stable hover and direct progress */
+.project-gantt-focus-panel {
+  scroll-margin-top: 18px;
+}
+
+.project-board-card-v2016.gantt-open,
+.project-list-row-v2016.gantt-open {
+  transform: none;
+}
+
+.gantt-track-v2 {
+  overflow: visible;
+}
+
+.gantt-resize-handle {
+  width: 20px;
+  top: -6px;
+  bottom: -6px;
+  opacity: .96;
+}
+
+.gantt-resize-handle.start {
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.gantt-resize-handle.end {
+  right: 0;
+  transform: translateX(50%);
+}
+
+.gantt-resize-handle.start::before,
+.gantt-resize-handle.end::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.gantt-task-label-with-progress {
+  align-content: center;
+  gap: 3px;
+}
+
+.gantt-progress-control {
+  display: grid;
+  grid-template-columns: 34px minmax(70px, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.gantt-progress-control em {
+  font-style: normal;
+  color: var(--theme-primary-strong);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.gantt-progress-control input[type='range'] {
+  width: 100%;
+  accent-color: #356bff;
+  cursor: pointer;
+}
+
+.gantt-task-row-v3 {
+  grid-template-columns: 170px minmax(280px, 1fr);
+}
+
+.project-gantt-focus-head small {
+  display: inline-block;
+  max-width: 760px;
+}
+

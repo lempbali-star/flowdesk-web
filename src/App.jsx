@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.1.8'
+const FLOWDESK_APP_VERSION = '20.1.9'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
@@ -2632,6 +2632,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projects, setProjects] = useState(() => initialProjectRows)
   const [projectsCloudReady, setProjectsCloudReady] = useState(!flowdeskCloud)
   const projectsCloudSaveTimer = useRef(null)
+  const projectHoverTimer = useRef(null)
   const [selectedId, setSelectedId] = useState(initialProjectRows[0]?.id)
   const [projectKeyword, setProjectKeyword] = useState('')
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
@@ -2667,6 +2668,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return () => {
       cancelled = true
       clearTimeout(projectsCloudSaveTimer.current)
+      clearTimeout(projectHoverTimer.current)
     }
   }, [])
 
@@ -2969,16 +2971,24 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setPreviewProjectId(selectedProject?.id || null)
   }
 
+  function scheduleGanttPreview(projectId, immediate = false) {
+    if (!projectId || allGanttExpanded) return
+    clearTimeout(projectHoverTimer.current)
+    const applyPreview = () => {
+      setPreviewProjectId((current) => current === projectId ? current : projectId)
+    }
+    if (immediate) {
+      applyPreview()
+      return
+    }
+    projectHoverTimer.current = window.setTimeout(applyPreview, 180)
+  }
+
   function getProjectHoverProps(projectId) {
     return {
-      onMouseEnter: () => {
-        setSelectedId(projectId)
-        if (!allGanttExpanded) setPreviewProjectId(projectId)
-      },
-      onFocus: () => {
-        setSelectedId(projectId)
-        if (!allGanttExpanded) setPreviewProjectId(projectId)
-      },
+      onMouseEnter: () => scheduleGanttPreview(projectId),
+      onMouseLeave: () => clearTimeout(projectHoverTimer.current),
+      onFocus: () => scheduleGanttPreview(projectId, true),
     }
   }
 
@@ -3072,7 +3082,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           </div>
           {(project.tasks || []).map((task, index) => (
             <div className="gantt-task-row gantt-task-row-v3" key={`${task.name}-${index}`}>
-              <div className="gantt-row-label sub"><span>{task.name}</span><small>{task.owner}</small></div>
+              <div className="gantt-row-label sub gantt-task-label-with-progress">
+                <span>{task.name}</span>
+                <small>{task.owner}</small>
+                <label className="gantt-progress-control" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+                  <em>{Number(task.progress || 0)}%</em>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={Number(task.progress || 0)}
+                    onChange={(event) => updateProjectTask(project.id, index, { progress: Math.max(0, Math.min(100, Number(event.target.value) || 0)) })}
+                    aria-label={`${task.name} 任務進度`}
+                  />
+                </label>
+              </div>
               <div className="gantt-track-v2 soft gantt-track-soft-v3">
                 <span className="gantt-task-bar gantt-bar-editable" style={ganttStyle(task.start, task.end, project.startDate, project.endDate)} title="拖曳左右端調整任務起訖日期">
                   <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整任務開始日" onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'start', event)} />
@@ -3143,7 +3167,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <div>
                 <p className="eyebrow">GANTT PREVIEW</p>
                 <h3>{allGanttExpanded ? '全部專案甘特圖' : (ganttPanelProjects[0]?.name || '焦點甘特圖')}</h3>
-                <small>{ganttPanelModeText} · 滑過卡片 / 清單會切換焦點；固定後可保留多個專案時程。</small>
+                <small>{ganttPanelModeText} · 滑過卡片 / 清單會延遲預覽焦點；固定後可保留多個專案時程。</small>
               </div>
               <div className="project-gantt-focus-actions">
                 {previewProjectId && <button type="button" onClick={() => toggleProjectGanttPin(previewProjectId)}>{pinnedGanttIds.has(previewProjectId) ? '取消固定目前專案' : '固定目前專案'}</button>}
