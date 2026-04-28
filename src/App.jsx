@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.0.2'
+const FLOWDESK_APP_VERSION = '20.0.3'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 const initialModules = [
@@ -1533,6 +1533,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const purchasePageCount = Math.max(1, Math.ceil(filteredPurchases.length / purchasePageSize))
   const safePurchasePage = Math.min(purchasePage, purchasePageCount)
   const pagedPurchases = filteredPurchases.slice((safePurchasePage - 1) * purchasePageSize, safePurchasePage * purchasePageSize)
+  const stableSelectedPurchase = selectedPurchase ? purchases.find((row) => isSamePurchase(row, selectedPurchase)) || null : null
   const totalUntaxed = filteredPurchases.reduce((sum, row) => sum + calculatePurchase(row).untaxedAmount, 0)
   const totalTax = filteredPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxAmount, 0)
   const totalAmount = filteredPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
@@ -1617,11 +1618,22 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
 
   useEffect(() => {
-    if (!selectedPurchase) return
-    const refreshed = purchases.find((row) => isSamePurchase(row, selectedPurchase))
-    if (refreshed && refreshed !== selectedPurchase) setSelectedPurchase(refreshed)
-    if (!refreshed) setSelectedPurchase(null)
-  }, [purchases, selectedPurchase])
+    if (activeTable !== '採購紀錄') return
+    if (!purchases.length) {
+      if (selectedPurchase) setSelectedPurchase(null)
+      return
+    }
+    const visibleRows = filteredPurchases.length ? filteredPurchases : purchases
+    const refreshed = selectedPurchase ? purchases.find((row) => isSamePurchase(row, selectedPurchase)) : null
+    const stillVisible = refreshed && visibleRows.some((row) => isSamePurchase(row, refreshed))
+    if (stillVisible && refreshed !== selectedPurchase) {
+      setSelectedPurchase(refreshed)
+      return
+    }
+    if (!stillVisible) {
+      setSelectedPurchase(visibleRows[0] || null)
+    }
+  }, [activeTable, filteredPurchases, purchases, selectedPurchase])
 
   function updateCollectionView(viewId) {
     if (!activeCollection) return
@@ -1702,9 +1714,23 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   function deletePurchase(targetRow) {
     const target = typeof targetRow === 'object' ? targetRow : purchases.find((row) => row.id === targetRow)
     if (!target) return
-    setPurchases((rows) => rows.filter((row) => !isSamePurchase(row, target)))
+    setPurchases((rows) => {
+      let removed = false
+      const nextRows = rows.filter((row) => {
+        if (removed) return true
+        if (isSamePurchase(row, target)) {
+          removed = true
+          return false
+        }
+        return true
+      })
+      const nextSelected = selectedPurchase && !isSamePurchase(selectedPurchase, target)
+        ? nextRows.find((row) => isSamePurchase(row, selectedPurchase)) || nextRows[0] || null
+        : nextRows[0] || null
+      setSelectedPurchase(nextSelected)
+      return nextRows
+    })
     writeHistory(target.id, purchaseTitle(target), '刪除採購紀錄。')
-    if (selectedPurchase && isSamePurchase(selectedPurchase, target)) setSelectedPurchase(null)
   }
 
   function duplicatePurchase(row) {
@@ -1928,7 +1954,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <div><p className="eyebrow">處理優先序</p><strong>採購待辦焦點</strong><span>依金額與未完成狀態自動排序</span></div>
               <div className="purchase-action-list">
                 {purchaseActionRows.length ? purchaseActionRows.map((item) => (
-                  <button type="button" key={item.row.id} onClick={() => setSelectedPurchase(item.row)}>
+                  <button type="button" key={getPurchaseKey(item.row)} onClick={() => setSelectedPurchase(item.row)}>
                     <div><strong>{purchaseTitle(item.row)}</strong><small>{item.row.vendor || '未指定廠商'} · {item.reasons.join(' / ')}</small></div>
                     <b>{formatMoney(item.amount)}</b>
                   </button>
@@ -1953,6 +1979,10 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                       <span>第 {safePurchasePage} / {purchasePageCount} 頁</span>
                     </div>
                   </div>
+                </div>
+                <div className="purchase-selection-status">
+                  <span>目前顯示 <b>{pagedPurchases.length}</b> 筆 / 篩選 <b>{filteredPurchases.length}</b> 筆</span>
+                  <span>右側明細：<b>{stableSelectedPurchase ? `${stableSelectedPurchase.id} ${purchaseTitle(stableSelectedPurchase)}` : '尚未選取'}</b></span>
                 </div>
                 <div className={collectionView === 'card' ? 'purchase-card-list purchase-card-grid' : 'purchase-card-list'}>
                   {pagedPurchases.map((row) => {
@@ -2007,8 +2037,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
               <aside className="purchase-side-panel">
                 <section className="purchase-detail-card compact-detail-card">
-                  <PanelTitle eyebrow="採購明細" title={selectedPurchase ? purchaseTitle(selectedPurchase) : '請選擇採購項目'} />
-                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} history={purchaseHistory.filter((entry) => entry.purchaseId === selectedPurchase.id)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} onDuplicate={() => duplicatePurchase(selectedPurchase)} onCreateTask={() => createPurchaseWorkItem(selectedPurchase)} onCreateReminder={(kind) => createPurchaseReminder(selectedPurchase, kind)} onUpdateMeta={(patch, message) => updatePurchaseMeta(selectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
+                  <PanelTitle eyebrow="採購明細" title={stableSelectedPurchase ? purchaseTitle(stableSelectedPurchase) : '請選擇採購項目'} action={stableSelectedPurchase?.id} />
+                  {stableSelectedPurchase ? <PurchaseDetail row={stableSelectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(stableSelectedPurchase)} history={purchaseHistory.filter((entry) => entry.purchaseId === stableSelectedPurchase.id)} onEdit={() => setEditingPurchase(stableSelectedPurchase)} onAdvance={() => advancePurchase(stableSelectedPurchase)} onComplete={() => completePurchase(stableSelectedPurchase)} onDuplicate={() => duplicatePurchase(stableSelectedPurchase)} onCreateTask={() => createPurchaseWorkItem(stableSelectedPurchase)} onCreateReminder={(kind) => createPurchaseReminder(stableSelectedPurchase, kind)} onUpdateMeta={(patch, message) => updatePurchaseMeta(stableSelectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
                 </section>
                 <section className="purchase-history-card compact-history-card">
                   <PanelTitle eyebrow="狀態歷程" title="最近變更" />
@@ -4009,7 +4039,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: FLOWDESK_VERSION_LABEL, icon: '⚙️' },
   ]
   const v20Checklist = [
-    ['採購管理', '多品項、稅額總額、PO/報價、預算差異、提醒與歷程'],
+    ['採購管理', '多品項、稅額總額、PO/報價、預算差異、提醒、歷程與清單選取穩定化'],
     ['專案管理', '甘特圖、里程碑完成、建立工作、進度估算、摘要匯出'],
     ['提醒中心', '逾期、今日、明日、本週分組，支援延後與關聯開啟'],
     ['設定備份', '匯入預覽、還原前自動備份、分模組清空、同步狀態'],
@@ -4072,7 +4102,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
       {settingsView === 'purchase' && (
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="採購設定" title="採購資料" />
-          <p className="settings-note">採購是獨立資料應用，保留多品項、搜尋篩選、分頁與採購流程設定。</p>
+          <p className="settings-note">採購是獨立資料應用，保留多品項、搜尋篩選、分頁、右側明細、單筆刪除保護與採購流程設定。</p>
           <button className="ghost-btn" type="button" onClick={resetPurchaseDemo}>清空採購資料</button>
         </section>
       )}
@@ -4680,6 +4710,13 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
         <span>{row.paymentStatus || '未付款'}</span>
         <span>{row.arrivalStatus || '未到貨'}</span>
         <span>{row.acceptanceStatus || '未驗收'}</span>
+      </div>
+      <div className="purchase-detail-identity">
+        <div>
+          <span>目前選取</span>
+          <strong>{row.id} · {purchaseTitle(row)}</strong>
+        </div>
+        <small>{row.vendor || '未指定廠商'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
       </div>
       <div className="purchase-detail-actions">
         <button type="button" onClick={onEdit}>編輯採購</button>
