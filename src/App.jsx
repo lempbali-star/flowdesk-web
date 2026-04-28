@@ -2717,31 +2717,329 @@ function FlowPage({ rules }) {
 }
 
 function InsightPage({ metrics, records, tickets }) {
-  const highImpact = tickets.filter((ticket) => ticket.priority === '高').length
+  const [reportScope, setReportScope] = useState('本月')
+  const [reportTab, setReportTab] = useState('總覽')
+  const [reportSearch, setReportSearch] = useState('')
+  const [cloudStatus, setCloudStatus] = useState(flowdeskCloud ? '同步中' : '本機資料')
+  const [reportData, setReportData] = useState(() => ({
+    workItems: readFlowdeskLocalArray('flowdesk-work-items-v196'),
+    tasks: readFlowdeskLocalArray('flowdesk-tasks-v1972'),
+    purchases: readFlowdeskLocalArray('flowdesk-purchases-v19'),
+    projects: readFlowdeskLocalArray('flowdesk-projects-v1972'),
+    reminders: readFlowdeskLocalArray('flowdesk-reminders-v193'),
+  }))
+
+  async function reloadReportData() {
+    const localData = {
+      workItems: readFlowdeskLocalArray('flowdesk-work-items-v196'),
+      tasks: readFlowdeskLocalArray('flowdesk-tasks-v1972'),
+      purchases: readFlowdeskLocalArray('flowdesk-purchases-v19'),
+      projects: readFlowdeskLocalArray('flowdesk-projects-v1972'),
+      reminders: readFlowdeskLocalArray('flowdesk-reminders-v193'),
+    }
+    if (!flowdeskCloud) {
+      setReportData(localData)
+      setCloudStatus('本機資料')
+      return
+    }
+    setCloudStatus('同步中')
+    try {
+      const [workResult, taskResult, purchaseResult, projectResult, reminderResult] = await Promise.all([
+        flowdeskCloud.getWorkspaceData('work_items'),
+        flowdeskCloud.getWorkspaceData('tasks'),
+        flowdeskCloud.getWorkspaceData('purchases'),
+        flowdeskCloud.getWorkspaceData('projects'),
+        flowdeskCloud.getWorkspaceData('reminders'),
+      ])
+      setReportData({
+        workItems: Array.isArray(workResult.data) ? workResult.data : localData.workItems,
+        tasks: Array.isArray(taskResult.data) ? taskResult.data : localData.tasks,
+        purchases: Array.isArray(purchaseResult.data) ? purchaseResult.data : localData.purchases,
+        projects: Array.isArray(projectResult.data) ? projectResult.data : localData.projects,
+        reminders: Array.isArray(reminderResult.data) ? reminderResult.data : localData.reminders,
+      })
+      setCloudStatus('雲端已同步')
+    } catch {
+      setReportData(localData)
+      setCloudStatus('使用本機備援')
+    }
+  }
+
+  useEffect(() => {
+    reloadReportData()
+  }, [])
+
+  const keyword = reportSearch.trim().toLowerCase()
+  const workRows = reportData.workItems.map((row) => ({ ...row, __source: '工作看板', __date: row.due || row.createdAt || todayDate() }))
+  const taskRows = reportData.tasks.map((row) => ({ ...row, __source: '任務追蹤', __date: row.due || todayDate() }))
+  const allTaskRows = [...workRows, ...taskRows]
+  const scopedPurchases = reportData.purchases.filter((row) => isReportInScope(row.requestDate || row.orderDate || row.arrivalDate, reportScope)).filter((row) => matchReportKeyword(row, keyword))
+  const scopedTasks = allTaskRows.filter((row) => isReportInScope(row.__date, reportScope)).filter((row) => matchReportKeyword(row, keyword))
+  const scopedProjects = reportData.projects.filter((row) => isReportInScope(row.startDate || row.endDate, reportScope) || reportScope === '全部').filter((row) => matchReportKeyword(row, keyword))
+  const scopedReminders = reportData.reminders.filter((row) => isReportInScope(row.dueDate, reportScope)).filter((row) => matchReportKeyword(row, keyword))
+
+  const purchaseTotal = scopedPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
+  const purchaseOpen = scopedPurchases.filter((row) => !['已完成', '已取消'].includes(row.status)).length
+  const taskOpen = scopedTasks.filter((row) => !['已完成', '已收斂'].includes(row.lane || row.status)).length
+  const taskWaiting = scopedTasks.filter((row) => ['等待回覆', '等回覆', '卡關'].includes(row.lane || row.status)).length
+  const projectRisk = scopedProjects.filter((row) => String(row.health || row.tone || '').includes('待') || row.tone === 'red').length
+  const reminderSummary = getReminderSummary(reportData.reminders)
+  const vendorRanking = buildVendorRanking(scopedPurchases).slice(0, 6)
+  const purchaseStatusRows = buildCountRows(scopedPurchases, (row) => row.status || '未設定').slice(0, 6)
+  const taskStatusRows = buildCountRows(scopedTasks, (row) => row.lane || row.status || '未設定').slice(0, 6)
+  const upcomingReminders = [...reportData.reminders]
+    .filter((row) => row.status !== '已完成')
+    .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
+    .slice(0, 5)
+
+  const focusRows = [
+    ...scopedPurchases
+      .filter((row) => !['已完成', '已取消'].includes(row.status) || (row.paymentStatus || '未付款') !== '已付款' || (row.arrivalStatus || '未到貨') !== '已到貨')
+      .map((row) => ({ type: '採購', title: purchaseTitle(row), meta: `${row.vendor || '未指定廠商'} · ${row.status || '未設定'} · ${formatMoney(calculatePurchase(row).taxedTotal)}`, weight: calculatePurchase(row).taxedTotal + 3000 })),
+    ...scopedTasks
+      .filter((row) => ['緊急', '高'].includes(row.priority) || ['等待回覆', '等回覆', '卡關'].includes(row.lane || row.status))
+      .map((row) => ({ type: row.__source || '任務', title: row.title || row.id, meta: `${row.owner || '未指定'} · ${row.lane || row.status || '未設定'} · ${row.due || row.__date || '未設定日期'}`, weight: ['緊急', '高'].includes(row.priority) ? 9000 : 4500 })),
+    ...scopedProjects
+      .filter((row) => String(row.health || '').includes('待') || row.tone === 'red')
+      .map((row) => ({ type: '專案', title: row.name || row.id, meta: `${row.phase || '未設定'} · ${row.owner || '未指定'} · ${row.progress || 0}%`, weight: 6000 })),
+  ].sort((a, b) => b.weight - a.weight).slice(0, 8)
+
+  const reportRows = buildReportTableRows(reportTab, { purchases: scopedPurchases, tasks: scopedTasks, projects: scopedProjects, reminders: scopedReminders })
+
+  function exportCurrentReport() {
+    const csv = toCsv(reportRows.csv)
+    downloadFlowdeskText(`flowdesk_${reportTab}_${todayDate()}.csv`, csv, 'text/csv;charset=utf-8')
+  }
+
+  function exportExecutiveSnapshot() {
+    const snapshot = {
+      exportedAt: new Date().toISOString(),
+      scope: reportScope,
+      summary: { purchaseTotal, purchaseOpen, taskOpen, taskWaiting, projectRisk, reminders: reminderSummary },
+      focusRows,
+      vendorRanking,
+      purchaseStatusRows,
+      taskStatusRows,
+    }
+    downloadFlowdeskText(`flowdesk_report_snapshot_${todayDate()}.json`, JSON.stringify(snapshot, null, 2), 'application/json;charset=utf-8')
+  }
+
   return (
-    <div className="insight-layout">
-      <section className="metric-strip full">
-        <Metric label="健康度" value={`${metrics.pulse}%`} tone="violet" />
-        <Metric label="開啟項目" value={metrics.open} tone="blue" />
-        <Metric label="高優先任務" value={highImpact} tone="red" />
-        <Metric label="採購金額" value={formatMoney(metrics.spend)} tone="green" />
-      </section>
-      <section className="panel wide">
-        <PanelTitle eyebrow="管理摘要" title="本週重點" />
-        <div className="insight-cards">
-          <article><strong>目前風險</strong><p>等待文件、待回覆任務與專案報價假設是目前主要風險。</p></article>
-          <article><strong>採購摘要</strong><p>目前採購加總 {formatMoney(initialPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0))}。</p></article>
-          <article><strong>建議動作</strong><p>優先處理今日、高優先級與等待回覆項目。</p></article>
+    <div className="insight-layout insight-ops-layout">
+      <section className="flow-toolbar flowdesk-toolbar-v2 report-command-bar">
+        <div>
+          <p className="eyebrow">REPORT CENTER</p>
+          <h2>報表分析</h2>
+          <span>整合工作、任務、採購、專案與提醒資料，快速看出目前要追的重點。</span>
+        </div>
+        <div className="flow-toolbar-actions report-toolbar-actions">
+          <span className="toolbar-soft-chip">{cloudStatus}</span>
+          <label className="report-scope-select">期間<select value={reportScope} onChange={(event) => setReportScope(event.target.value)}>{['本週', '本月', '本季', '全部'].map((scope) => <option key={scope} value={scope}>{scope}</option>)}</select></label>
+          <button className="ghost-btn" type="button" onClick={reloadReportData}>重新整理</button>
+          <button className="ghost-btn" type="button" onClick={exportExecutiveSnapshot}>匯出快照</button>
+          <button className="primary-btn" type="button" onClick={exportCurrentReport}>匯出目前報表</button>
         </div>
       </section>
-      <section className="panel">
-        <PanelTitle eyebrow="報表中心" title="常用報表" />
-        <ul className="clean-list"><li>採購月報</li><li>廠商統計</li><li>任務處理狀態</li><li>專案風險</li><li>等待回覆追蹤</li></ul>
+
+      <section className="metric-strip full report-kpi-strip">
+        <Metric label="採購總額" value={formatMoney(purchaseTotal)} tone="green" />
+        <Metric label="未完成採購" value={purchaseOpen} tone="amber" />
+        <Metric label="未完成工作" value={taskOpen} tone="blue" />
+        <Metric label="等待 / 卡關" value={taskWaiting} tone="red" />
+        <Metric label="專案風險" value={projectRisk} tone="violet" />
+      </section>
+
+      <section className="report-grid-v1981">
+        <article className="panel wide report-focus-panel">
+          <PanelTitle eyebrow="處理焦點" title="下一步優先序" />
+          <div className="report-focus-list">
+            {focusRows.length ? focusRows.map((row, index) => (
+              <article key={`${row.type}-${row.title}-${index}`}>
+                <span>{index + 1}</span>
+                <div><strong>{row.title}</strong><small>{row.type} · {row.meta}</small></div>
+              </article>
+            )) : <p>目前沒有需要特別追蹤的項目。</p>}
+          </div>
+        </article>
+
+        <article className="panel report-side-card">
+          <PanelTitle eyebrow="提醒" title="到期摘要" />
+          <div className="reminder-home-grid compact-reminder-grid">
+            <article className="danger"><span>逾期</span><strong>{reminderSummary.overdue}</strong></article>
+            <article><span>今日</span><strong>{reminderSummary.today}</strong></article>
+            <article><span>本週</span><strong>{reminderSummary.week}</strong></article>
+            <article><span>未結</span><strong>{reminderSummary.open}</strong></article>
+          </div>
+        </article>
+      </section>
+
+      <section className="panel wide report-table-panel">
+        <div className="report-table-head">
+          <div>
+            <p className="eyebrow">資料報表</p>
+            <h3>{reportTab}</h3>
+          </div>
+          <div className="report-table-tools">
+            <input value={reportSearch} onChange={(event) => setReportSearch(event.target.value)} placeholder="搜尋報表內容..." />
+            <div className="report-tab-switcher">
+              {['總覽', '採購', '任務', '專案', '提醒'].map((tab) => <button key={tab} type="button" className={reportTab === tab ? 'active' : ''} onClick={() => setReportTab(tab)}>{tab}</button>)}
+            </div>
+          </div>
+        </div>
+        <div className="report-table-scroll">
+          <table className="report-table-v1981">
+            <thead><tr>{reportRows.headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
+            <tbody>
+              {reportRows.rows.map((row, index) => <tr key={`${reportTab}-${index}`}>{row.map((cell, cellIndex) => <td key={`${index}-${cellIndex}`}>{cell}</td>)}</tr>)}
+              {!reportRows.rows.length && <tr><td colSpan={reportRows.headers.length}>目前沒有符合條件的資料。</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="report-grid-v1981 report-lower-grid">
+        <article className="panel">
+          <PanelTitle eyebrow="廠商" title="採購金額排行" />
+          <div className="report-rank-list">
+            {vendorRanking.length ? vendorRanking.map((row) => <article key={row.vendor}><div><strong>{row.vendor}</strong><span>{row.count} 筆</span></div><b>{formatMoney(row.amount)}</b></article>) : <p>尚無廠商採購資料。</p>}
+          </div>
+        </article>
+        <article className="panel">
+          <PanelTitle eyebrow="狀態" title="採購分布" />
+          <div className="report-status-list">
+            {purchaseStatusRows.length ? purchaseStatusRows.map((row) => <article key={row.label}><span>{row.label}</span><strong>{row.count}</strong></article>) : <p>尚無採購狀態資料。</p>}
+          </div>
+        </article>
+        <article className="panel">
+          <PanelTitle eyebrow="任務" title="工作狀態分布" />
+          <div className="report-status-list">
+            {taskStatusRows.length ? taskStatusRows.map((row) => <article key={row.label}><span>{row.label}</span><strong>{row.count}</strong></article>) : <p>尚無任務資料。</p>}
+          </div>
+        </article>
+        <article className="panel">
+          <PanelTitle eyebrow="到期" title="近期提醒" />
+          <div className="report-mini-list">
+            {upcomingReminders.length ? upcomingReminders.map((row) => <article key={row.id}><strong>{row.title}</strong><span>{row.dueDate || '未設定日期'} · {row.status}</span></article>) : <p>尚無未結提醒。</p>}
+          </div>
+        </article>
       </section>
     </div>
   )
 }
 
+function readFlowdeskLocalArray(key) {
+  if (typeof window === 'undefined') return []
+  try {
+    const saved = window.localStorage.getItem(key)
+    const parsed = saved ? JSON.parse(saved) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function matchReportKeyword(row, keyword) {
+  if (!keyword) return true
+  return JSON.stringify(row || {}).toLowerCase().includes(keyword)
+}
+
+function isReportInScope(value, scope) {
+  if (scope === '全部') return true
+  const date = toDateOnly(value)
+  if (!date) return scope === '全部'
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const start = new Date(today)
+  if (scope === '本週') start.setDate(today.getDate() - today.getDay())
+  if (scope === '本月') start.setDate(1)
+  if (scope === '本季') {
+    const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3
+    start.setMonth(quarterStartMonth, 1)
+  }
+  start.setHours(0, 0, 0, 0)
+  return date >= start && date <= today
+}
+
+function buildVendorRanking(purchases = []) {
+  return Array.from(purchases.reduce((map, row) => {
+    const vendor = row.vendor || '未指定廠商'
+    const current = map.get(vendor) || { vendor, amount: 0, count: 0 }
+    current.amount += calculatePurchase(row).taxedTotal
+    current.count += 1
+    map.set(vendor, current)
+    return map
+  }, new Map()).values()).sort((a, b) => b.amount - a.amount)
+}
+
+function buildCountRows(rows = [], getter) {
+  return Array.from(rows.reduce((map, row) => {
+    const label = getter(row) || '未設定'
+    map.set(label, (map.get(label) || 0) + 1)
+    return map
+  }, new Map()).entries()).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count)
+}
+
+function buildReportTableRows(tab, data) {
+  if (tab === '採購') {
+    const rows = data.purchases.map((row) => {
+      const amount = calculatePurchase(row).taxedTotal
+      return {
+        csv: { 編號: row.id, 採購內容: purchaseTitle(row), 廠商: row.vendor || '', 狀態: row.status || '', 金額: amount, 付款: row.paymentStatus || '未付款', 到貨: row.arrivalStatus || '未到貨', 驗收: row.acceptanceStatus || '未驗收' },
+        cells: [row.id, purchaseTitle(row), row.vendor || '未指定', row.status || '未設定', formatMoney(amount), row.paymentStatus || '未付款', row.arrivalStatus || '未到貨'],
+      }
+    })
+    return { headers: ['編號', '採購內容', '廠商', '狀態', '金額', '付款', '到貨'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
+  }
+  if (tab === '任務') {
+    const rows = data.tasks.map((row) => ({
+      csv: { 編號: row.id, 標題: row.title || '', 來源: row.__source || row.source || '', 狀態: row.lane || row.status || '', 優先級: row.priority || '', 負責人: row.owner || '', 到期日: row.due || row.__date || '' },
+      cells: [row.id, row.title || '未命名', row.__source || row.source || '工作', row.lane || row.status || '未設定', row.priority || '未設定', row.owner || '未指定', row.due || row.__date || '未設定'],
+    }))
+    return { headers: ['編號', '標題', '來源', '狀態', '優先級', '負責人', '到期日'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
+  }
+  if (tab === '專案') {
+    const rows = data.projects.map((row) => ({
+      csv: { 編號: row.id, 專案: row.name || '', 階段: row.phase || '', 負責人: row.owner || '', 進度: row.progress || 0, 健康度: row.health || '', 結束日: row.endDate || '' },
+      cells: [row.id, row.name || '未命名專案', row.phase || '未設定', row.owner || '未指定', `${row.progress || 0}%`, row.health || '未設定', row.endDate || '未設定'],
+    }))
+    return { headers: ['編號', '專案', '階段', '負責人', '進度', '健康度', '結束日'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
+  }
+  if (tab === '提醒') {
+    const rows = data.reminders.map((row) => ({
+      csv: { 編號: row.id, 提醒: row.title || '', 類型: row.type || '', 狀態: row.status || '', 優先級: row.priority || '', 到期日: row.dueDate || '' },
+      cells: [row.id, row.title || '未命名提醒', row.type || '一般', row.status || '未設定', row.priority || '未設定', row.dueDate || '未設定'],
+    }))
+    return { headers: ['編號', '提醒', '類型', '狀態', '優先級', '到期日'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
+  }
+  const summary = [
+    { 項目: '採購筆數', 數值: data.purchases.length, 備註: '目前篩選期間內的採購紀錄' },
+    { 項目: '採購總額', 數值: data.purchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0), 備註: '含稅金額加總' },
+    { 項目: '任務筆數', 數值: data.tasks.length, 備註: '工作看板與任務追蹤合併' },
+    { 項目: '專案筆數', 數值: data.projects.length, 備註: '目前篩選期間內的專案' },
+    { 項目: '提醒筆數', 數值: data.reminders.length, 備註: '目前篩選期間內的提醒' },
+  ]
+  return { headers: ['項目', '數值', '備註'], rows: summary.map((row) => [row.項目, typeof row.數值 === 'number' && row.項目.includes('總額') ? formatMoney(row.數值) : row.數值, row.備註]), csv: summary }
+}
+
+function toCsv(rows = []) {
+  if (!rows.length) return ''
+  const headers = Object.keys(rows[0])
+  const escape = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
+  return [headers.join(','), ...rows.map((row) => headers.map((header) => escape(row[header])).join(','))].join('\n')
+}
+
+function downloadFlowdeskText(filename, content, type) {
+  if (typeof window === 'undefined') return
+  const blob = new Blob([content], { type })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
 function toDateOnly(value) {
   if (!value) return null
   const date = new Date(`${value}T00:00:00`)
