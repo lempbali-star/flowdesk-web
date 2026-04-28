@@ -12481,3 +12481,76 @@ button {
     padding: 10px;
   }
 }
+
+
+/* FlowDesk v20.1.7 Project inline gantt safe layout */
+.project-board-grid-v2016 {
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  grid-auto-flow: row dense;
+}
+
+.project-board-card-v2016.gantt-open {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 100%;
+}
+
+.project-board-card-v2016.gantt-open .project-inline-gantt {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 16px;
+}
+
+.project-board-card-v2016.gantt-open .project-inline-gantt::before {
+  content: '整列時程面板';
+  display: inline-flex;
+  margin: 0 0 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #2d477d;
+  font-size: .76rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+.project-inline-gantt-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.project-inline-gantt-grid {
+  min-width: 620px;
+}
+
+.project-inline-gantt .gantt-track-v2,
+.project-inline-gantt .gantt-track-v3,
+.project-inline-gantt .gantt-track-soft-v3 {
+  min-width: 0;
+}
+
+.project-list-row-v2016 .project-inline-gantt {
+  width: 100%;
+  max-width: 100%;
+}
+
+.project-list-row-v2016 .project-inline-gantt-scroll {
+  width: 100%;
+}
+
+@media (max-width: 1180px) {
+  .project-board-card-v2016.gantt-open {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .project-board-card-v2016.gantt-open {
+    grid-column: auto;
+  }
+
+  .project-inline-gantt-grid {
+    min-width: 560px;
+  }
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.1.6'
+const FLOWDESK_APP_VERSION = '20.1.7'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
@@ -3035,7 +3035,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <small>拖曳色條左右端可調整專案 / 任務起訖日期</small>
         </div>
         <div className="gantt-scroll project-gantt-scroll project-inline-gantt-scroll">
-          <div className="gantt-grid-head project-gantt-head project-inline-gantt-grid" style={{ gridTemplateColumns: `160px repeat(${ticks.length}, minmax(48px, 1fr))` }}>
+          <div className="gantt-grid-head project-gantt-head project-inline-gantt-grid" style={{ gridTemplateColumns: `150px repeat(${ticks.length}, minmax(40px, 1fr))` }}>
             <span>項目</span>
             {ticks.map((tick) => <span key={tick}>{formatMonthDayWeekday(tick)}</span>)}
           </div>
@@ -3098,7 +3098,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div>
             <p className="eyebrow">PROJECT BOARD</p>
             <h3>專案檢視</h3>
-            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；滑過可預覽甘特圖、固定後可長駐。</small>
+            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；滑過可預覽甘特圖、固定後可長駐；展開時自動改為整列時程面板，避免右側超出畫面。</small>
           </div>
           <div className="project-board-controls">
             <div className="project-board-filters">
