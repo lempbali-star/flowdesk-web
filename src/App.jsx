@@ -1,8 +1,52 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.0'
+const FLOWDESK_APP_VERSION = '20.3.1'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
+
+function ChineseTextField({ value = '', onCommit, multiline = false, ...props }) {
+  const [draft, setDraft] = useState(value ?? '')
+  const composingRef = useRef(false)
+
+  useEffect(() => {
+    if (!composingRef.current) setDraft(value ?? '')
+  }, [value])
+
+  const commitValue = (nextValue) => {
+    if (typeof onCommit === 'function') onCommit(nextValue)
+  }
+
+  const handleChange = (event) => {
+    const nextValue = event.target.value
+    setDraft(nextValue)
+    if (!composingRef.current) commitValue(nextValue)
+  }
+
+  const handleCompositionStart = () => {
+    composingRef.current = true
+  }
+
+  const handleCompositionEnd = (event) => {
+    composingRef.current = false
+    const nextValue = event.currentTarget.value
+    setDraft(nextValue)
+    commitValue(nextValue)
+  }
+
+  const Component = multiline ? 'textarea' : 'input'
+  return (
+    <Component
+      {...props}
+      value={draft}
+      onChange={handleChange}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
+      autoComplete={props.autoComplete || 'off'}
+      spellCheck={false}
+      lang="zh-Hant"
+    />
+  )
+}
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
   if (typeof window === 'undefined') return true
@@ -2644,6 +2688,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [draggingProjectId, setDraggingProjectId] = useState(null)
   const [dropProjectId, setDropProjectId] = useState(null)
   const [manualRecordText, setManualRecordText] = useState('')
+  const [ganttDragRange, setGanttDragRange] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -2983,21 +3028,43 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const trackWidth = Math.max(track?.getBoundingClientRect?.().width || 1, 1)
     const displayStart = addDaysToDateValue(safeProject.startDate, -14)
     const displayEnd = addDaysToDateValue(safeProject.endDate, 14)
+    setGanttDragRange({ projectId: safeProject.id, start: displayStart, end: displayEnd })
     const rangeDays = Math.max(1, daysBetween(displayStart, displayEnd))
     const pixelsPerDay = Math.max(2, trackWidth / rangeDays)
     const startX = event.clientX
     const originalProjectStart = safeProject.startDate
     const originalProjectEnd = safeProject.endDate
+    const originalProjectDuration = Math.max(0, Math.round((parseDate(originalProjectEnd) - parseDate(originalProjectStart)) / 86400000))
     const originalTask = scope === 'task' ? (safeProject.tasks || [])[taskIndex] : null
     const originalTaskStart = originalTask?.start || originalProjectStart
     const originalTaskEnd = originalTask?.end || originalProjectEnd
+    const originalTaskDuration = Math.max(0, Math.round((parseDate(originalTaskEnd) - parseDate(originalTaskStart)) / 86400000))
 
     document.body.classList.add('gantt-date-dragging')
+
+    const clampTaskMoveDelta = (deltaDays) => {
+      const earliestDelta = Math.round((parseDate(originalProjectStart) - parseDate(originalTaskStart)) / 86400000)
+      const latestDelta = Math.round((parseDate(originalProjectEnd) - parseDate(originalTaskEnd)) / 86400000)
+      return Math.max(earliestDelta, Math.min(latestDelta, deltaDays))
+    }
 
     const applyMove = (moveEvent) => {
       const deltaDays = Math.round((moveEvent.clientX - startX) / pixelsPerDay)
       if (scope === 'project') {
-        if (edge === 'start') {
+        if (edge === 'move') {
+          const nextStart = addDaysToDateValue(originalProjectStart, deltaDays)
+          const nextEnd = addDaysToDateValue(nextStart, originalProjectDuration)
+          const shiftedTasks = (safeProject.tasks || []).map((task) => ({
+            ...task,
+            start: addDaysToDateValue(task.start || originalProjectStart, deltaDays),
+            end: addDaysToDateValue(task.end || originalProjectEnd, deltaDays),
+          }))
+          const shiftedMilestones = (safeProject.milestones || []).map((milestone) => ({
+            ...milestone,
+            date: addDaysToDateValue(milestone.date || originalProjectEnd, deltaDays),
+          }))
+          updateProject(safeProject.id, { startDate: nextStart, endDate: nextEnd, tasks: shiftedTasks, milestones: shiftedMilestones })
+        } else if (edge === 'start') {
           const nextStart = minIsoDate(addDaysToDateValue(originalProjectStart, deltaDays), originalProjectEnd)
           updateProject(safeProject.id, { startDate: nextStart })
         } else {
@@ -3008,7 +3075,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       }
 
       if (scope === 'task' && originalTask) {
-        if (edge === 'start') {
+        if (edge === 'move') {
+          const safeDelta = clampTaskMoveDelta(deltaDays)
+          const nextStart = addDaysToDateValue(originalTaskStart, safeDelta)
+          const nextEnd = addDaysToDateValue(nextStart, originalTaskDuration)
+          updateProjectTask(safeProject.id, taskIndex, { start: nextStart, end: nextEnd })
+        } else if (edge === 'start') {
           const nextStart = clampIsoDate(addDaysToDateValue(originalTaskStart, deltaDays), originalProjectStart, originalTaskEnd)
           updateProjectTask(safeProject.id, taskIndex, { start: nextStart })
         } else {
@@ -3020,9 +3092,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
     const stopMove = () => {
       document.body.classList.remove('gantt-date-dragging')
+      setGanttDragRange(null)
       window.removeEventListener('pointermove', applyMove)
       window.removeEventListener('pointerup', stopMove)
-      updateProject(safeProject.id, {}, scope === 'project' ? '使用甘特圖調整專案起訖日期。' : '使用甘特圖調整任務起訖日期。')
+      const actionText = edge === 'move' ? '平移' : '調整'
+      updateProject(safeProject.id, {}, scope === 'project' ? `使用甘特圖${actionText}專案期程。` : `使用甘特圖${actionText}任務期程。`)
     }
 
     window.addEventListener('pointermove', applyMove)
@@ -3105,8 +3179,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
   function renderGantt(project) {
     if (!project?.id) return <div className="flow-empty-card">請先從左側選取專案。</div>
-    const displayStart = addDaysToDateValue(project.startDate, -14)
-    const displayEnd = addDaysToDateValue(project.endDate, 14)
+    const frozenRange = ganttDragRange?.projectId === project.id ? ganttDragRange : null
+    const displayStart = frozenRange?.start || addDaysToDateValue(project.startDate, -14)
+    const displayEnd = frozenRange?.end || addDaysToDateValue(project.endDate, 14)
     const ticks = buildGanttTicks(displayStart, displayEnd)
     return (
       <div className="fd203-gantt-panel">
@@ -3114,7 +3189,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div>
             <p className="eyebrow">PROJECT GANTT</p>
             <h3>{project.name}</h3>
-            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 拖曳色條左右端可調整日期</small>
+            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 拖曳色條中間可整段平移，拖曳左右端可調整日期；刻度以每日顯示</small>
           </div>
           <label>
             <span>專案進度 {project.progress}%</span>
@@ -3123,18 +3198,18 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         </div>
 
         <div className="fd203-gantt-scroll">
-          <div className="fd203-gantt-grid fd203-gantt-head" style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(54px, 1fr))` }}>
+          <div className="fd203-gantt-grid fd203-gantt-head" style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(42px, 42px))` }}>
             <span>項目</span>
             {ticks.map((tick) => <span key={tick}>{formatMonthDayWeekday(tick)}</span>)}
           </div>
 
-          <div className="fd203-gantt-grid fd203-gantt-row" style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(54px, 1fr))` }}>
+          <div className="fd203-gantt-grid fd203-gantt-row" style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(42px, 42px))` }}>
             <div className="fd203-gantt-label">
               <strong>專案總期程</strong>
               <small>{project.phase} · {project.progress}%</small>
             </div>
             <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${ticks.length}` }}>
-              <span className={`fd203-gantt-bar project ${project.tone || 'blue'}`} style={ganttStyle(project.startDate, project.endDate, displayStart, displayEnd)}>
+              <span className={`fd203-gantt-bar project ${project.tone || 'blue'}`} style={ganttStyle(project.startDate, project.endDate, displayStart, displayEnd)} onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'move', event)} title="拖曳中間可整段平移；拖曳左右端可調整日期">
                 <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整專案開始日" onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'start', event)} />
                 <span>{project.progress}%</span>
                 <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label="調整專案結束日" onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'end', event)} />
@@ -3150,7 +3225,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const taskEnd = task.end || project.endDate
             const progress = clampPercent(task.progress)
             return (
-              <div className="fd203-gantt-grid fd203-gantt-row task" key={`${task.name}-${index}`} style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(54px, 1fr))` }}>
+              <div className="fd203-gantt-grid fd203-gantt-row task" key={`${task.name}-${index}`} style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(42px, 42px))` }}>
                 <div className="fd203-gantt-label">
                   <strong>{task.name || '未命名任務'}</strong>
                   <small>{task.owner || '未指定'} · {progress}%</small>
@@ -3164,7 +3239,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   />
                 </div>
                 <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${ticks.length}` }}>
-                  <span className="fd203-gantt-bar task" style={ganttStyle(taskStart, taskEnd, displayStart, displayEnd)}>
+                  <span className="fd203-gantt-bar task" style={ganttStyle(taskStart, taskEnd, displayStart, displayEnd)} onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'move', event)} title="拖曳中間可整段平移；拖曳左右端可調整日期">
                     <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整任務開始日" onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'start', event)} />
                     <span>{progress}%</span>
                     <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label="調整任務結束日" onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'end', event)} />
@@ -3203,7 +3278,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       </section>
 
       <section className="fd203-filter-bar">
-        <input value={projectKeyword} onChange={(event) => setProjectKeyword(event.target.value)} placeholder="搜尋專案、任務、里程碑..." />
+        <ChineseTextField value={projectKeyword} onCommit={setProjectKeyword} placeholder="搜尋專案、任務、里程碑..." />
         <select value={projectPhaseFilter} onChange={(event) => setProjectPhaseFilter(event.target.value)}>{projectPhaseOptions.map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select>
         <select value={projectHealthFilter} onChange={(event) => setProjectHealthFilter(event.target.value)}>{projectHealthOptions.map((health) => <option key={health} value={health}>{health}</option>)}</select>
         <select value={projectPageSize} onChange={(event) => setProjectPageSize(Number(event.target.value))} aria-label="每頁筆數">
@@ -3312,9 +3387,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       </div>
                     </div>
                     <div className="project-editor-grid fd203-editor-grid">
-                      <label>專案名稱<input value={selectedProject.name} onChange={(event) => updateProject(selectedProject.id, { name: event.target.value })} /></label>
-                      <label>階段<input value={selectedProject.phase} onChange={(event) => updateProject(selectedProject.id, { phase: event.target.value })} /></label>
-                      <label>負責人<input value={selectedProject.owner} onChange={(event) => updateProject(selectedProject.id, { owner: event.target.value })} /></label>
+                      <label>專案名稱<ChineseTextField value={selectedProject.name} onCommit={(value) => updateProject(selectedProject.id, { name: value })} /></label>
+                      <label>階段<ChineseTextField value={selectedProject.phase} onCommit={(value) => updateProject(selectedProject.id, { phase: value })} /></label>
+                      <label>負責人<ChineseTextField value={selectedProject.owner} onCommit={(value) => updateProject(selectedProject.id, { owner: value })} /></label>
                       <label>健康度<select value={selectedProject.health} onChange={(event) => updateProject(selectedProject.id, { health: event.target.value }, '更新健康度。')}><option>穩定推進</option><option>待確認</option><option>高風險</option><option>卡關</option></select></label>
                       <label>開始<input type="date" value={selectedProject.startDate} onChange={(event) => updateProject(selectedProject.id, { startDate: minIsoDate(event.target.value, selectedProject.endDate) }, '更新開始日期。')} /></label>
                       <label>結束<input type="date" value={selectedProject.endDate} onChange={(event) => updateProject(selectedProject.id, { endDate: maxIsoDate(event.target.value, selectedProject.startDate) }, '更新結束日期。')} /></label>
@@ -3322,7 +3397,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                         <input type="range" min="0" max="100" value={selectedProject.progress} onChange={(event) => updateProject(selectedProject.id, { progress: clampPercent(event.target.value) })} />
                         <small>{selectedProject.progress}%</small>
                       </label>
-                      <label className="wide-field">下一步<textarea value={selectedProject.next} onChange={(event) => updateProject(selectedProject.id, { next: event.target.value })} /></label>
+                      <label className="wide-field">下一步<ChineseTextField multiline value={selectedProject.next} onCommit={(value) => updateProject(selectedProject.id, { next: value })} /></label>
                     </div>
                   </section>
 
@@ -3345,8 +3420,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       <div key={`${task.name}-${index}`} className="project-detail-card fd203-detail-card">
                         <div className="project-detail-card-head"><strong>{task.name || '未命名任務'}</strong><span>{clampPercent(task.progress)}%</span></div>
                         <div className="project-detail-form-grid">
-                          <label>任務名稱<input value={task.name || ''} onChange={(event) => updateProjectTask(selectedProject.id, index, { name: event.target.value })} aria-label="任務名稱" /></label>
-                          <label>負責人<input value={task.owner || ''} onChange={(event) => updateProjectTask(selectedProject.id, index, { owner: event.target.value })} aria-label="負責人" /></label>
+                          <label>任務名稱<ChineseTextField value={task.name || ''} onCommit={(value) => updateProjectTask(selectedProject.id, index, { name: value })} aria-label="任務名稱" /></label>
+                          <label>負責人<ChineseTextField value={task.owner || ''} onCommit={(value) => updateProjectTask(selectedProject.id, index, { owner: value })} aria-label="負責人" /></label>
                           <label>開始日<input type="date" value={task.start || selectedProject.startDate} onChange={(event) => updateProjectTask(selectedProject.id, index, { start: event.target.value }, '更新任務開始日。')} aria-label="開始日" /></label>
                           <label>結束日<input type="date" value={task.end || selectedProject.endDate} onChange={(event) => updateProjectTask(selectedProject.id, index, { end: event.target.value }, '更新任務結束日。')} aria-label="結束日" /></label>
                           <label>進度<input type="range" min="0" max="100" value={clampPercent(task.progress)} onChange={(event) => updateProjectTask(selectedProject.id, index, { progress: clampPercent(event.target.value) })} aria-label="進度" /></label>
@@ -3371,7 +3446,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       <div key={`${milestone.name}-${index}`} className={milestone.done ? 'project-detail-card fd203-detail-card done' : 'project-detail-card fd203-detail-card'}>
                         <div className="project-detail-card-head"><strong>{milestone.name || '未命名里程碑'}</strong><span>{milestone.done ? '已完成' : '進行中'}</span></div>
                         <div className="project-detail-form-grid compact-3">
-                          <label>里程碑名稱<input value={milestone.name || ''} onChange={(event) => updateProjectMilestone(selectedProject.id, index, { name: event.target.value })} aria-label="里程碑名稱" /></label>
+                          <label>里程碑名稱<ChineseTextField value={milestone.name || ''} onCommit={(value) => updateProjectMilestone(selectedProject.id, index, { name: value })} aria-label="里程碑名稱" /></label>
                           <label>日期<input type="date" value={milestone.date || selectedProject.endDate} onChange={(event) => updateProjectMilestone(selectedProject.id, index, { date: event.target.value }, '更新里程碑日期。')} aria-label="里程碑日期" /></label>
                           <label className="milestone-check"><span>完成狀態</span><input type="checkbox" checked={Boolean(milestone.done)} onChange={(event) => updateProjectMilestone(selectedProject.id, index, { done: event.target.checked }, event.target.checked ? '里程碑標記完成。' : '里程碑改為進行中。')} /></label>
                         </div>
@@ -3387,7 +3462,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <section className="detail-block fd203-tab-panel">
                   <div className="detail-block-headline"><p className="eyebrow">處理紀錄</p></div>
                   <div className="fd203-record-input">
-                    <textarea value={manualRecordText} onChange={(event) => setManualRecordText(event.target.value)} placeholder="新增一筆專案紀錄..." />
+                    <ChineseTextField multiline value={manualRecordText} onCommit={setManualRecordText} placeholder="新增一筆專案紀錄..." />
                     <button type="button" onClick={addManualProjectRecord} disabled={!manualRecordText.trim()}>新增紀錄</button>
                   </div>
                   <div className="timeline-notes flow-timeline-notes">
@@ -3455,14 +3530,12 @@ function ganttStyle(start, end, rangeStart, rangeEnd) {
 }
 
 function buildGanttTicks(start, end) {
-  const total = daysBetween(start, end)
-  const step = total <= 21 ? 1 : total <= 60 ? 2 : total <= 120 ? 5 : 10
   const ticks = []
   let cursor = parseDate(start)
   const finalDate = parseDate(end)
   while (cursor <= finalDate) {
     ticks.push(cursor.toISOString().slice(0, 10))
-    cursor = new Date(cursor.getTime() + step * 86400000)
+    cursor = new Date(cursor.getTime() + 86400000)
   }
   if (!ticks.length || ticks[ticks.length - 1] !== end) ticks.push(end)
   return ticks

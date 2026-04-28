@@ -13591,3 +13591,34 @@ button {
   }
 }
 
+
+
+/* FlowDesk v20.3.1 project gantt daily move + Chinese IME input hotfix */
+.fd203-gantt-bar {
+  cursor: grab;
+  touch-action: none;
+}
+
+.fd203-gantt-bar:active {
+  cursor: grabbing;
+}
+
+.fd203-gantt-bar .gantt-resize-handle {
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.gantt-date-dragging,
+.gantt-date-dragging * {
+  user-select: none !important;
+}
+
+.fd203-filter-bar input,
+.fd203-editor-grid input,
+.fd203-editor-grid textarea,
+.fd203-record-input textarea,
+.fd203-detail-card input {
+  ime-mode: active;
+  -webkit-user-select: text;
+  user-select: text;
+}
