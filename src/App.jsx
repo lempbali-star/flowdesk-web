@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.0.1'
+const FLOWDESK_APP_VERSION = '20.0.2'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 const initialModules = [
@@ -1403,7 +1403,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     try {
       const saved = window.localStorage.getItem('flowdesk-purchases-v19')
       const parsed = saved ? JSON.parse(saved) : null
-      return Array.isArray(parsed) && parsed.length ? parsed : initialPurchases
+      return Array.isArray(parsed) && parsed.length ? normalizePurchaseList(parsed) : initialPurchases
     } catch {
       return initialPurchases
     }
@@ -1483,7 +1483,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
         flowdeskCloud.getWorkspaceData('purchase_stages'),
       ])
       if (cancelled) return
-      if (Array.isArray(purchaseResult.data)) setPurchases(purchaseResult.data)
+      if (Array.isArray(purchaseResult.data)) setPurchases(normalizePurchaseList(purchaseResult.data))
       if (Array.isArray(historyResult.data)) setPurchaseHistory(historyResult.data)
       if (Array.isArray(stageResult.data) && stageResult.data.length) setPurchaseStages(stageResult.data)
       setPurchaseCloudReady(true)
@@ -1618,7 +1618,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   useEffect(() => {
     if (!selectedPurchase) return
-    const refreshed = purchases.find((row) => row.id === selectedPurchase.id)
+    const refreshed = purchases.find((row) => isSamePurchase(row, selectedPurchase))
     if (refreshed && refreshed !== selectedPurchase) setSelectedPurchase(refreshed)
     if (!refreshed) setSelectedPurchase(null)
   }, [purchases, selectedPurchase])
@@ -1642,8 +1642,9 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   function addPurchase(form) {
     const next = normalizePurchase({
-      id: getNextPurchaseId(purchases),
       ...form,
+      id: form.id || getNextPurchaseId(purchases),
+      _purchaseKey: form._purchaseKey || createPurchaseKey(),
     })
     setPurchases((rows) => [next, ...rows])
     writeHistory(next.id, next.item, `新增採購，狀態為「${next.status}」。`)
@@ -1653,7 +1654,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   function savePurchase(form) {
     const next = normalizePurchase(form)
     const before = purchases.find((row) => row.id === next.id)
-    setPurchases((rows) => rows.map((row) => row.id === next.id ? next : row))
+    setPurchases((rows) => rows.map((row) => isSamePurchase(row, next) ? next : row))
     if (before?.status !== next.status) {
       writeHistory(next.id, next.item, `狀態由「${before?.status || '未設定'}」改為「${next.status}」。`)
     } else {
@@ -1672,7 +1673,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       if ((row.acceptanceStatus || '未驗收') !== '已驗收') patch.acceptanceStatus = '已驗收'
     }
     const next = normalizePurchase({ ...row, ...patch })
-    setPurchases((rows) => rows.map((item) => item.id === row.id ? next : item))
+    setPurchases((rows) => rows.map((item) => isSamePurchase(item, row) ? next : item))
     setSelectedPurchase(next)
     writeHistory(row.id, purchaseTitle(row), `狀態改為「${status}」。`)
   }
@@ -1680,7 +1681,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   function updatePurchaseMeta(row, patch, message) {
     if (!row) return
     const next = normalizePurchase({ ...row, ...patch })
-    setPurchases((rows) => rows.map((item) => item.id === row.id ? next : item))
+    setPurchases((rows) => rows.map((item) => isSamePurchase(item, row) ? next : item))
     setSelectedPurchase(next)
     writeHistory(row.id, purchaseTitle(row), message || '更新採購追蹤欄位。')
   }
@@ -1698,11 +1699,12 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     updatePurchaseStatus(row, doneStage)
   }
 
-  function deletePurchase(id) {
-    const target = purchases.find((row) => row.id === id)
-    setPurchases((rows) => rows.filter((row) => row.id !== id))
-    if (target) writeHistory(id, target.item, '刪除採購紀錄。')
-    if (selectedPurchase?.id === id) setSelectedPurchase(null)
+  function deletePurchase(targetRow) {
+    const target = typeof targetRow === 'object' ? targetRow : purchases.find((row) => row.id === targetRow)
+    if (!target) return
+    setPurchases((rows) => rows.filter((row) => !isSamePurchase(row, target)))
+    writeHistory(target.id, purchaseTitle(target), '刪除採購紀錄。')
+    if (selectedPurchase && isSamePurchase(selectedPurchase, target)) setSelectedPurchase(null)
   }
 
   function duplicatePurchase(row) {
@@ -1710,6 +1712,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     const next = normalizePurchase({
       ...row,
       id: getNextPurchaseId(purchases),
+      _purchaseKey: createPurchaseKey(),
       status: activeStages[0]?.name || row.status || '需求確認',
       requestDate: todayDate(),
       orderDate: '',
@@ -1784,7 +1787,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   function cancelPurchase(row) {
     const cancelStage = purchaseStages.find((stage) => stage.cancel || stage.name.includes('取消'))?.name || '已取消'
     const next = normalizePurchase({ ...row, status: cancelStage })
-    setPurchases((rows) => rows.map((item) => item.id === row.id ? next : item))
+    setPurchases((rows) => rows.map((item) => isSamePurchase(item, row) ? next : item))
     setSelectedPurchase(next)
     writeHistory(row.id, purchaseTitle(row), `狀態改為「${cancelStage}」。`)
   }
@@ -1957,7 +1960,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                     const quoteAmount = Number(row.quoteAmount || 0)
                     const diff = quoteAmount ? amount.taxedTotal - quoteAmount : 0
                     return (
-                      <article className={selectedPurchase?.id === row.id ? 'purchase-card-row purchase-card-compact active' : 'purchase-card-row purchase-card-compact'} key={row.id} onClick={() => setSelectedPurchase(row)}>
+                      <article className={isSamePurchase(selectedPurchase, row) ? 'purchase-card-row purchase-card-compact active' : 'purchase-card-row purchase-card-compact'} key={getPurchaseKey(row)} onClick={() => setSelectedPurchase(row)}>
                         <div className="purchase-card-main">
                           <div className="purchase-card-topline">
                             <span className="record-id">{row.id}</span>
@@ -1988,7 +1991,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                         <div className="purchase-actions compact-actions" onClick={(event) => event.stopPropagation()}>
                           <button type="button" onClick={() => setEditingPurchase(row)}>編輯</button>
                           <button type="button" onClick={() => cancelPurchase(row)}>取消</button>
-                          <button type="button" className="danger" onClick={() => deletePurchase(row.id)}>刪除</button>
+                          <button type="button" className="danger" onClick={() => deletePurchase(row)}>刪除</button>
                         </div>
                       </article>
                     )
@@ -4374,6 +4377,48 @@ function CreateLauncher({ onClose }) {
 }
 
 
+function createPurchaseKey() {
+  return `purchase-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function getPurchaseKey(row) {
+  if (!row) return ''
+  return row._purchaseKey || row.uid || row.key || row.id || ''
+}
+
+function isSamePurchase(a, b) {
+  if (!a || !b) return false
+  const aKey = getPurchaseKey(a)
+  const bKey = getPurchaseKey(b)
+  if (aKey && bKey) return aKey === bKey
+  return Boolean(a.id && b.id && a.id === b.id)
+}
+
+function normalizePurchaseList(rows = []) {
+  const used = new Set()
+  const maxInitial = rows.reduce((max, item) => {
+    const matched = String(item?.id || '').match(/PO-(\d+)/)
+    return matched ? Math.max(max, Number(matched[1])) : max
+  }, 0)
+  let maxNumber = maxInitial
+  return rows.map((row, index) => {
+    const next = normalizePurchase(row || {})
+    let nextId = String(next.id || '').trim()
+    if (!nextId || used.has(nextId)) {
+      do {
+        maxNumber += 1
+        nextId = `PO-${String(maxNumber).padStart(3, '0')}`
+      } while (used.has(nextId))
+    }
+    used.add(nextId)
+    return {
+      ...next,
+      id: nextId,
+      _purchaseKey: next._purchaseKey || next.uid || next.key || `purchase-${nextId}-${index}`,
+    }
+  })
+}
+
 function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) {
   const [form, setForm] = useState(() => ({
     id: initial?.id,
@@ -4550,6 +4595,8 @@ function normalizePurchase(row) {
   const title = purchaseTitle({ ...row, items })
   return {
     ...row,
+    id: String(row.id || '').trim(),
+    _purchaseKey: row._purchaseKey || row.uid || row.key || createPurchaseKey(),
     item: title,
     items,
     quantity: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
