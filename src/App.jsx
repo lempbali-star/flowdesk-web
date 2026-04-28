@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
 const initialModules = [
   { id: 'home', name: '總覽', icon: 'overview' },
@@ -65,98 +66,7 @@ const themeOptions = [
   { id: 'slate', name: '專業石墨', description: '偏沉穩專業，但仍維持乾淨明亮' },
 ]
 
-const workItems = [
-  {
-    id: 'FD-241',
-    title: 'Adobe 授權續約確認',
-    type: '授權',
-    channel: '郵件',
-    lane: '待分類',
-    owner: 'Kyle',
-    requester: '使用單位',
-    due: '4/29',
-    priority: '高',
-    health: 86,
-    relation: '採購 / 授權',
-    tags: ['續約', '使用者確認', '發票資料'],
-    note: '確認是否續約、離職人員是否轉移授權，後續提供報價單。',
-  },
-  {
-    id: 'FD-242',
-    title: '桃園廠警衛室交換器更換',
-    type: '網路',
-    channel: '現場處理',
-    lane: '處理中',
-    owner: 'Kyle',
-    requester: '桃園廠',
-    due: '今日',
-    priority: '緊急',
-    health: 94,
-    relation: '設備 / 保固',
-    tags: ['交換器', '備品', '保固'],
-    note: '原交換器異常，先以備品更換，送修回來後再評估是否換回。',
-  },
-  {
-    id: 'FD-243',
-    title: 'hiHosting 舊主機停用文件',
-    type: '主機服務',
-    channel: '廠商聯繫',
-    lane: '等待回覆',
-    owner: 'Kyle',
-    requester: '官網',
-    due: '今日',
-    priority: '高',
-    health: 71,
-    relation: '官網 / 中華電信',
-    tags: ['停用', '文件', '公司資料'],
-    note: '待最新版公司變更登記表與負責人身分證影本。',
-  },
-  {
-    id: 'FD-244',
-    title: 'Nutanix Demo 腳本與評估表',
-    type: '專案',
-    channel: '會議',
-    lane: '已排程',
-    owner: 'Kyle',
-    requester: '資訊處',
-    due: '5/02',
-    priority: '中',
-    health: 63,
-    relation: '專案 / 虛擬化',
-    tags: ['Nutanix', 'Demo', '報價'],
-    note: '整理展示重點、主機移轉情境、備援與報價假設。',
-  },
-  {
-    id: 'FD-245',
-    title: '高雄營業所 Wi‑Fi AP 報價',
-    type: '採購',
-    channel: '使用者需求',
-    lane: '處理中',
-    owner: 'Kyle',
-    requester: '陳政暉',
-    due: '4/30',
-    priority: '中',
-    health: 66,
-    relation: '採購 / 網路',
-    tags: ['AP', '報價', '安裝'],
-    note: '確認型號、現場網路、安裝方式與後續設定。',
-  },
-  {
-    id: 'FD-246',
-    title: 'NCG-Mobile 連線 BPM 規則驗證',
-    type: '資安',
-    channel: '防火牆',
-    lane: '已完成',
-    owner: 'Kyle',
-    requester: '行動使用者',
-    due: '4/24',
-    priority: '高',
-    health: 100,
-    relation: '防火牆 / BPM',
-    tags: ['BPM', '防火牆', '行動網路'],
-    note: '已新增 NCG-Mobile 防火牆規則，測試可以連線。',
-  },
-]
+const initialWorkItems = []
 
 const collectionColorOptions = [
   { id: 'violet', name: '紫色' },
@@ -176,27 +86,15 @@ const collectionViewOptions = [
 const collectionPageSizeOptions = [6, 12, 24]
 
 const baseTables = [
-  { id: 'purchase-records', name: '採購紀錄', rows: 40, fields: ['廠商', '金額', '階段', '到貨狀態'], color: 'violet', icon: 'purchase-record', visible: true, locked: true, order: 1, defaultView: 'list' },
-  { id: 'vendors', name: '廠商資料', rows: 31, fields: ['類型', '聯絡人', '合約', '最近聯繫'], color: 'green', icon: 'vendor-record', visible: true, locked: true, order: 2, defaultView: 'card' },
+  { id: 'purchase-records', name: '採購紀錄', rows: 0, fields: ['廠商', '金額', '階段', '到貨狀態'], color: 'violet', icon: 'purchase-record', visible: true, locked: true, order: 1, defaultView: 'list' },
+  { id: 'vendors', name: '廠商資料', rows: 0, fields: ['類型', '聯絡人', '合約', '最近聯繫'], color: 'green', icon: 'vendor-record', visible: true, locked: true, order: 2, defaultView: 'card' },
 ]
 
 const activeCollectionIds = ['purchase-records', 'vendors']
 
-const records = [
-  { id: 'REC-018', title: '24 吋螢幕 x 2', table: '採購紀錄', status: '已下單', vendor: '待確認', amount: 7800, group: '硬體設備', owner: 'Kyle', date: '2026-04-21' },
-  { id: 'REC-019', title: 'PHILIPS TAB5109 聲霸', table: '採購紀錄', status: '待簽核', vendor: '昌達', amount: 4200, group: '會議設備', owner: 'Kyle', date: '2026-04-22' },
-  { id: 'REC-021', title: 'ERP 報表主機效能確認', table: '任務紀錄', status: '調查中', vendor: '內部', amount: 0, group: '系統服務', owner: 'Kyle', date: '2026-04-25' },
-  { id: 'REC-022', title: '官網舊主機停用', table: '任務紀錄', status: '等待文件', vendor: '中華電信', amount: 0, group: '網站服務', owner: 'Kyle', date: '2026-04-25' },
-]
+const records = []
 
-const initialReminders = [
-  { id: 'REM-001', title: 'Adobe 授權續約確認回覆', type: '續約提醒', priority: '高', status: '待處理', dueDate: '2026-04-29', sourceType: '授權', sourceTitle: 'Adobe 授權續約', note: '確認是否續約、離職人員授權是否轉移，並回收發票抬頭與統編。' },
-  { id: 'REM-002', title: '高雄營業所 AP 報價追蹤', type: '廠商回覆提醒', priority: '中', status: '處理中', dueDate: '2026-04-30', sourceType: '採購', sourceTitle: 'Wi‑Fi AP 報價', note: '追蹤型號、金額、安裝設定與後續時程。' },
-  { id: 'REM-003', title: 'Nutanix Demo 前置確認', type: '會議提醒', priority: '高', status: '待處理', dueDate: '2026-05-02', sourceType: '專案', sourceTitle: 'Nutanix 平台導入評估', note: '確認 demo 腳本、廠商展示重點、既有主機清單與報價假設。' },
-  { id: 'REM-004', title: '官網舊主機停用文件追蹤', type: '追蹤提醒', priority: '高', status: '待處理', dueDate: '2026-04-26', sourceType: '任務', sourceTitle: 'hiHosting 舊主機停用', note: '確認公司變更登記表與負責人身分證影本是否已提供。' },
-  { id: 'REM-005', title: '採購到貨驗收確認', type: '到貨提醒', priority: '中', status: '待處理', dueDate: '2026-05-03', sourceType: '採購', sourceTitle: '24 吋螢幕採購', note: '到貨後確認數量、外觀、發票與使用單位簽收。' },
-  { id: 'REM-006', title: '交換器送修進度追蹤', type: '追蹤提醒', priority: '中', status: '延後', dueDate: '2026-05-06', sourceType: '任務', sourceTitle: '桃園廠警衛室交換器', note: '備品先行更換，後續追蹤保固送修與是否換回。' },
-]
+const initialReminders = []
 
 const reminderTypeOptions = ['到期提醒', '追蹤提醒', '廠商回覆提醒', '簽核提醒', '到貨提醒', '續約提醒', '會議提醒']
 const reminderStatusOptions = ['待處理', '處理中', '已完成', '延後']
@@ -204,70 +102,12 @@ const reminderPriorityOptions = ['高', '中', '低']
 const reminderSourceOptions = ['一般', '採購', '專案', '任務', '資料清單']
 
 
-const purchaseBaseRows = [
-  { id: 'PO-001', item: '24 吋螢幕', department: '皇家可口桃園二廠', requester: '黃瑋婷', vendor: '待確認', taxMode: '含稅', taxRate: 5, quoteAmount: 7800, status: '已下單', requestDate: '2026-04-21', orderDate: '2026-04-21', arrivalDate: '', note: '倉管課使用', items: [{ id: 'PO-001-1', name: '24 吋螢幕', quantity: 2, unitPrice: 3900, note: '倉管課使用' }] },
-  { id: 'PO-002', item: 'PHILIPS TAB5109 聲霸', department: '其志樓一樓會議室', requester: '資訊處', vendor: '昌達', taxMode: '未稅', taxRate: 5, quoteAmount: 4410, status: '待簽核', requestDate: '2026-04-22', orderDate: '', arrivalDate: '', note: '會議室音訊改善', items: [{ id: 'PO-002-1', name: 'PHILIPS TAB5109 聲霸', quantity: 1, unitPrice: 4200, note: '2.0 聲道環繞音響聲霸' }] },
-  { id: 'PO-003', item: 'Wi‑Fi AP 等 2 項', department: '高雄營業所', requester: '陳政暉', vendor: '待報價', taxMode: '未稅', taxRate: 5, quoteAmount: 0, status: '詢價中', requestDate: '2026-04-23', orderDate: '', arrivalDate: '', note: '需報價與後續安裝設定', items: [{ id: 'PO-003-1', name: 'Wi‑Fi AP', quantity: 1, unitPrice: 0, note: '主要設備' }, { id: 'PO-003-2', name: '安裝設定服務', quantity: 1, unitPrice: 0, note: '現場安裝與設定' }] },
-]
+const purchaseBaseRows = []
 
-const purchaseDemoCatalog = [
-  { name: 'Lenovo ThinkPad E14 筆電', price: 31500, note: '一般文書與外勤使用' },
-  { name: 'Dell OptiPlex 桌上型電腦', price: 26800, note: '辦公室汰換' },
-  { name: '24 吋 IPS 螢幕', price: 3900, note: '雙螢幕配置' },
-  { name: '27 吋 QHD 螢幕', price: 7900, note: '主管與報表用途' },
-  { name: 'Logitech 無線鍵鼠組', price: 1250, note: '周邊備品' },
-  { name: 'USB-C 擴充座', price: 2600, note: '筆電外接螢幕' },
-  { name: 'FortiGate 維護續約', price: 42800, note: '資安設備維護' },
-  { name: 'Microsoft 365 授權', price: 3980, note: '年度授權' },
-  { name: 'Adobe 授權續約', price: 21600, note: '設計部門使用' },
-  { name: 'Synology NAS 硬碟 8TB', price: 7600, note: '備份容量擴充' },
-  { name: 'AP 無線基地台', price: 5200, note: '營業所 Wi-Fi 補強' },
-  { name: '交換器 24 Port', price: 13800, note: '樓層網路汰換' },
-]
+const purchaseDemoCatalog = []
 
 function buildInitialPurchases() {
-  const departments = ['資訊處', '桃園廠', '中壢廠', '台南廠', '高雄營業所', '會計處', '人資處', '觀光工廠']
-  const requesters = ['Kyle', '陳政暉', '黃瑋婷', 'Sami', '郭淑鐘', '莊幃竣', '蕭勝展', '張雅雯']
-  const vendors = ['昌達', '凌群電腦', '聯強', '神通資訊', '待報價', '中華電信', '原廠授權中心', '欣南科技']
-  const statuses = ['需求確認', '詢價中', '待簽核', '已下單', '已到貨', '已完成']
-  const generatedRows = Array.from({ length: 37 }, (_, index) => {
-    const number = index + 4
-    const itemCount = (index % 3) + 1
-    const items = Array.from({ length: itemCount }, (_, itemIndex) => {
-      const source = purchaseDemoCatalog[(index + itemIndex * 3) % purchaseDemoCatalog.length]
-      const quantity = ((index + itemIndex) % 4) + 1
-      return {
-        id: `PO-${String(number).padStart(3, '0')}-${itemIndex + 1}`,
-        name: source.name,
-        quantity,
-        unitPrice: source.price,
-        note: source.note,
-      }
-    })
-    const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-    const taxMode = index % 4 === 0 ? '含稅' : '未稅'
-    const status = statuses[index % statuses.length]
-    const month = String(1 + (index % 4)).padStart(2, '0')
-    const day = String(1 + (index * 2) % 27).padStart(2, '0')
-    const id = `PO-${String(number).padStart(3, '0')}`
-    return {
-      id,
-      item: itemCount > 1 ? `${items[0].name} 等 ${itemCount} 項` : items[0].name,
-      department: departments[index % departments.length],
-      requester: requesters[index % requesters.length],
-      vendor: vendors[index % vendors.length],
-      taxMode,
-      taxRate: 5,
-      quoteAmount: taxMode === '含稅' ? subtotal : Math.round(subtotal * 1.05),
-      status,
-      requestDate: `2026-${month}-${day}`,
-      orderDate: ['已下單', '已到貨', '已完成'].includes(status) ? `2026-${month}-${String(Math.min(Number(day) + 2, 28)).padStart(2, '0')}` : '',
-      arrivalDate: ['已到貨', '已完成'].includes(status) ? `2026-${month}-${String(Math.min(Number(day) + 6, 28)).padStart(2, '0')}` : '',
-      note: index % 2 === 0 ? '測試資料，可用於搜尋、篩選、分頁與多品項測試。' : '依部門需求建立採購追蹤。',
-      items,
-    }
-  })
-  return [...purchaseBaseRows, ...generatedRows]
+  return []
 }
 
 const initialPurchases = buildInitialPurchases()
@@ -298,367 +138,13 @@ const stageColorOptions = [
 
 const purchasePageSizeOptions = [5, 10, 20, 40]
 
-const tickets = [
-  {
-    id: 'TASK-101',
-    title: 'Adobe 授權續約確認',
-    category: '授權續約',
-    status: '待跟進',
-    owner: 'Kyle',
-    source: '採購 / 廠商',
-    relatedPurchase: 'Adobe 授權續約',
-    relatedVendor: '原廠授權中心',
-    relatedProject: '—',
-    due: '今日',
-    priority: '高',
-    progress: 45,
-    next: '確認離職人員授權是否轉移，並回收發票抬頭與統編。',
-    tags: ['續約', '待回覆', '報價前置'],
-    records: ['已整理合約到期日 2026/06/05', '已準備詢問續約與授權轉移的信件內容'],
-  },
-  {
-    id: 'TASK-102',
-    title: '高雄營業所 Wi‑Fi AP 報價追蹤',
-    category: '採購跟進',
-    status: '等回覆',
-    owner: 'Kyle',
-    source: '採購紀錄',
-    relatedPurchase: 'PO-003',
-    relatedVendor: '待報價',
-    relatedProject: '—',
-    due: '4/30',
-    priority: '中',
-    progress: 60,
-    next: '請廠商確認型號、金額、安裝設定與交期。',
-    tags: ['AP', '報價', '安裝'],
-    records: ['已確認現場需求', '待廠商提供正式報價單'],
-  },
-  {
-    id: 'TASK-103',
-    title: 'hiHosting 舊主機停用文件確認',
-    category: '文件追蹤',
-    status: '卡關',
-    owner: 'Kyle',
-    source: '官網主機',
-    relatedPurchase: '—',
-    relatedVendor: '中華電信',
-    relatedProject: 'PJ-02',
-    due: '今日',
-    priority: '高',
-    progress: 35,
-    next: '追最新版公司變更登記表與負責人身分證影本。',
-    tags: ['停用', '文件', '中華電信'],
-    records: ['已確認中華電信停用條件', '待內部提供申請文件'],
-  },
-  {
-    id: 'TASK-104',
-    title: '桃園廠警衛室交換器送修追蹤',
-    category: '設備處理',
-    status: '跟進中',
-    owner: 'Kyle',
-    source: '現場處理',
-    relatedPurchase: '—',
-    relatedVendor: '保固廠商',
-    relatedProject: '—',
-    due: '5/06',
-    priority: '中',
-    progress: 72,
-    next: '追蹤保固送修進度，確認新主機回來後是否換回。',
-    tags: ['交換器', '備品', '保固'],
-    records: ['已以備品更換恢復現場使用', '原設備待送修或追蹤保固流程'],
-  },
-  {
-    id: 'TASK-105',
-    title: 'Nutanix Demo 前置資料整理',
-    category: '專案支援',
-    status: '待跟進',
-    owner: 'Kyle',
-    source: '專案管理',
-    relatedPurchase: '—',
-    relatedVendor: '凌群電腦',
-    relatedProject: 'PJ-01',
-    due: '5/02',
-    priority: '高',
-    progress: 50,
-    next: '整理廠商 Demo 要看的介面、操作與報價假設。',
-    tags: ['Nutanix', 'Demo', '清單'],
-    records: ['已提供實體主機與 VM 清單給廠商評估', '待確認下次展示腳本'],
-  },
-]
+const tickets = []
 
-const projects = [
-  {
-    id: 'PJ-01',
-    name: 'Nutanix 平台導入評估',
-    phase: '評估中',
-    owner: 'Kyle',
-    health: '穩定推進',
-    tone: 'orange',
-    progress: 38,
-    startDate: '2026-04-22',
-    endDate: '2026-06-20',
-    next: '確認 Demo 腳本、報價假設與 POC 評估範圍。',
-    related: ['Nutanix', 'Demo', '報價'],
-    tasks: [
-      { name: '現況資源清單整理', owner: 'Kyle', start: '2026-04-22', end: '2026-04-30', progress: 80 },
-      { name: '廠商 Demo 與介面確認', owner: '廠商', start: '2026-05-01', end: '2026-05-10', progress: 30 },
-      { name: '報價與 POC 範圍確認', owner: 'Kyle', start: '2026-05-13', end: '2026-05-31', progress: 10 },
-      { name: '內部評估與建議彙整', owner: '資訊處', start: '2026-06-01', end: '2026-06-20', progress: 0 }
-    ],
-    milestones: [
-      { name: '資源清單完成', date: '2026-04-25', done: true },
-      { name: 'Demo 完成', date: '2026-05-08', done: true },
-      { name: 'POC 範圍確認', date: '2026-05-24', done: false },
-      { name: '評估建議', date: '2026-06-15', done: false }
-    ],
-    records: ['已提供主機與 VM 清單給廠商評估', '待廠商補充 Demo 內容與報價假設']
-  },
-  {
-    id: 'PJ-02',
-    name: '官網平台遷移與舊主機停用',
-    phase: '收斂中',
-    owner: 'Kyle',
-    health: '待文件補齊',
-    tone: 'red',
-    progress: 68,
-    startDate: '2026-04-10',
-    endDate: '2026-05-24',
-    next: '完成停用文件收件後，與中華電信確認申請流程。',
-    related: ['官網', '中華電信', '文件'],
-    tasks: [
-      { name: '新平台連線與 SSL 檢查', owner: 'Kyle', start: '2026-04-10', end: '2026-04-18', progress: 100 },
-      { name: 'DNS / 憑證驗證', owner: 'Kyle', start: '2026-04-19', end: '2026-04-30', progress: 85 },
-      { name: '停用申請文件回收', owner: '行政窗口', start: '2026-05-01', end: '2026-05-12', progress: 35 },
-      { name: '舊主機停用與收尾確認', owner: '中華電信', start: '2026-05-13', end: '2026-05-24', progress: 0 }
-    ],
-    milestones: [
-      { name: 'DNS 切換', date: '2026-04-20', done: true },
-      { name: '憑證確認', date: '2026-04-24', done: true },
-      { name: '文件送出', date: '2026-05-10', done: false },
-      { name: '舊主機停用', date: '2026-05-22', done: false }
-    ],
-    records: ['已確認新平台網站可正常開啟', '待最新版公司變更登記表與負責人身分證影本']
-  },
-  {
-    id: 'PJ-03',
-    name: '中壢廠 NAS 備份規劃',
-    phase: '規劃中',
-    owner: 'Kyle',
-    health: '待盤點',
-    tone: 'orange',
-    progress: 26,
-    startDate: '2026-05-01',
-    endDate: '2026-07-12',
-    next: '盤點容量、權限、備份週期與還原測試方式。',
-    related: ['NAS', '備份', '權限'],
-    tasks: [
-      { name: '現有 NAS 容量與權限盤點', owner: 'Kyle', start: '2026-05-01', end: '2026-05-12', progress: 20 },
-      { name: '備份策略與設備評估', owner: '資訊處', start: '2026-05-13', end: '2026-05-31', progress: 10 },
-      { name: '資料轉移與權限對應', owner: '資訊處', start: '2026-06-03', end: '2026-06-24', progress: 0 },
-      { name: '備份排程與還原測試', owner: 'Kyle', start: '2026-06-25', end: '2026-07-12', progress: 0 }
-    ],
-    milestones: [
-      { name: '容量盤點', date: '2026-05-10', done: false },
-      { name: '設備評估', date: '2026-05-24', done: false },
-      { name: '權限對應', date: '2026-06-17', done: false },
-      { name: '還原測試', date: '2026-07-08', done: false }
-    ],
-    records: ['需求包含原 NAS 資料保護與新增 NAS 擴充評估']
-  },
-  {
-    id: 'PJ-04',
-    name: 'Adobe 授權續約盤點',
-    phase: '確認中',
-    owner: 'Kyle',
-    health: '待使用者回覆',
-    tone: 'orange',
-    progress: 42,
-    startDate: '2026-04-24',
-    endDate: '2026-06-05',
-    next: '確認續約名單、離職人員授權是否轉移與發票資訊。',
-    related: ['Adobe', '續約', '授權'],
-    tasks: [
-      { name: '現有授權名單盤點', owner: 'Kyle', start: '2026-04-24', end: '2026-04-30', progress: 90 },
-      { name: '部門續約意願確認', owner: '各部門', start: '2026-05-01', end: '2026-05-15', progress: 35 },
-      { name: '轉移與停用名單確認', owner: 'Kyle', start: '2026-05-16', end: '2026-05-25', progress: 10 },
-      { name: '報價與續約作業', owner: '廠商', start: '2026-05-26', end: '2026-06-05', progress: 0 }
-    ],
-    milestones: [
-      { name: '名單完成', date: '2026-04-30', done: true },
-      { name: '部門回覆', date: '2026-05-15', done: false },
-      { name: '報價確認', date: '2026-05-28', done: false },
-      { name: '續約截止', date: '2026-06-05', done: false }
-    ],
-    records: ['已整理到期日為 2026-06-05', '需確認離職人員授權是否轉移']
-  },
-  {
-    id: 'PJ-05',
-    name: '桃園廠警衛室交換器更換',
-    phase: '處理中',
-    owner: 'Kyle',
-    health: '待送修追蹤',
-    tone: 'orange',
-    progress: 55,
-    startDate: '2026-04-15',
-    endDate: '2026-05-20',
-    next: '追蹤原交換器送修進度，待新主機回來後再換回。',
-    related: ['交換器', '桃園廠', '保固'],
-    tasks: [
-      { name: '異常確認與備品更換', owner: 'Kyle', start: '2026-04-15', end: '2026-04-18', progress: 100 },
-      { name: '保固送修申請', owner: '廠商', start: '2026-04-19', end: '2026-04-28', progress: 60 },
-      { name: '送修進度追蹤', owner: 'Kyle', start: '2026-04-29', end: '2026-05-12', progress: 30 },
-      { name: '正式設備換回', owner: 'Kyle', start: '2026-05-13', end: '2026-05-20', progress: 0 }
-    ],
-    milestones: [
-      { name: '備品上線', date: '2026-04-16', done: true },
-      { name: '送修申請', date: '2026-04-24', done: true },
-      { name: '設備回廠', date: '2026-05-10', done: false },
-      { name: '換回確認', date: '2026-05-18', done: false }
-    ],
-    records: ['CPU 使用率過高造成 PING 異常', '已先以備品維持現場服務']
-  },
-  {
-    id: 'PJ-06',
-    name: '其志樓會議室 Webex 設備確認',
-    phase: '待確認',
-    owner: 'Kyle',
-    health: '需注意',
-    tone: 'red',
-    progress: 18,
-    startDate: '2026-04-30',
-    endDate: '2026-05-30',
-    next: '確認設備註冊狀態、網路連線與後續處理方式。',
-    related: ['Webex', '會議室', '網路'],
-    tasks: [
-      { name: '設備 IP 與連線確認', owner: 'Kyle', start: '2026-04-30', end: '2026-05-06', progress: 70 },
-      { name: '註冊狀態排查', owner: 'Kyle', start: '2026-05-07', end: '2026-05-15', progress: 10 },
-      { name: '廠商協助確認', owner: '廠商', start: '2026-05-16', end: '2026-05-24', progress: 0 },
-      { name: '會議室測試收尾', owner: 'Kyle', start: '2026-05-25', end: '2026-05-30', progress: 0 }
-    ],
-    milestones: [
-      { name: 'IP 確認', date: '2026-05-03', done: true },
-      { name: '註冊排查', date: '2026-05-14', done: false },
-      { name: '測試完成', date: '2026-05-28', done: false }
-    ],
-    records: ['設備 IP 為 192.168.76.27', '目前顯示無註冊狀態']
-  },
-  {
-    id: 'PJ-07',
-    name: 'ERP 硬體維護與 Veeam 續約',
-    phase: '簽呈中',
-    owner: 'Kyle',
-    health: '待主管核示',
-    tone: 'orange',
-    progress: 47,
-    startDate: '2026-04-28',
-    endDate: '2026-06-10',
-    next: '彙整硬體維護與 Veeam 續約報價，簽呈主管。',
-    related: ['ERP', 'Veeam', '續約'],
-    tasks: [
-      { name: '硬體維護報價確認', owner: '廠商', start: '2026-04-28', end: '2026-05-08', progress: 80 },
-      { name: 'Veeam 續約報價確認', owner: '廠商', start: '2026-05-01', end: '2026-05-12', progress: 60 },
-      { name: '簽呈資料彙整', owner: 'Kyle', start: '2026-05-13', end: '2026-05-24', progress: 20 },
-      { name: '主管核示與採購作業', owner: '主管', start: '2026-05-25', end: '2026-06-10', progress: 0 }
-    ],
-    milestones: [
-      { name: '硬體報價', date: '2026-05-08', done: true },
-      { name: 'Veeam 報價', date: '2026-05-12', done: false },
-      { name: '簽呈送出', date: '2026-05-22', done: false },
-      { name: '核示完成', date: '2026-06-05', done: false }
-    ],
-    records: ['需將 ERP 硬體維護與 Veeam 續約一併簽呈']
-  },
-  {
-    id: 'PJ-08',
-    name: '高雄營業所 Wi-Fi AP 建置',
-    phase: '待報價',
-    owner: 'Kyle',
-    health: '待廠商報價',
-    tone: 'orange',
-    progress: 22,
-    startDate: '2026-05-03',
-    endDate: '2026-06-18',
-    next: '確認需求範圍、AP 型號、報價與安裝排程。',
-    related: ['Wi-Fi', 'AP', '高雄營業所'],
-    tasks: [
-      { name: '需求與現場環境確認', owner: '陳政暉', start: '2026-05-03', end: '2026-05-10', progress: 40 },
-      { name: 'AP 型號與報價', owner: '廠商', start: '2026-05-11', end: '2026-05-22', progress: 10 },
-      { name: '採購與到貨', owner: 'Kyle', start: '2026-05-23', end: '2026-06-05', progress: 0 },
-      { name: '安裝設定與測試', owner: 'Kyle', start: '2026-06-06', end: '2026-06-18', progress: 0 }
-    ],
-    milestones: [
-      { name: '需求確認', date: '2026-05-10', done: false },
-      { name: '報價完成', date: '2026-05-22', done: false },
-      { name: '設備到貨', date: '2026-06-05', done: false },
-      { name: '安裝完成', date: '2026-06-18', done: false }
-    ],
-    records: ['需協助報價與後續安裝設定']
-  },
-  {
-    id: 'PJ-09',
-    name: '電話國際線路架構確認',
-    phase: '追蹤中',
-    owner: 'Kyle',
-    health: '待欣南回覆',
-    tone: 'orange',
-    progress: 33,
-    startDate: '2026-04-26',
-    endDate: '2026-05-31',
-    next: '請欣南確認延北與建北撥打上海、泰國國際電話線路架構。',
-    related: ['電話', '國際線路', '欣南'],
-    tasks: [
-      { name: '現有線路資料整理', owner: 'Kyle', start: '2026-04-26', end: '2026-05-02', progress: 70 },
-      { name: '欣南架構確認', owner: '欣南', start: '2026-05-03', end: '2026-05-15', progress: 20 },
-      { name: '測試撥打驗證', owner: 'Kyle', start: '2026-05-16', end: '2026-05-24', progress: 0 },
-      { name: '文件紀錄更新', owner: 'Kyle', start: '2026-05-25', end: '2026-05-31', progress: 0 }
-    ],
-    milestones: [
-      { name: '資料整理', date: '2026-05-02', done: true },
-      { name: '架構回覆', date: '2026-05-15', done: false },
-      { name: '撥打測試', date: '2026-05-24', done: false }
-    ],
-    records: ['需確認延北與建北撥打上海、泰國的線路架構']
-  },
-  {
-    id: 'PJ-10',
-    name: '備份還原測試與紀錄表整合',
-    phase: '規劃中',
-    owner: 'Kyle',
-    health: '穩定推進',
-    tone: 'green',
-    progress: 30,
-    startDate: '2026-05-06',
-    endDate: '2026-07-05',
-    next: '整理 BESR 本機備份與 ABB 異地備份到 NAS 的測試紀錄格式。',
-    related: ['BESR', 'ABB', '還原測試'],
-    tasks: [
-      { name: '主機基本資料欄位整理', owner: 'Kyle', start: '2026-05-06', end: '2026-05-15', progress: 55 },
-      { name: '備份週期與耗時欄位設計', owner: 'Kyle', start: '2026-05-16', end: '2026-05-28', progress: 35 },
-      { name: '還原測試紀錄表整合', owner: 'Kyle', start: '2026-05-29', end: '2026-06-18', progress: 10 },
-      { name: '實際測試與調整', owner: '資訊處', start: '2026-06-19', end: '2026-07-05', progress: 0 }
-    ],
-    milestones: [
-      { name: '欄位定版', date: '2026-05-20', done: false },
-      { name: '紀錄表完成', date: '2026-06-12', done: false },
-      { name: '還原測試', date: '2026-06-28', done: false },
-      { name: '正式使用', date: '2026-07-05', done: false }
-    ],
-    records: ['本機端備份以 BESR 為主', '異地備份以 ABB 備份到 NAS 為主']
-  }
-]
+const projects = []
 
-const docs = [
-  { id: 'DOC-01', icon: '🛡️', title: 'FortiGate VIP / IP Pool 操作筆記', folder: '網路', type: '操作手冊', updated: '今日', links: ['防火牆', 'NAT', 'VIP'] },
-  { id: 'DOC-02', icon: '🔌', title: 'Cisco / Juniper 交換器指令速查', folder: '網路', type: '指令速查', updated: '昨日', links: ['Switch', 'CLI'] },
-  { id: 'DOC-03', icon: '🌐', title: '網站移轉驗證清單', folder: '網站', type: '檢查清單', updated: '4/24', links: ['SSL', 'DNS', '主機'] },
-  { id: 'DOC-04', icon: '💾', title: 'BESR + ABB 備份策略', folder: '備份', type: '標準作業流程', updated: '4/20', links: ['NAS', '備份', '還原測試'] },
-]
+const docs = []
 
-const rules = [
-  { id: 'AUTO-01', title: '等待回覆超過 3 天', when: '狀態為等待回覆且超過 3 天', then: '建立追蹤任務並提高風險分數', status: '啟用' },
-  { id: 'AUTO-02', title: '待回覆超過 1 天', when: '任務狀態為等回覆且超過 1 天', then: '標記為需要追蹤並釘選到總覽', status: '啟用' },
-  { id: 'AUTO-03', title: '採購到貨後', when: '採購階段變更為已到貨', then: '建立驗收檢查清單', status: '草稿' },
-]
+const rules = []
 
 const lanes = [
   { id: '待分類', title: '待分類' },
@@ -688,7 +174,7 @@ function normalizeModuleOrder(list) {
   return next
 }
 
-function App() {
+function FlowDeskShell({ authSession, onLogout }) {
   const [modules, setModules] = useState(() => {
     if (typeof window === 'undefined') return initialModules
     try {
@@ -706,7 +192,7 @@ function App() {
   const [active, setActive] = useState('home')
   const [query, setQuery] = useState('')
   const [view, setView] = useState('看板')
-  const [selected, setSelected] = useState(workItems[1])
+  const [selected, setSelected] = useState(null)
   const [showLauncher, setShowLauncher] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [uiTheme, setUiTheme] = useState(() => {
@@ -718,6 +204,16 @@ function App() {
     return window.localStorage.getItem('flowdesk-icon-style-mode') || 'auto'
   })
   const [activeBaseTable, setActiveBaseTable] = useState('採購紀錄')
+  const [workItems, setWorkItems] = useState(() => {
+    if (typeof window === 'undefined') return initialWorkItems
+    try {
+      const saved = window.localStorage.getItem('flowdesk-work-items-v196')
+      const parsed = saved ? JSON.parse(saved) : null
+      return Array.isArray(parsed) ? parsed : initialWorkItems
+    } catch {
+      return initialWorkItems
+    }
+  })
 
   const resolvedIconStyle = iconStyleMode === 'auto' ? (iconAutoStyleByTheme[uiTheme] || 'soft') : iconStyleMode
 
@@ -785,21 +281,59 @@ function App() {
     if (!visibleCollections.some((item) => item.name === activeBaseTable)) setActiveBaseTable(firstTable)
   }, [activeBaseTable, visibleCollections])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('flowdesk-work-items-v196', JSON.stringify(workItems))
+  }, [workItems])
+
+  useEffect(() => {
+    if (!workItems.length) {
+      if (selected) setSelected(null)
+      return
+    }
+    if (!selected || !workItems.some((item) => item.id === selected.id)) {
+      setSelected(workItems[0])
+    }
+  }, [selected, workItems])
+
+  function addWorkItem() {
+    const now = new Date()
+    const nextId = `TASK-${String(workItems.length + 1).padStart(3, '0')}`
+    const nextItem = {
+      id: nextId,
+      title: '未命名工作',
+      type: '一般工作',
+      lane: '待分類',
+      priority: '中',
+      channel: '手動新增',
+      relation: '未設定',
+      requester: 'Kyle',
+      owner: 'Kyle',
+      due: now.toISOString().slice(0, 10),
+      health: 100,
+      note: '',
+      tags: [],
+    }
+    setWorkItems((current) => [nextItem, ...current])
+    setSelected(nextItem)
+    setView('看板')
+  }
+
   const filteredItems = useMemo(() => {
     const keyword = query.trim().toLowerCase()
     if (!keyword) return workItems
-    return workItems.filter((item) => [item.id, item.title, item.type, item.channel, item.relation, item.owner, item.note, ...item.tags].join(' ').toLowerCase().includes(keyword))
-  }, [query])
+    return workItems.filter((item) => [item.id, item.title, item.type, item.channel, item.relation, item.owner, item.note, ...(Array.isArray(item.tags) ? item.tags : [])].join(' ').toLowerCase().includes(keyword))
+  }, [query, workItems])
 
   const metrics = useMemo(() => {
     const open = workItems.filter((item) => item.lane !== '已完成').length
     const waiting = workItems.filter((item) => item.lane === '等待回覆').length
     const urgent = workItems.filter((item) => item.priority === '緊急' || item.priority === '高').length
-    const pulse = Math.round(workItems.reduce((sum, item) => sum + item.health, 0) / workItems.length)
+    const pulse = workItems.length ? Math.round(workItems.reduce((sum, item) => sum + item.health, 0) / workItems.length) : 100
     const spend = initialPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
     const reminderOpen = reminders.filter((item) => item.status !== '已完成').length
     return { open, waiting, urgent, pulse, spend, reminderOpen }
-  }, [reminders])
+  }, [reminders, workItems])
 
   useEffect(() => {
     window.localStorage.setItem('flowdesk-module-order', JSON.stringify(modules.map((item) => item.id)))
@@ -918,13 +452,14 @@ function App() {
               <span>⌕</span>
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋任務、採購、專案、文件..." />
             </label>
+            <button className="ghost-btn" type="button" onClick={onLogout}>登出</button>
             <button className="ghost-btn" type="button">邀請成員</button>
             <button className="primary-btn" type="button" onClick={() => setShowLauncher(true)}>新增</button>
           </div>
         </header>
 
         {active === 'home' && <HomePage metrics={metrics} items={filteredItems} reminders={reminders} setActive={setActive} setSelected={setSelected} />}
-        {active === 'board' && <BoardPage items={filteredItems} view={view} setView={setView} selected={selected} setSelected={setSelected} />}
+        {active === 'board' && <BoardPage items={filteredItems} view={view} setView={setView} selected={selected} setSelected={setSelected} onAddItem={addWorkItem} />}
         {active === 'base' && <BasePage tables={visibleCollections} records={records} activeTable={activeBaseTable} />}
         {active === 'desk' && <DeskPage tickets={tickets} />}
         {active === 'roadmap' && <RoadmapPage projects={projects} />}
@@ -943,6 +478,131 @@ function App() {
 
       {showLauncher && <CreateLauncher onClose={() => setShowLauncher(false)} />}
       <ScrollTopButton />
+    </div>
+  )
+}
+
+
+const FLOWDESK_DATA_STORAGE_KEYS = [
+  'flowdesk-reminders-v193',
+  'flowdesk-purchases-v19',
+  'flowdesk-purchase-history-v19',
+  'flowdesk-collections-v194',
+  'flowdesk-work-items-v196',
+]
+
+const FLOWDESK_DATA_CLEAN_MARK = 'flowdesk-data-cleaned-real-auth-v1'
+
+function clearFlowDeskSeedData() {
+  if (typeof window === 'undefined') return
+  if (window.localStorage.getItem(FLOWDESK_DATA_CLEAN_MARK) === 'done') return
+  FLOWDESK_DATA_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key))
+  window.localStorage.setItem(FLOWDESK_DATA_CLEAN_MARK, 'done')
+}
+
+function App() {
+  const [session, setSession] = useState(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [dataReady, setDataReady] = useState(false)
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase) {
+      setCheckingAuth(false)
+      return undefined
+    }
+
+    let mounted = true
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      setSession(data?.session || null)
+      setCheckingAuth(false)
+    }).catch(() => {
+      if (!mounted) return
+      setSession(null)
+      setCheckingAuth(false)
+    })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      setDataReady(false)
+    })
+
+    return () => {
+      mounted = false
+      listener?.subscription?.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!session) {
+      setDataReady(false)
+      return
+    }
+    clearFlowDeskSeedData()
+    setDataReady(true)
+  }, [session])
+
+  async function handleLogout() {
+    if (supabase) await supabase.auth.signOut()
+    setSession(null)
+    setDataReady(false)
+  }
+
+  if (checkingAuth) return <LoginScreen mode="checking" />
+  if (!hasSupabaseConfig || !supabase) return <LoginScreen configMissing />
+  if (!session) return <LoginScreen />
+  if (!dataReady) return <LoginScreen mode="checking" />
+
+  return <FlowDeskShell authSession={session} onLogout={handleLogout} />
+}
+
+function LoginScreen({ mode, configMissing }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    if (!supabase || busy) return
+    setBusy(true)
+    setError('')
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    if (signInError) setError('帳號或密碼不正確')
+    setBusy(false)
+  }
+
+  return (
+    <div className="flowdesk-login-page">
+      <form className="flowdesk-login-card" onSubmit={handleSubmit}>
+        <div className="flowdesk-login-brand">
+          <div className="brand-mark">F</div>
+          <div>
+            <strong>FlowDesk</strong>
+            <span>登入</span>
+          </div>
+        </div>
+
+        {mode === 'checking' ? (
+          <div className="flowdesk-login-status">驗證中...</div>
+        ) : configMissing ? (
+          <div className="flowdesk-login-error">登入服務尚未設定</div>
+        ) : (
+          <>
+            <label>
+              <span>Email</span>
+              <input autoComplete="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            </label>
+            <label>
+              <span>密碼</span>
+              <input autoComplete="current-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+            </label>
+            {error && <div className="flowdesk-login-error">{error}</div>}
+            <button className="primary-btn" type="submit" disabled={busy}>{busy ? '登入中...' : '登入'}</button>
+          </>
+        )}
+      </form>
     </div>
   )
 }
@@ -1126,7 +786,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
   )
 }
 
-function BoardPage({ items, view, setView, selected, setSelected }) {
+function BoardPage({ items, view, setView, selected, setSelected, onAddItem }) {
   return (
     <div className="page-stack board-page">
       <section className="surface-toolbar board-toolbar">
@@ -1134,12 +794,23 @@ function BoardPage({ items, view, setView, selected, setSelected }) {
           <p className="eyebrow">工作管理</p>
           <h2>工作看板</h2>
         </div>
-        <div className="segmented board-view-switch">
-          {['看板', '表格', '卡片'].map((name) => (
-            <button key={name} className={view === name ? 'active' : ''} type="button" onClick={() => setView(name)}>{name}</button>
-          ))}
+        <div className="board-toolbar-actions">
+          <div className="segmented board-view-switch">
+            {['看板', '表格', '卡片'].map((name) => (
+              <button key={name} className={view === name ? 'active' : ''} type="button" onClick={() => setView(name)}>{name}</button>
+            ))}
+          </div>
+          <button className="primary-btn board-add-btn" type="button" onClick={onAddItem}>新增工作</button>
         </div>
       </section>
+
+      {!items.length && (
+        <section className="board-empty-state">
+          <strong>目前沒有工作項目</strong>
+          <span>可先新增一筆工作，或稍後從採購、專案流程建立追蹤項目。</span>
+          <button type="button" className="primary-btn" onClick={onAddItem}>新增第一筆工作</button>
+        </section>
+      )}
 
       {selected && <BoardFloatingPreview selected={selected} />}
 
@@ -1154,9 +825,9 @@ function BoardPage({ items, view, setView, selected, setSelected }) {
                   <span>{laneItems.length}</span>
                 </div>
                 <div className="lane-cards">
-                  {laneItems.map((item) => (
+                  {laneItems.length ? laneItems.map((item) => (
                     <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} />
-                  ))}
+                  )) : <div className="lane-empty">尚無項目</div>}
                 </div>
               </article>
             )
@@ -1183,7 +854,7 @@ function BoardFloatingPreview({ selected }) {
         <span>負責人 {selected.owner}</span>
         <span>健康度 {selected.health}%</span>
         <span>{selected.channel}</span>
-        <span>{selected.tags.slice(0, 2).join(' / ')}</span>
+        <span>{(Array.isArray(selected.tags) ? selected.tags : []).slice(0, 2).join(' / ')}</span>
       </div>
     </section>
   )
@@ -1205,7 +876,7 @@ function BoardInlinePreview({ selected }) {
         <span>負責 <b>{selected.owner}</b></span>
         <span>健康度 <b>{selected.health}%</b></span>
       </div>
-      <div className="tag-list">{selected.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+      <div className="tag-list">{(Array.isArray(selected.tags) ? selected.tags : []).map((tag) => <span key={tag}>{tag}</span>)}</div>
     </section>
   )
 }
@@ -1467,7 +1138,7 @@ function BasePage({ tables, records, activeTable }) {
                   <summary>更多操作</summary>
                   <div>
                     <button type="button" onClick={() => setShowStageSettings((value) => !value)}>採購流程設定</button>
-                    <button type="button" onClick={resetPurchases}>重載測試資料</button>
+                    <button type="button" onClick={resetPurchases}>重置資料</button>
                   </div>
                 </details>
               </>
@@ -2468,7 +2139,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
 
   const settingCards = [
     { id: 'appearance', title: '外觀設定', eyebrow: 'UI THEME', summary: `目前主題：${activeTheme.name}`, icon: '🎨' },
-    { id: 'purchase', title: '採購設定', eyebrow: 'PURCHASE', summary: '採購測試資料與採購流程維護', icon: '🧾' },
+    { id: 'purchase', title: '採購設定', eyebrow: 'PURCHASE', summary: '採購資料與流程維護', icon: '🧾' },
     { id: 'collections', title: '資料集合設定', eyebrow: 'COLLECTIONS', summary: `${collections.filter((item) => item.visible !== false).length} 個顯示中，管理集合入口、視圖與外觀`, icon: '📚' },
     { id: 'sidebar', title: '側邊欄設定', eyebrow: 'LAYOUT', summary: '模組順序與側邊欄排序', icon: '🧭' },
     { id: 'icons', title: '圖示設定', eyebrow: 'ICONS', summary: `目前風格：${iconStyleMode === 'auto' ? '跟隨 UI 主題' : activeIconStyle.name}`, icon: '✨' },
@@ -2531,7 +2202,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="採購設定" title="採購資料" />
           <p className="settings-note">採購是獨立資料應用，保留多品項、搜尋篩選、分頁與採購流程設定；其他資料集合暫不硬套流程。</p>
-          <button className="ghost-btn" type="button" onClick={resetPurchaseDemo}>重載測試資料</button>
+          <button className="ghost-btn" type="button" onClick={resetPurchaseDemo}>重置資料</button>
         </section>
       )}
 
@@ -2679,6 +2350,16 @@ function IconPickerRow({ title, currentIcon, onSelect }) {
 
 
 function ContextPanel({ selected }) {
+  if (!selected) {
+    return (
+      <div className="context-inner context-empty">
+        <p className="eyebrow">詳細預覽</p>
+        <h2>未選取工作</h2>
+        <p>工作看板目前沒有可預覽的項目。</p>
+      </div>
+    )
+  }
+
   return (
     <div className="context-inner">
       <p className="eyebrow">詳細預覽</p>
@@ -2703,7 +2384,7 @@ function ContextPanel({ selected }) {
       </div>
       <div className="context-section">
         <strong>標籤</strong>
-        <div className="tag-list">{selected.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+        <div className="tag-list">{(Array.isArray(selected.tags) ? selected.tags : []).map((tag) => <span key={tag}>{tag}</span>)}</div>
       </div>
     </div>
   )
