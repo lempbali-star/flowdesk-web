@@ -915,8 +915,43 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
 }
 
 function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onUpdateItem, onDeleteItem, onDuplicateItem }) {
+  const [laneFilter, setLaneFilter] = useState('全部')
+  const [priorityFilter, setPriorityFilter] = useState('全部')
+  const [ownerFilter, setOwnerFilter] = useState('全部')
+  const [sortMode, setSortMode] = useState('到期日')
+  const ownerOptions = useMemo(() => ['全部', ...Array.from(new Set(items.map((item) => item.owner).filter(Boolean)))], [items])
+  const scopedItems = useMemo(() => {
+    const next = items
+      .filter((item) => laneFilter === '全部' || item.lane === laneFilter)
+      .filter((item) => priorityFilter === '全部' || item.priority === priorityFilter)
+      .filter((item) => ownerFilter === '全部' || item.owner === ownerFilter)
+      .slice()
+    next.sort((a, b) => {
+      if (sortMode === '健康度') return Number(a.health || 0) - Number(b.health || 0)
+      if (sortMode === '優先級') {
+        const order = { 緊急: 0, 高: 1, 中: 2, 低: 3 }
+        return (order[a.priority] ?? 9) - (order[b.priority] ?? 9)
+      }
+      return String(a.due || '').localeCompare(String(b.due || ''))
+    })
+    return next
+  }, [items, laneFilter, priorityFilter, ownerFilter, sortMode])
+  const boardSummary = useMemo(() => ({
+    total: items.length,
+    open: items.filter((item) => item.lane !== '已完成').length,
+    waiting: items.filter((item) => item.lane === '等待回覆').length,
+    urgent: items.filter((item) => ['緊急', '高'].includes(item.priority)).length,
+  }), [items])
+
+  function clearBoardFilters() {
+    setLaneFilter('全部')
+    setPriorityFilter('全部')
+    setOwnerFilter('全部')
+    setSortMode('到期日')
+  }
+
   return (
-    <div className="page-stack board-page">
+    <div className="page-stack board-page board-page-v198">
       <section className="surface-toolbar board-toolbar">
         <div>
           <p className="eyebrow">工作管理</p>
@@ -932,6 +967,23 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         </div>
       </section>
 
+      <section className="board-control-center">
+        <div className="board-control-metrics">
+          <article><span>總工作</span><strong>{boardSummary.total}</strong></article>
+          <article><span>未完成</span><strong>{boardSummary.open}</strong></article>
+          <article><span>等待回覆</span><strong>{boardSummary.waiting}</strong></article>
+          <article><span>高優先</span><strong>{boardSummary.urgent}</strong></article>
+        </div>
+        <div className="board-filter-grid">
+          <label>狀態<select value={laneFilter} onChange={(event) => setLaneFilter(event.target.value)}><option value="全部">全部</option>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
+          <label>優先級<select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option value="全部">全部</option>{['緊急', '高', '中', '低'].map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+          <label>負責人<select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>{ownerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}</select></label>
+          <label>排序<select value={sortMode} onChange={(event) => setSortMode(event.target.value)}>{['到期日', '優先級', '健康度'].map((mode) => <option key={mode} value={mode}>{mode}</option>)}</select></label>
+          <button className="ghost-btn" type="button" onClick={clearBoardFilters}>清除篩選</button>
+        </div>
+        <div className="board-result-hint">目前顯示 {scopedItems.length} / {items.length} 筆</div>
+      </section>
+
       {!items.length && (
         <section className="board-empty-state">
           <strong>目前沒有工作項目</strong>
@@ -940,12 +992,20 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         </section>
       )}
 
+      {items.length > 0 && !scopedItems.length && (
+        <section className="board-empty-state slim">
+          <strong>沒有符合篩選的工作</strong>
+          <span>請調整狀態、優先級或負責人條件。</span>
+          <button type="button" className="ghost-btn" onClick={clearBoardFilters}>清除篩選</button>
+        </section>
+      )}
+
       {selected && <BoardFloatingPreview selected={selected} />}
 
       {view === '看板' && (
         <section className="kanban board-kanban-view">
           {lanes.map((lane) => {
-            const laneItems = items.filter((item) => item.lane === lane.id)
+            const laneItems = scopedItems.filter((item) => item.lane === lane.id)
             return (
               <article className="lane" key={lane.id}>
                 <div className="lane-title">
@@ -963,12 +1023,11 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         </section>
       )}
 
-      {view === '表格' && <WorkGrid items={items} selected={selected} setSelected={setSelected} />}
-      {view === '卡片' && <CardWall items={items} selected={selected} setSelected={setSelected} />}
+      {view === '表格' && <WorkGrid items={scopedItems} selected={selected} setSelected={setSelected} />}
+      {view === '卡片' && <CardWall items={scopedItems} selected={selected} setSelected={setSelected} />}
     </div>
   )
 }
-
 
 
 function BoardFloatingPreview({ selected }) {
@@ -1165,6 +1224,20 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     map.set(vendor, current)
     return map
   }, new Map()).values()).sort((a, b) => b.amount - a.amount).slice(0, 5)
+  const purchaseActionRows = purchases
+    .map((row) => {
+      const amount = calculatePurchase(row).taxedTotal
+      const reasons = []
+      if ((row.arrivalStatus || '未到貨') !== '已到貨' && !doneStages.includes(row.status)) reasons.push('到貨')
+      if ((row.paymentStatus || '未付款') !== '已付款' && !doneStages.includes(row.status)) reasons.push('付款')
+      if ((row.acceptanceStatus || '未驗收') !== '已驗收' && !doneStages.includes(row.status)) reasons.push('驗收')
+      if (row.status.includes('詢價') || row.status.includes('報價')) reasons.push('報價')
+      const score = reasons.length * 10 + Math.min(50, Math.round(amount / 10000))
+      return { row, score, reasons, amount }
+    })
+    .filter((item) => item.reasons.length)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
 
   function getPurchaseRelatedTasks(row) {
     if (!row) return []
@@ -1511,6 +1584,17 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <article><span>本月採購</span><strong>{formatMoney(thisMonthTotal)}</strong></article>
               <article><span>篩選總額</span><strong>{formatMoney(totalAmount)}</strong></article>
               <article><span>篩選筆數</span><strong>{filteredPurchases.length}</strong></article>
+            </div>
+            <div className="purchase-action-board">
+              <div><p className="eyebrow">處理優先序</p><strong>採購待辦焦點</strong><span>依金額與未完成狀態自動排序</span></div>
+              <div className="purchase-action-list">
+                {purchaseActionRows.length ? purchaseActionRows.map((item) => (
+                  <button type="button" key={item.row.id} onClick={() => setSelectedPurchase(item.row)}>
+                    <div><strong>{purchaseTitle(item.row)}</strong><small>{item.row.vendor || '未指定廠商'} · {item.reasons.join(' / ')}</small></div>
+                    <b>{formatMoney(item.amount)}</b>
+                  </button>
+                )) : <span className="purchase-action-empty">目前沒有需要優先追蹤的採購。</span>}
+              </div>
             </div>
 
             <div className="purchase-workspace-layout">
@@ -2094,6 +2178,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
   const [expandedProjects, setExpandedProjects] = useState(() => new Set())
   const [pinnedProjects, setPinnedProjects] = useState(() => new Set())
   const [previewProjectId, setPreviewProjectId] = useState(null)
+  const [projectKeyword, setProjectKeyword] = useState('')
+  const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
+  const [projectHealthFilter, setProjectHealthFilter] = useState('全部')
 
   useEffect(() => {
     let cancelled = false
@@ -2295,9 +2382,32 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
     })
   }
 
-  const selectedProject = projects.find((project) => project.id === selectedId) || projects[0]
+  const filteredProjects = useMemo(() => {
+    const keyword = projectKeyword.trim().toLowerCase()
+    return projects
+      .filter((project) => projectPhaseFilter === '全部' || project.phase === projectPhaseFilter)
+      .filter((project) => projectHealthFilter === '全部' || project.health === projectHealthFilter)
+      .filter((project) => {
+        if (!keyword) return true
+        return [
+          project.id,
+          project.name,
+          project.phase,
+          project.owner,
+          project.health,
+          project.next,
+          ...(project.related || []),
+          ...(project.records || []),
+          ...(project.tasks || []).map((task) => `${task.name} ${task.owner}`),
+          ...(project.milestones || []).map((milestone) => milestone.name),
+        ].join(' ').toLowerCase().includes(keyword)
+      })
+  }, [projects, projectKeyword, projectPhaseFilter, projectHealthFilter])
+  const projectPhaseOptions = useMemo(() => ['全部', ...Array.from(new Set(projects.map((project) => project.phase).filter(Boolean)))], [projects])
+  const projectHealthOptions = useMemo(() => ['全部', ...Array.from(new Set(projects.map((project) => project.health).filter(Boolean)))], [projects])
+  const selectedProject = projects.find((project) => project.id === selectedId) || filteredProjects[0] || projects[0]
   const avgProgress = Math.round(projects.reduce((sum, project) => sum + project.progress, 0) / Math.max(projects.length, 1))
-  const riskCount = projects.filter((project) => project.tone === 'red' || project.health.includes('待')).length
+  const riskCount = projects.filter((project) => project.tone === 'red' || String(project.health || '').includes('待')).length
 
   return (
     <div className="project-workspace page-stack flowdesk-module-shell project-responsive project-reflow project-compact-screen project-smallscreen-simple">
@@ -2323,10 +2433,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
       </section>
 
       <div className="project-layout-v2 project-layout-v3">
-        <aside className="project-list-panel project-list-panel-v2">
-          <div className="project-list-head"><div><strong>專案清單</strong><span>{projects.length} 件</span></div><small>選取後同步甘特與右側抽屜</small></div>
+        <aside className="project-list-panel project-list-panel-v2 project-list-panel-v198">
+          <div className="project-list-head"><div><strong>專案清單</strong><span>{filteredProjects.length} / {projects.length} 件</span></div><small>選取後同步甘特與右側抽屜</small></div>
+          <div className="project-filter-box">
+            <input value={projectKeyword} onChange={(event) => setProjectKeyword(event.target.value)} placeholder="搜尋專案、任務、里程碑..." />
+            <select value={projectPhaseFilter} onChange={(event) => setProjectPhaseFilter(event.target.value)}>{projectPhaseOptions.map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select>
+            <select value={projectHealthFilter} onChange={(event) => setProjectHealthFilter(event.target.value)}>{projectHealthOptions.map((health) => <option key={health} value={health}>{health}</option>)}</select>
+          </div>
           {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
-          {projects.map((project) => (
+          {projects.length > 0 && !filteredProjects.length && <div className="flow-empty-card"><strong>沒有符合條件的專案</strong><span>請調整搜尋、階段或健康度條件。</span></div>}
+          {filteredProjects.map((project) => (
             <button key={project.id} type="button" className={selectedProject?.id === project.id ? 'project-list-card project-list-card-v2 active' : 'project-list-card project-list-card-v2'} onClick={() => setSelectedId(project.id)}>
               <div className="project-card-title"><strong>{project.name}</strong><Badge value={project.health} /></div>
               <small>{project.phase} · {project.owner}</small>
