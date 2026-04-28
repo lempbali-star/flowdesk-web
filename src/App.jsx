@@ -855,8 +855,31 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
   const projectRisk = projects.filter((project) => String(project.health || '').includes('風險') || String(project.health || '').includes('卡關') || project.tone === 'red').length
   const projectAvgProgress = projects.length ? Math.round(projects.reduce((sum, project) => sum + Number(project.progress || 0), 0) / projects.length) : 0
   const taskOpen = taskRows.filter((task) => !['已完成', '完成'].includes(task.status || '')).length
+  const taskBlocked = taskRows.filter((task) => ['等回覆', '卡關', '等待回覆'].includes(task.status || task.lane || '')).length
   const overdueWork = workItems.filter((item) => item.lane !== '已完成' && item.due && item.due < today).length
   const todayDueWork = workItems.filter((item) => item.lane !== '已完成' && item.due === today).length
+  const waitingWork = workItems.filter((item) => ['等待回覆', '等回覆', '卡關'].includes(item.lane || item.status || '')).length
+  const riskTotal = overdueWork + reminderSummary.overdue + projectRisk + taskBlocked + waitingWork
+  const operationScore = Math.max(0, Math.min(100, 100 - overdueWork * 8 - reminderSummary.overdue * 8 - projectRisk * 7 - taskBlocked * 5 - purchaseNotArrived * 3 - purchaseUnpaid * 2))
+  const operationTone = operationScore >= 85 ? 'green' : operationScore >= 70 ? 'blue' : operationScore >= 55 ? 'amber' : 'red'
+  const operationSignals = [
+    { title: '逾期 / 今日到期', value: overdueWork + todayDueWork + reminderSummary.overdue + reminderSummary.today, note: '先處理今天要回應與已逾期項目', tone: overdueWork + reminderSummary.overdue ? 'red' : 'blue', target: 'reminders' },
+    { title: '採購阻塞', value: purchaseWaitingQuote + purchaseNotArrived + purchaseUnpaid, note: '報價、到貨、付款狀態需追蹤', tone: purchaseNotArrived || purchaseUnpaid ? 'amber' : 'green', target: 'base' },
+    { title: '專案風險', value: projectRisk, note: '風險或卡關專案需確認下一步', tone: projectRisk ? 'red' : 'green', target: 'roadmap' },
+    { title: '等待回覆', value: waitingWork + taskBlocked, note: '等待廠商、同仁或主管回覆', tone: waitingWork + taskBlocked ? 'violet' : 'green', target: 'board' },
+  ]
+  const dataHealthRows = [
+    { label: '工作資料', count: workItems.length + taskRows.length, meta: `${workItems.length} 看板 / ${taskRows.length} 任務`, target: 'board' },
+    { label: '採購資料', count: purchases.length, meta: `${purchaseOpen} 未完成 / ${formatMoney(purchaseTotal)}`, target: 'base' },
+    { label: '專案資料', count: projects.length, meta: `${projectActive} 進行中 / 平均 ${projectAvgProgress}%`, target: 'roadmap' },
+    { label: '提醒資料', count: reminders.length, meta: `${reminderSummary.open} 未結 / ${reminderSummary.week} 本週`, target: 'reminders' },
+  ]
+  const briefingRows = [
+    `營運分數 ${operationScore}，目前${riskTotal ? `有 ${riskTotal} 個風險訊號` : '沒有明顯風險訊號'}。`,
+    purchaseOpen ? `採購尚有 ${purchaseOpen} 筆未完成，其中 ${purchaseNotArrived} 筆未到貨、${purchaseUnpaid} 筆未付款。` : '採購目前沒有未完成項目。',
+    projectRisk ? `專案有 ${projectRisk} 筆風險或卡關，建議先確認責任人與下一步。` : `專案平均進度 ${projectAvgProgress}%，目前無明顯風險。`,
+    reminderSummary.open ? `提醒中心有 ${reminderSummary.open} 筆未結，今日 ${reminderSummary.today} 筆，本週 ${reminderSummary.week} 筆。` : '提醒中心目前沒有未結事項。',
+  ]
   const focusItems = workItems
     .filter((item) => item.lane !== '已完成')
     .slice()
@@ -935,6 +958,18 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
     setActive(row.target)
   }
 
+  function exportHomeBriefing() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      score: operationScore,
+      signals: operationSignals,
+      dataHealth: dataHealthRows,
+      briefing: briefingRows,
+      priorityRows: priorityRows.map((row) => ({ label: row.label, title: row.title, subtitle: row.subtitle, badge: row.badge })),
+    }
+    downloadFlowdeskText(`flowdesk_home_briefing_${todayDate()}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8')
+  }
+
   return (
     <div className="home-layout home-cloud-dashboard">
       <section className="command-hero compact-hero home-command-center">
@@ -960,6 +995,48 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
         <Metric label="專案進行" value={projectActive} tone="green" />
         <Metric label="專案風險" value={projectRisk} tone="red" />
         <Metric label="採購總額" value={formatMoney(purchaseTotal)} tone="green" />
+      </section>
+
+      <section className="panel wide home-executive-briefing">
+        <div className="home-executive-head">
+          <div>
+            <p className="eyebrow">OPERATION BRIEFING</p>
+            <h3>今日指揮摘要</h3>
+          </div>
+          <button className="ghost-btn" type="button" onClick={exportHomeBriefing}>匯出摘要</button>
+        </div>
+        <div className="home-executive-grid">
+          <article className={`home-score-card ${operationTone}`}>
+            <span>營運分數</span>
+            <strong>{operationScore}</strong>
+            <small>{riskTotal ? `目前有 ${riskTotal} 個風險訊號` : '目前狀態穩定'}</small>
+          </article>
+          <div className="home-signal-grid">
+            {operationSignals.map((signal) => (
+              <button key={signal.title} type="button" className={`home-signal-card ${signal.tone}`} onClick={() => setActive(signal.target)}>
+                <span>{signal.title}</span>
+                <strong>{signal.value}</strong>
+                <small>{signal.note}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="home-briefing-lines">
+          {briefingRows.map((line) => <p key={line}>{line}</p>)}
+        </div>
+      </section>
+
+      <section className="panel wide home-data-health">
+        <PanelTitle eyebrow="DATA HEALTH" title="資料健康檢查" action={homeCloudLoading ? '同步中' : '雲端 / 本機已讀取'} />
+        <div className="home-data-health-grid">
+          {dataHealthRows.map((row) => (
+            <button key={row.label} type="button" onClick={() => setActive(row.target)}>
+              <span>{row.label}</span>
+              <strong>{row.count}</strong>
+              <small>{row.meta}</small>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="panel wide home-priority-panel">
@@ -2948,6 +3025,14 @@ function InsightPage({ metrics, records, tickets }) {
   const taskWaiting = scopedTasks.filter((row) => ['等待回覆', '等回覆', '卡關'].includes(row.lane || row.status)).length
   const projectRisk = scopedProjects.filter((row) => String(row.health || row.tone || '').includes('待') || row.tone === 'red').length
   const reminderSummary = getReminderSummary(reportData.reminders)
+  const reportRiskTotal = taskWaiting + projectRisk + reminderSummary.overdue + scopedPurchases.filter((row) => (row.arrivalStatus || '未到貨') !== '已到貨' && !['已完成', '已取消'].includes(row.status || '')).length
+  const reportEfficiencyScore = Math.max(0, Math.min(100, 100 - taskWaiting * 6 - projectRisk * 8 - reminderSummary.overdue * 9 - purchaseOpen * 2))
+  const reportDecisionCards = [
+    { label: '管理分數', value: reportEfficiencyScore, note: reportRiskTotal ? `${reportRiskTotal} 個重點訊號` : '狀態穩定' },
+    { label: '採購待處理率', value: scopedPurchases.length ? `${Math.round((purchaseOpen / scopedPurchases.length) * 100)}%` : '0%', note: `${purchaseOpen} / ${scopedPurchases.length} 筆` },
+    { label: '任務卡關率', value: scopedTasks.length ? `${Math.round((taskWaiting / scopedTasks.length) * 100)}%` : '0%', note: `${taskWaiting} / ${scopedTasks.length} 筆` },
+    { label: '提醒逾期', value: reminderSummary.overdue, note: `${reminderSummary.open} 筆未結提醒` },
+  ]
   const vendorRanking = buildVendorRanking(scopedPurchases).slice(0, 6)
   const purchaseStatusRows = buildCountRows(scopedPurchases, (row) => row.status || '未設定').slice(0, 6)
   const taskStatusRows = buildCountRows(scopedTasks, (row) => row.lane || row.status || '未設定').slice(0, 6)
@@ -3011,6 +3096,19 @@ function InsightPage({ metrics, records, tickets }) {
         <Metric label="未完成工作" value={taskOpen} tone="blue" />
         <Metric label="等待 / 卡關" value={taskWaiting} tone="red" />
         <Metric label="專案風險" value={projectRisk} tone="violet" />
+      </section>
+
+      <section className="panel wide report-decision-panel">
+        <PanelTitle eyebrow="DECISION VIEW" title="管理決策摘要" action={reportScope} />
+        <div className="report-decision-grid">
+          {reportDecisionCards.map((card) => (
+            <article key={card.label}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <small>{card.note}</small>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="report-grid-v1981">
