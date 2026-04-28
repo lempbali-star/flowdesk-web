@@ -11157,3 +11157,68 @@ button {
   .work-grid-head-v199 { display: none; }
   .work-grid-row-v199 { grid-template-columns: 1fr; }
 }
+
+
+/* v19.9.1 all-core completion */
+.project-note-editor,
+.project-decision-row,
+.restore-preview-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(99, 102, 241, .14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, .05);
+}
+.project-note-editor {
+  grid-template-columns: 150px minmax(180px, 1fr) 1.4fr auto;
+  align-items: start;
+}
+.project-decision-row {
+  grid-template-columns: 140px minmax(180px, 1.4fr) 120px 120px auto;
+  align-items: center;
+}
+.project-note-editor input,
+.project-note-editor textarea,
+.project-decision-row input,
+.project-decision-row select {
+  min-height: 38px;
+  border: 1px solid rgba(148, 163, 184, .32);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #fff;
+}
+.project-note-editor textarea { min-height: 72px; resize: vertical; }
+.project-decision-list { display: grid; gap: 10px; }
+.restore-preview-card {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  margin: 16px 0;
+}
+.restore-preview-card span,
+.backup-key-list-v1991 span { color: #64748b; font-size: 12px; }
+.restore-preview-card strong { color: #1e293b; }
+.restore-preview-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.backup-key-list-v1991 > div {
+  grid-template-columns: minmax(120px, 1fr) minmax(150px, 1fr) auto;
+  align-items: center;
+}
+.backup-key-list-v1991 button,
+.project-note-editor button,
+.project-decision-row button {
+  min-height: 34px;
+  border: 1px solid rgba(99, 102, 241, .16);
+  border-radius: 11px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+}
+.detail-money-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.purchase-detail-actions { flex-wrap: wrap; }
+@media (max-width: 1100px) {
+  .project-note-editor,
+  .project-decision-row,
+  .restore-preview-card { grid-template-columns: 1fr; }
+  .detail-money-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

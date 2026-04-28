@@ -590,7 +590,7 @@ function FlowDeskShell({ authSession, onLogout }) {
         {active === 'board' && <BoardPage items={filteredItems} view={view} setView={setView} selected={selected} setSelected={setSelected} onAddItem={addWorkItem} onUpdateItem={updateWorkItem} onDeleteItem={deleteWorkItem} onDuplicateItem={duplicateWorkItem} />}
         {active === 'base' && <BasePage tables={visibleCollections} records={records} activeTable={activeBaseTable} onCreateWorkItem={createWorkItemFromSource} onCreateReminder={createReminderFromSource} />}
         {active === 'desk' && <DeskPage tickets={tickets} />}
-        {active === 'roadmap' && <RoadmapPage projects={projects} />}
+        {active === 'roadmap' && <RoadmapPage projects={projects} onCreateWorkItem={createWorkItemFromSource} />}
         {active === 'docs' && <DocsPage docs={docs} />}
         {active === 'flow' && <FlowPage rules={rules} />}
         {active === 'insight' && <InsightPage metrics={metrics} records={records} tickets={tickets} />}
@@ -1718,27 +1718,33 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     writeHistory(row.id, purchaseTitle(row), '建立工作看板追蹤。')
   }
 
-  function createPurchaseReminder(row) {
+  function createPurchaseReminder(row, reminderKind = '追蹤') {
     if (!row || !onCreateReminder) return
-    const dueDate = row.arrivalDate || row.orderDate || row.requestDate || addDaysDate(3)
+    const dueMap = {
+      付款: row.paymentDueDate || row.orderDate || addDaysDate(7),
+      到貨: row.arrivalDueDate || row.arrivalDate || row.orderDate || addDaysDate(3),
+      驗收: row.acceptanceDate || row.arrivalDate || row.arrivalDueDate || addDaysDate(5),
+      追蹤: row.arrivalDate || row.orderDate || row.requestDate || addDaysDate(3),
+    }
+    const typeMap = { 付款: '簽核提醒', 到貨: '到貨提醒', 驗收: '追蹤提醒', 追蹤: '追蹤提醒' }
     onCreateReminder({
-      title: `追蹤 ${purchaseTitle(row)}`,
-      type: row.status?.includes('到貨') ? '到貨提醒' : '追蹤提醒',
-      priority: row.status?.includes('簽核') || row.status?.includes('確認') ? '高' : '中',
-      dueDate,
+      title: `${reminderKind} ${purchaseTitle(row)}`,
+      type: typeMap[reminderKind] || '追蹤提醒',
+      priority: reminderKind === '付款' || row.status?.includes('簽核') || row.status?.includes('確認') ? '高' : '中',
+      dueDate: dueMap[reminderKind] || addDaysDate(3),
       sourceType: '採購',
       sourceTitle: `${row.id} ${purchaseTitle(row)}`,
-      note: [row.vendor, row.status, row.note].filter(Boolean).join('｜'),
+      note: [row.vendor, row.status, row.poNo, row.quoteNo, row.note].filter(Boolean).join('｜'),
     })
-    writeHistory(row.id, purchaseTitle(row), '建立提醒事項。')
+    writeHistory(row.id, purchaseTitle(row), `建立${reminderKind}提醒。`)
   }
 
   function exportFilteredPurchases() {
-    const headers = ['編號', '品項', '廠商', '部門', '申請人', '流程狀態', '付款狀態', '到貨狀態', '驗收狀態', '申請日', '下單日', '到貨日', '未稅', '稅額', '含稅', '品項明細', '備註']
+    const headers = ['編號', '品項', '廠商', '部門', '申請人', '流程狀態', '付款狀態', '到貨狀態', '驗收狀態', '報價單號', 'PO單號', '發票號碼', '申請日', '下單日', '預計到貨', '到貨日', '付款期限', '驗收日', '預算', '報價金額', '未稅', '稅額', '含稅', '預算差異', '品項明細', '備註']
     const rows = filteredPurchases.map((row) => {
       const amount = calculatePurchase(row)
       const itemsText = getPurchaseItems(row).map((item) => `${item.name || '未命名'} x ${item.quantity || 0} @ ${item.unitPrice || 0}`).join('；')
-      return [row.id, purchaseTitle(row), row.vendor, row.department, row.requester, row.status, row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', row.acceptanceStatus || '未驗收', row.requestDate, row.orderDate, row.arrivalDate, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, itemsText, row.note]
+      return [row.id, purchaseTitle(row), row.vendor, row.department, row.requester, row.status, row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', row.acceptanceStatus || '未驗收', row.quoteNo, row.poNo, row.invoiceNo, row.requestDate, row.orderDate, row.arrivalDueDate, row.arrivalDate, row.paymentDueDate, row.acceptanceDate, row.budgetAmount || 0, row.quoteAmount || 0, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, Number(row.budgetAmount || 0) ? amount.taxedTotal - Number(row.budgetAmount || 0) : '', itemsText, row.note]
     })
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
     const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
@@ -1976,7 +1982,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <aside className="purchase-side-panel">
                 <section className="purchase-detail-card compact-detail-card">
                   <PanelTitle eyebrow="採購明細" title={selectedPurchase ? purchaseTitle(selectedPurchase) : '請選擇採購項目'} />
-                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} onDuplicate={() => duplicatePurchase(selectedPurchase)} onCreateTask={() => createPurchaseWorkItem(selectedPurchase)} onCreateReminder={() => createPurchaseReminder(selectedPurchase)} onUpdateMeta={(patch, message) => updatePurchaseMeta(selectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
+                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} onDuplicate={() => duplicatePurchase(selectedPurchase)} onCreateTask={() => createPurchaseWorkItem(selectedPurchase)} onCreateReminder={(kind) => createPurchaseReminder(selectedPurchase, kind)} onUpdateMeta={(patch, message) => updatePurchaseMeta(selectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
                 </section>
                 <section className="purchase-history-card compact-history-card">
                   <PanelTitle eyebrow="狀態歷程" title="最近變更" />
@@ -2407,6 +2413,35 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
                 <article><span>專案</span><strong>{selectedTask.relatedProject || '—'}</strong></article>
                 <article><span>到期</span><strong>{selectedTask.due}</strong></article>
               </div>
+              <section className="detail-block project-meeting-block">
+                <div className="detail-block-headline"><p className="eyebrow">會議紀錄</p><button type="button" onClick={() => addProjectMeeting(selectedProject.id)}>新增會議</button></div>
+                <div className="project-decision-list">
+                  {(selectedProject.meetings || []).map((meeting) => (
+                    <article key={meeting.id} className="project-note-editor">
+                      <input type="date" value={meeting.date || todayDate()} onChange={(event) => updateProjectMeeting(selectedProject.id, meeting.id, { date: event.target.value })} />
+                      <input value={meeting.title || ''} onChange={(event) => updateProjectMeeting(selectedProject.id, meeting.id, { title: event.target.value })} placeholder="會議主題" />
+                      <textarea value={meeting.note || ''} onChange={(event) => updateProjectMeeting(selectedProject.id, meeting.id, { note: event.target.value })} placeholder="會議重點 / 待辦" />
+                      <button type="button" onClick={() => removeProjectMeeting(selectedProject.id, meeting.id)}>刪除</button>
+                    </article>
+                  ))}
+                  {!selectedProject.meetings?.length && <div className="flow-empty-card">尚無會議紀錄。</div>}
+                </div>
+              </section>
+              <section className="detail-block project-decision-block">
+                <div className="detail-block-headline"><p className="eyebrow">決議事項</p><button type="button" onClick={() => addProjectDecision(selectedProject.id)}>新增決議</button></div>
+                <div className="project-decision-list">
+                  {(selectedProject.decisions || []).map((decision) => (
+                    <article key={decision.id} className="project-decision-row">
+                      <input type="date" value={decision.date || todayDate()} onChange={(event) => updateProjectDecision(selectedProject.id, decision.id, { date: event.target.value })} />
+                      <input value={decision.title || ''} onChange={(event) => updateProjectDecision(selectedProject.id, decision.id, { title: event.target.value })} placeholder="決議內容" />
+                      <input value={decision.owner || ''} onChange={(event) => updateProjectDecision(selectedProject.id, decision.id, { owner: event.target.value })} placeholder="負責人" />
+                      <select value={decision.status || '待追蹤'} onChange={(event) => updateProjectDecision(selectedProject.id, decision.id, { status: event.target.value })}><option>待追蹤</option><option>處理中</option><option>已完成</option></select>
+                      <button type="button" onClick={() => removeProjectDecision(selectedProject.id, decision.id)}>刪除</button>
+                    </article>
+                  ))}
+                  {!selectedProject.decisions?.length && <div className="flow-empty-card">尚無決議事項。</div>}
+                </div>
+              </section>
               <section className="detail-block">
                 <p className="eyebrow">處理紀錄</p>
                 <div className="timeline-notes flow-timeline-notes">
@@ -2477,7 +2512,7 @@ function TaskModal({ onClose, onSubmit, statusOptions, initial, mode = 'create' 
 }
 
 
-function ProjectManagementPage({ projects: initialProjectRows = [] }) {
+function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWorkItem }) {
   const [projects, setProjects] = useState(() => initialProjectRows)
   const [projectsCloudReady, setProjectsCloudReady] = useState(!flowdeskCloud)
   const projectsCloudSaveTimer = useRef(null)
@@ -2600,6 +2635,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
       related: [],
       tasks: [{ name: '專案啟動', owner: 'Kyle', start: today, end: nextMonth.toISOString().slice(0, 10), progress: 0, tone: 'blue' }],
       milestones: [{ name: '啟動確認', date: today, done: false }],
+      meetings: [],
+      decisions: [],
       records: ['建立專案。'],
     }
     setProjects((rows) => [next, ...rows])
@@ -2715,6 +2752,74 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
   const selectedProject = projects.find((project) => project.id === selectedId) || filteredProjects[0] || projects[0]
   const avgProgress = Math.round(projects.reduce((sum, project) => sum + project.progress, 0) / Math.max(projects.length, 1))
   const riskCount = projects.filter((project) => project.tone === 'red' || String(project.health || '').includes('待')).length
+  const overdueProjects = projects.filter((project) => project.endDate && project.endDate < todayDate() && Number(project.progress || 0) < 100).length
+
+  function estimateProjectProgress(project) {
+    const tasks = project?.tasks || []
+    if (!tasks.length) return Number(project?.progress || 0)
+    return Math.round(tasks.reduce((sum, task) => sum + Number(task.progress || 0), 0) / tasks.length)
+  }
+
+  function createWorkItemFromProjectTask(project, task) {
+    if (!project || !task || !onCreateWorkItem) return
+    onCreateWorkItem({
+      title: `${project.name}｜${task.name || '專案任務'}`,
+      type: '專案任務',
+      lane: Number(task.progress || 0) >= 100 ? '已完成' : '待分類',
+      priority: String(project.health || '').includes('高風險') || String(project.health || '').includes('卡關') ? '高' : '中',
+      channel: '專案管理',
+      relation: project.id,
+      requester: project.owner || 'Kyle',
+      owner: task.owner || project.owner || 'Kyle',
+      due: task.end || project.endDate || todayDate(),
+      health: Math.max(20, 100 - Math.max(0, 100 - Number(task.progress || 0))),
+      note: [project.name, project.phase, project.next].filter(Boolean).join('｜'),
+      tags: ['專案', project.id, project.name].filter(Boolean),
+    })
+    updateProject(project.id, {}, `由專案任務「${task.name || '未命名'}」建立工作看板項目。`)
+  }
+
+  function addProjectMeeting(projectId) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const meetings = [{ id: `MTG-${Date.now()}`, date: todayDate(), title: '新增會議紀錄', note: '' }, ...(project.meetings || [])]
+    updateProject(projectId, { meetings }, '新增會議紀錄。')
+  }
+
+  function updateProjectMeeting(projectId, meetingId, patch) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const meetings = (project.meetings || []).map((meeting) => meeting.id === meetingId ? { ...meeting, ...patch } : meeting)
+    updateProject(projectId, { meetings })
+  }
+
+  function removeProjectMeeting(projectId, meetingId) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const meetings = (project.meetings || []).filter((meeting) => meeting.id !== meetingId)
+    updateProject(projectId, { meetings }, '刪除會議紀錄。')
+  }
+
+  function addProjectDecision(projectId) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const decisions = [{ id: `DEC-${Date.now()}`, date: todayDate(), title: '新增決議事項', owner: project.owner || 'Kyle', status: '待追蹤' }, ...(project.decisions || [])]
+    updateProject(projectId, { decisions }, '新增決議事項。')
+  }
+
+  function updateProjectDecision(projectId, decisionId, patch) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const decisions = (project.decisions || []).map((decision) => decision.id === decisionId ? { ...decision, ...patch } : decision)
+    updateProject(projectId, { decisions })
+  }
+
+  function removeProjectDecision(projectId, decisionId) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const decisions = (project.decisions || []).filter((decision) => decision.id !== decisionId)
+    updateProject(projectId, { decisions }, '刪除決議事項。')
+  }
 
   function exportProjectSummary() {
     const headers = ['編號', '專案', '階段', '負責人', '開始', '結束', '進度', '健康度', '下一步', '任務數', '里程碑數']
@@ -2754,6 +2859,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
       <section className="project-overview-strip">
         <article><span>專案數</span><strong>{projects.length}</strong></article>
         <article><span>需注意</span><strong>{riskCount}</strong></article>
+        <article><span>逾期專案</span><strong>{overdueProjects}</strong></article>
         <article><span>目前焦點</span><strong>{selectedProject?.phase}</strong></article>
         <article><span>負責人</span><strong>{selectedProject?.owner}</strong></article>
       </section>
@@ -2775,7 +2881,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
               <div className="project-card-dates"><span>{project.startDate}</span><span>{project.endDate}</span></div>
               <div className="task-progress-row">
                 <div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div>
-                <strong>{project.progress}%</strong>
+                <strong>{project.progress}%</strong><small>估 {estimateProjectProgress(project)}%</small>
               </div>
             </button>
           ))}
@@ -2903,6 +3009,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
                       <input type="date" value={task.start} onChange={(event) => updateProjectTask(selectedProject.id, index, { start: event.target.value })} aria-label="開始日" />
                       <input type="date" value={task.end} onChange={(event) => updateProjectTask(selectedProject.id, index, { end: event.target.value })} aria-label="結束日" />
                       <input type="number" min="0" max="100" value={task.progress} onChange={(event) => updateProjectTask(selectedProject.id, index, { progress: Math.max(0, Math.min(100, Number(event.target.value || 0))) })} aria-label="進度" />
+                      <button type="button" onClick={() => createWorkItemFromProjectTask(selectedProject, task)}>建立工作</button>
+                      <button type="button" onClick={() => updateProjectTask(selectedProject.id, index, { progress: 100 })}>完成</button>
                       <button type="button" onClick={() => removeProjectTask(selectedProject.id, index)}>刪除</button>
                     </div>
                   ))}
@@ -2951,8 +3059,8 @@ function DeskPage({ tickets }) {
   return <TaskTrackingPage tasks={tickets} />
 }
 
-function RoadmapPage({ projects }) {
-  return <ProjectManagementPage projects={projects} />
+function RoadmapPage({ projects, onCreateWorkItem }) {
+  return <ProjectManagementPage projects={projects} onCreateWorkItem={onCreateWorkItem} />
 }
 
 function parseDate(value) {
@@ -3570,6 +3678,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
   const [settingsView, setSettingsView] = useState('home')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
+  const [restorePreview, setRestorePreview] = useState(null)
   const restoreInputRef = useRef(null)
   const activeTheme = themeOptions.find((theme) => theme.id === uiTheme) || themeOptions[0]
   const activeIconStyle = iconStyleOptions.find((style) => style.id === resolvedIconStyle) || iconStyleOptions[1]
@@ -3648,7 +3757,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
 
       downloadBackupFile({
         app: 'FlowDesk',
-        version: '19.9.0',
+        version: '19.9.1',
         exportedAt: new Date().toISOString(),
         cloudEnabled: Boolean(flowdeskCloud),
         local,
@@ -3671,6 +3780,47 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     try {
       const raw = await file.text()
       const payload = JSON.parse(raw)
+      const localCount = payload?.local && typeof payload.local === 'object' ? Object.keys(payload.local).length : 0
+      const cloudKeys = payload?.cloud && typeof payload.cloud === 'object' ? Object.keys(payload.cloud).filter((key) => backupWorkspaceKeys.some((item) => item.key === key)) : []
+      setRestorePreview({ payload, localCount, cloudKeys, fileName: file.name })
+      setBackupMessage('已讀取備份檔，請確認後再還原')
+    } catch {
+      setBackupMessage('還原失敗，請確認檔案格式')
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  async function createSafetyBackupBeforeRestore() {
+    const local = {}
+    backupLocalKeys.forEach((key) => {
+      const value = readLocalBackupValue(key)
+      if (value) local[key] = value
+    })
+    const cloud = {}
+    if (flowdeskCloud) {
+      for (const item of backupWorkspaceKeys) {
+        const { data } = await flowdeskCloud.getWorkspaceData(item.key)
+        cloud[item.key] = data ?? null
+      }
+    }
+    downloadBackupFile({
+      app: 'FlowDesk',
+      version: '19.9.1-before-restore',
+      exportedAt: new Date().toISOString(),
+      reason: 'restore safety backup',
+      local,
+      cloud,
+    })
+  }
+
+  async function confirmRestorePreview() {
+    if (!restorePreview?.payload || backupBusy) return
+    setBackupBusy(true)
+    setBackupMessage('')
+    try {
+      await createSafetyBackupBeforeRestore()
+      const payload = restorePreview.payload
       if (payload?.local && typeof payload.local === 'object') {
         Object.entries(payload.local).forEach(([key, entry]) => writeLocalBackupValue(key, entry))
       }
@@ -3682,9 +3832,34 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
         }
       }
       setBackupMessage('還原完成，重新整理後生效')
-      window.setTimeout(() => window.location.reload(), 600)
+      window.setTimeout(() => window.location.reload(), 700)
     } catch {
-      setBackupMessage('還原失敗，請確認檔案格式')
+      setBackupMessage('還原失敗，已保留目前資料')
+      setBackupBusy(false)
+    }
+  }
+
+  async function clearWorkspaceModule(dataKey) {
+    const target = backupWorkspaceKeys.find((item) => item.key === dataKey)
+    if (!target) return
+    if (!window.confirm(`確定要清空「${target.label}」？此動作只會清空該模組資料。`)) return
+    setBackupBusy(true)
+    try {
+      const localMap = {
+        work_items: ['flowdesk-work-items-v196'],
+        reminders: ['flowdesk-reminders-v193'],
+        collections: ['flowdesk-collections-v194'],
+        purchases: ['flowdesk-purchases-v19'],
+        purchase_history: ['flowdesk-purchase-history-v19'],
+        purchase_stages: ['flowdesk-purchase-stages'],
+        projects: [],
+      }
+      ;(localMap[dataKey] || []).forEach((key) => window.localStorage.removeItem(key))
+      if (flowdeskCloud) await flowdeskCloud.setWorkspaceData(dataKey, [])
+      setBackupMessage(`${target.label} 已清空，重新整理後生效`)
+      window.setTimeout(() => window.location.reload(), 700)
+    } catch {
+      setBackupMessage('清空模組資料失敗')
       setBackupBusy(false)
     }
   }
@@ -3801,7 +3976,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     { id: 'icons', title: '圖示設定', eyebrow: 'ICONS', summary: `目前風格：${iconStyleMode === 'auto' ? '跟隨 UI 主題' : activeIconStyle.name}`, icon: '✨' },
     { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與資料整理', icon: '🔔' },
     { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原與清空工作資料', icon: '💾' },
-    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.9.0', icon: '⚙️' },
+    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.9.1', icon: '⚙️' },
   ]
 
   return (
@@ -3985,8 +4160,19 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
               <button className="danger" type="button" onClick={clearWorkspaceData} disabled={backupBusy}>清空工作資料</button>
             </article>
           </div>
-          <div className="settings-info-list backup-key-list">
-            {backupWorkspaceKeys.map((item) => <div key={item.key}><span>{item.label}</span><strong>{item.key}</strong></div>)}
+          {restorePreview && (
+            <section className="restore-preview-card">
+              <div><span>待還原檔案</span><strong>{restorePreview.fileName}</strong></div>
+              <div><span>本機資料項</span><strong>{restorePreview.localCount}</strong></div>
+              <div><span>雲端資料項</span><strong>{restorePreview.cloudKeys.length}</strong></div>
+              <div className="restore-preview-actions">
+                <button className="primary-btn" type="button" onClick={confirmRestorePreview} disabled={backupBusy}>確認還原</button>
+                <button className="ghost-btn" type="button" onClick={() => setRestorePreview(null)} disabled={backupBusy}>取消</button>
+              </div>
+            </section>
+          )}
+          <div className="settings-info-list backup-key-list backup-key-list-v1991">
+            {backupWorkspaceKeys.map((item) => <div key={item.key}><span>{item.label}</span><strong>{item.key}</strong><button type="button" onClick={() => clearWorkspaceModule(item.key)} disabled={backupBusy}>清空此模組</button></div>)}
           </div>
           {backupMessage && <div className="backup-message">{backupMessage}</div>}
         </section>
@@ -3994,11 +4180,12 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
 
       {settingsView === 'system' && (
         <section className="panel settings-panel settings-detail-panel">
-          <PanelTitle eyebrow="系統資訊" title="FlowDesk v19.7.5" />
+          <PanelTitle eyebrow="系統資訊" title="FlowDesk v19.9.1" />
           <div className="settings-info-list">
             <div><span>版本狀態</span><strong>雲端登入 / 雲端資料 / 備份中心 / 批次操作</strong></div>
             <div><span>雲端同步</span><strong>{flowdeskCloud ? '已啟用' : '本機模式'}</strong></div>
             <div><span>Supabase 設定</span><strong>{hasSupabaseConfig ? '已設定' : '未設定'}</strong></div>
+            <div><span>最後檢查</span><strong>{new Date().toLocaleString('zh-TW', { hour12: false })}</strong></div>
             <div><span>目前主題</span><strong>{activeTheme.name}</strong></div>
             <div><span>圖示風格</span><strong>{iconStyleMode === 'auto' ? `跟隨 UI 主題（${activeIconStyle.name}）` : activeIconStyle.name}</strong></div>
             <div><span>提醒中心</span><strong>獨立運作</strong></div>
@@ -4147,6 +4334,13 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
     taxMode: initial?.taxMode || '未稅',
     taxRate: initial?.taxRate ?? 5,
     quoteAmount: initial?.quoteAmount || 0,
+    budgetAmount: initial?.budgetAmount || 0,
+    quoteNo: initial?.quoteNo || '',
+    poNo: initial?.poNo || '',
+    invoiceNo: initial?.invoiceNo || '',
+    paymentDueDate: initial?.paymentDueDate || '',
+    arrivalDueDate: initial?.arrivalDueDate || '',
+    acceptanceDate: initial?.acceptanceDate || '',
     status: initial?.status || stages?.[0]?.name || '需求確認',
     paymentStatus: initial?.paymentStatus || '未付款',
     arrivalStatus: initial?.arrivalStatus || '未到貨',
@@ -4269,10 +4463,17 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
           <div className="form-grid money-grid">
             <label>稅別<select value={form.taxMode} onChange={(event) => update('taxMode', event.target.value)}><option value="未稅">單價未稅</option><option value="含稅">單價含稅</option></select></label>
             <label>稅率 %<input type="number" value={form.taxRate} onChange={(event) => update('taxRate', event.target.value)} /></label>
-            <label>報價單金額<input type="number" value={form.quoteAmount} onChange={(event) => update('quoteAmount', event.target.value)} /></label>
+            <label>預算金額<input type="number" value={form.budgetAmount} onChange={(event) => update('budgetAmount', event.target.value)} /></label>
+            <label>報價金額<input type="number" value={form.quoteAmount} onChange={(event) => update('quoteAmount', event.target.value)} /></label>
+            <label>報價單號<input value={form.quoteNo} onChange={(event) => update('quoteNo', event.target.value)} placeholder="QT / 報價單號" /></label>
+            <label>PO 單號<input value={form.poNo} onChange={(event) => update('poNo', event.target.value)} placeholder="PO / 訂單編號" /></label>
+            <label>發票號碼<input value={form.invoiceNo} onChange={(event) => update('invoiceNo', event.target.value)} placeholder="發票 / 請款單號" /></label>
+            <label>付款期限<input type="date" value={form.paymentDueDate} onChange={(event) => update('paymentDueDate', event.target.value)} /></label>
+            <label>預計到貨<input type="date" value={form.arrivalDueDate} onChange={(event) => update('arrivalDueDate', event.target.value)} /></label>
             <label>申請日<input type="date" value={form.requestDate} onChange={(event) => update('requestDate', event.target.value)} /></label>
             <label>下單日<input type="date" value={form.orderDate} onChange={(event) => update('orderDate', event.target.value)} /></label>
             <label>到貨日<input type="date" value={form.arrivalDate} onChange={(event) => update('arrivalDate', event.target.value)} /></label>
+            <label>驗收日<input type="date" value={form.acceptanceDate} onChange={(event) => update('acceptanceDate', event.target.value)} /></label>
             <label className="form-wide">備註<textarea value={form.note} onChange={(event) => update('note', event.target.value)} /></label>
           </div>
 
@@ -4280,6 +4481,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
             <article><span>未稅金額</span><strong>{formatMoney(amount.untaxedAmount)}</strong></article>
             <article><span>稅額</span><strong>{formatMoney(amount.taxAmount)}</strong></article>
             <article><span>含稅總額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
+            <article><span>預算差異</span><strong className={Number(form.budgetAmount || 0) && amount.taxedTotal > Number(form.budgetAmount || 0) ? 'has-diff' : ''}>{Number(form.budgetAmount || 0) ? formatMoney(amount.taxedTotal - Number(form.budgetAmount || 0)) : '—'}</strong></article>
           </div>
         </div>
 
@@ -4303,6 +4505,13 @@ function normalizePurchase(row) {
     unitPrice: items.length === 1 ? Number(items[0].unitPrice || 0) : 0,
     taxRate: Number(row.taxRate ?? 5),
     quoteAmount: Number(row.quoteAmount || 0),
+    budgetAmount: Number(row.budgetAmount || 0),
+    quoteNo: row.quoteNo || '',
+    poNo: row.poNo || '',
+    invoiceNo: row.invoiceNo || '',
+    paymentDueDate: row.paymentDueDate || '',
+    arrivalDueDate: row.arrivalDueDate || '',
+    acceptanceDate: row.acceptanceDate || '',
     taxMode: row.taxMode || '未稅',
     paymentStatus: row.paymentStatus || '未付款',
     arrivalStatus: row.arrivalStatus || '未到貨',
@@ -4362,6 +4571,8 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
   const quoteAmount = Number(row.quoteAmount || 0)
   const diff = quoteAmount ? amount.taxedTotal - quoteAmount : 0
+  const budgetAmount = Number(row.budgetAmount || 0)
+  const budgetDiff = budgetAmount ? amount.taxedTotal - budgetAmount : 0
   return (
     <div className="purchase-detail-stack enhanced-detail">
       <div className="detail-status-strip">
@@ -4377,7 +4588,10 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
         <button type="button" onClick={onAdvance}>下一流程</button>
         <button type="button" onClick={onComplete}>視為完成</button>
         <button type="button" onClick={onCreateTask}>建立追蹤工作</button>
-        <button type="button" onClick={onCreateReminder}>建立提醒</button>
+        <button type="button" onClick={() => onCreateReminder?.('追蹤')}>建立追蹤提醒</button>
+        <button type="button" onClick={() => onCreateReminder?.('付款')}>付款提醒</button>
+        <button type="button" onClick={() => onCreateReminder?.('到貨')}>到貨提醒</button>
+        <button type="button" onClick={() => onCreateReminder?.('驗收')}>驗收提醒</button>
         <button type="button" onClick={onDuplicate}>複製採購</button>
       </div>
 
@@ -4401,10 +4615,17 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
           <span>報價差額</span>
           <strong className={Math.abs(diff) > 1 ? 'has-diff' : ''}>{quoteAmount ? formatMoney(diff) : '—'}</strong>
         </article>
+        <article>
+          <span>預算差異</span>
+          <strong className={budgetDiff > 0 ? 'has-diff' : ''}>{budgetAmount ? formatMoney(budgetDiff) : '—'}</strong>
+        </article>
       </div>
 
       <div className="purchase-detail-grid">
         <span>編號<b>{row.id}</b></span>
+        <span>報價單號<b>{row.quoteNo || '—'}</b></span>
+        <span>PO 單號<b>{row.poNo || '—'}</b></span>
+        <span>發票號碼<b>{row.invoiceNo || '—'}</b></span>
         <span>廠商<b>{row.vendor || '—'}</b></span>
         <span>品項數<b>{items.length} 項 / {totalQuantity} 件</b></span>
         <span>稅別<b>{row.taxMode || '未稅'} / {Number(row.taxRate || 0)}%</b></span>
@@ -4413,7 +4634,10 @@ function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onC
         <span>驗收<b>{row.acceptanceStatus || '未驗收'}</b></span>
         <span>申請日<b>{row.requestDate || '—'}</b></span>
         <span>下單日<b>{row.orderDate || '—'}</b></span>
+        <span>付款期限<b>{row.paymentDueDate || '—'}</b></span>
+        <span>預計到貨<b>{row.arrivalDueDate || '—'}</b></span>
         <span>到貨日<b>{row.arrivalDate || '—'}</b></span>
+        <span>驗收日<b>{row.acceptanceDate || '—'}</b></span>
       </div>
 
       <div className="purchase-line-detail">
