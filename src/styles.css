@@ -12141,3 +12141,117 @@ button {
     flex-direction: column;
   }
 }
+
+/* FlowDesk v20.1.5 Project modal gantt + pagination */
+.project-board-filters {
+  grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(120px, .75fr));
+}
+
+.project-pagination-bar {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(93, 129, 233, .14);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f7faff);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: #53627f;
+}
+
+.project-pagination-bar > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.project-pagination-bar strong {
+  color: #1f3d8f;
+}
+
+.project-pagination-bar span {
+  color: #7b879d;
+  font-size: .86rem;
+}
+
+.project-pagination-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.project-pagination-actions button {
+  border: 1px solid rgba(93, 129, 233, .18);
+  background: #fff;
+  color: #2d477d;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.project-pagination-actions button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.project-info-modal {
+  width: min(1280px, 96vw);
+}
+
+.project-info-modal .project-timeline-shell-v2015 {
+  box-shadow: none;
+  border-radius: 22px;
+  padding: 16px;
+  background: #fff;
+}
+
+.project-modal-gantt .project-timeline-card {
+  box-shadow: none;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.project-modal-gantt .project-gantt-head {
+  min-width: 760px;
+}
+
+.project-modal-gantt .gantt-grid-head span {
+  font-size: .76rem;
+  white-space: nowrap;
+}
+
+.project-modal-gantt .gantt-row-label {
+  min-width: 180px;
+}
+
+@media (max-width: 1180px) {
+  .project-board-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .project-pagination-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .project-pagination-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .project-board-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .project-pagination-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .project-info-modal .project-timeline-shell-v2015 {
+    padding: 12px;
+    border-radius: 18px;
+  }
+}
