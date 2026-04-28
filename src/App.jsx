@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
+const FLOWDESK_APP_VERSION = '20.0.1'
+const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
+
 const initialModules = [
   { id: 'home', name: '總覽', icon: 'overview' },
   { id: 'board', name: '工作看板', icon: 'kanban' },
@@ -526,7 +529,7 @@ function FlowDeskShell({ authSession, onLogout }) {
           <div className="brand-mark">F</div>
           <div className="sidebar-copy">
             <strong>FlowDesk</strong>
-            <small>工作流管理平台</small>
+            <small>{FLOWDESK_VERSION_LABEL}</small>
           </div>
         </div>
 
@@ -568,6 +571,10 @@ function FlowDeskShell({ authSession, onLogout }) {
           <div className="topbar-title">
             <p className="eyebrow">今日工作狀態</p>
             <h1>{pageTitle(active, modules)}</h1>
+            <div className="topbar-status-row">
+              <span className="version-pill">{FLOWDESK_VERSION_LABEL}</span>
+              <span className={flowdeskCloud ? 'sync-state-pill online' : 'sync-state-pill local'}>{flowdeskCloud ? '雲端同步中' : '本機備援模式'}</span>
+            </div>
           </div>
           {active === 'base' && (
             <BaseCollectionSwitcher
@@ -3538,9 +3545,10 @@ function getReminderSummary(reminders) {
     summary.open += 1
     if (due.days < 0) summary.overdue += 1
     if (due.days === 0) summary.today += 1
+    if (due.days === 1) summary.tomorrow += 1
     if (due.days >= 0 && due.days <= 7) summary.week += 1
     return summary
-  }, { open: 0, overdue: 0, today: 0, week: 0 })
+  }, { open: 0, overdue: 0, today: 0, tomorrow: 0, week: 0 })
 }
 
 function createEmptyReminder() {
@@ -3569,7 +3577,8 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   const reminderGroups = [
     { id: 'overdue', title: '逾期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days < 0) },
     { id: 'today', title: '今日', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 0) },
-    { id: 'week', title: '本週', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 0 && getReminderDueInfo(item.dueDate).days <= 7) },
+    { id: 'tomorrow', title: '明日', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 1) },
+    { id: 'week', title: '本週', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 1 && getReminderDueInfo(item.dueDate).days <= 7) },
     { id: 'later', title: '之後', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7) },
     { id: 'done', title: '已完成', rows: filtered.filter((item) => item.status === '已完成') },
   ].filter((group) => group.rows.length)
@@ -3620,11 +3629,12 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
         </div>
       </section>
 
-      <section className="metric-strip reminder-metric-strip">
+      <section className="metric-strip reminder-metric-strip reminder-metric-strip-v20">
         <Metric label="逾期" value={summary.overdue} tone="red" />
         <Metric label="今日" value={summary.today} tone="amber" />
-        <Metric label="本週" value={summary.week} tone="blue" />
-        <Metric label="未結" value={summary.open} tone="violet" />
+        <Metric label="明日" value={summary.tomorrow} tone="blue" />
+        <Metric label="本週" value={summary.week} tone="violet" />
+        <Metric label="未結" value={summary.open} tone="green" />
       </section>
 
       {showForm && (
@@ -3774,7 +3784,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
 
       downloadBackupFile({
         app: 'FlowDesk',
-        version: '19.9.1',
+        version: FLOWDESK_APP_VERSION,
         exportedAt: new Date().toISOString(),
         cloudEnabled: Boolean(flowdeskCloud),
         local,
@@ -3823,7 +3833,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     }
     downloadBackupFile({
       app: 'FlowDesk',
-      version: '19.9.2-before-restore',
+      version: `${FLOWDESK_APP_VERSION}-before-restore`,
       exportedAt: new Date().toISOString(),
       reason: 'restore safety backup',
       local,
@@ -3992,9 +4002,18 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     { id: 'sidebar', title: '側邊欄設定', eyebrow: 'LAYOUT', summary: '模組順序與側邊欄排序', icon: '🧭' },
     { id: 'icons', title: '圖示設定', eyebrow: 'ICONS', summary: `目前風格：${iconStyleMode === 'auto' ? '跟隨 UI 主題' : activeIconStyle.name}`, icon: '✨' },
     { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與資料整理', icon: '🔔' },
-    { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原與清空工作資料', icon: '💾' },
-    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.9.2', icon: '⚙️' },
+    { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原、清空與同步檢查', icon: '💾' },
+    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: FLOWDESK_VERSION_LABEL, icon: '⚙️' },
   ]
+  const v20Checklist = [
+    ['採購管理', '多品項、稅額總額、PO/報價、預算差異、提醒與歷程'],
+    ['專案管理', '甘特圖、里程碑完成、建立工作、進度估算、摘要匯出'],
+    ['提醒中心', '逾期、今日、明日、本週分組，支援延後與關聯開啟'],
+    ['設定備份', '匯入預覽、還原前自動備份、分模組清空、同步狀態'],
+    ['操作一致化', '工具列、空狀態、右側明細、搜尋篩選與匯出入口收斂'],
+  ]
+  const syncStatusText = flowdeskCloud ? '雲端資料同步已啟用' : '目前使用本機備援資料'
+  const lastSyncText = typeof window !== 'undefined' ? (window.localStorage.getItem('flowdesk-last-cloud-sync') || '尚未完成同步') : '—'
 
   return (
     <div className="settings-layout settings-hub-layout">
@@ -4150,7 +4169,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
           <div className="settings-info-list">
             <div><span>提醒類型</span><strong>{reminderTypeOptions.length} 種</strong></div>
             <div><span>提醒狀態</span><strong>{reminderStatusOptions.join(' / ')}</strong></div>
-            <div><span>首頁摘要</span><strong>逾期 / 今日 / 本週 / 未結</strong></div>
+            <div><span>首頁摘要</span><strong>逾期 / 今日 / 明日 / 本週 / 未結</strong></div>
           </div>
           <button className="ghost-btn" type="button" onClick={resetReminderDemo}>清空提醒資料</button>
         </section>
@@ -4159,6 +4178,11 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
       {settingsView === 'data' && (
         <section className="panel wide settings-panel settings-detail-panel data-backup-panel">
           <PanelTitle eyebrow="資料備份" title="備份與還原" />
+          <div className="backup-sync-strip">
+            <article><span>同步狀態</span><strong>{syncStatusText}</strong></article>
+            <article><span>最後同步</span><strong>{lastSyncText}</strong></article>
+            <article><span>備份版本</span><strong>{FLOWDESK_VERSION_LABEL}</strong></article>
+          </div>
           <div className="backup-action-grid">
             <article>
               <span>匯出資料</span>
@@ -4197,18 +4221,27 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
 
       {settingsView === 'system' && (
         <section className="panel settings-panel settings-detail-panel">
-          <PanelTitle eyebrow="系統資訊" title="FlowDesk v19.9.2" />
+          <PanelTitle eyebrow="系統資訊" title={FLOWDESK_VERSION_LABEL} />
           <div className="settings-info-list">
-            <div><span>版本狀態</span><strong>雲端登入 / 雲端資料 / 備份中心 / 批次操作</strong></div>
+            <div><span>版本狀態</span><strong>{FLOWDESK_VERSION_LABEL} 修正版</strong></div>
             <div><span>雲端同步</span><strong>{flowdeskCloud ? '已啟用' : '本機模式'}</strong></div>
             <div><span>Supabase 設定</span><strong>{hasSupabaseConfig ? '已設定' : '未設定'}</strong></div>
-            <div><span>最後同步時間</span><strong>{typeof window !== 'undefined' ? (window.localStorage.getItem('flowdesk-last-cloud-sync') || '尚未完成同步') : '—'}</strong></div>
+            <div><span>最後同步時間</span><strong>{lastSyncText}</strong></div>
             <div><span>最後檢查</span><strong>{new Date().toLocaleString('zh-TW', { hour12: false })}</strong></div>
             <div><span>目前主題</span><strong>{activeTheme.name}</strong></div>
             <div><span>圖示風格</span><strong>{iconStyleMode === 'auto' ? `跟隨 UI 主題（${activeIconStyle.name}）` : activeIconStyle.name}</strong></div>
             <div><span>提醒中心</span><strong>獨立運作</strong></div>
             <div><span>採購資料</span><strong>獨立流程</strong></div>
             <div><span>資料集合</span><strong>入口與視圖管理</strong></div>
+          </div>
+          <div className="flowdesk-v20-checklist">
+            {v20Checklist.map(([title, detail]) => (
+              <article key={title}>
+                <span>已補齊</span>
+                <strong>{title}</strong>
+                <p>{detail}</p>
+              </article>
+            ))}
           </div>
         </section>
       )}

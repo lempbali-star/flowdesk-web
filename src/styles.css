@@ -11255,3 +11255,108 @@ button {
 .purchase-history-timeline article small { color: #94a3b8; margin-top: 4px; }
 .reminder-card-actions button { white-space: nowrap; }
 .settings-info-list strong { word-break: break-word; }
+
+
+
+/* FlowDesk v20.0.1 polish: version badge, sync strip, reminder groups, and settings checklist */
+.topbar-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.version-pill,
+.sync-state-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .01em;
+  border: 1px solid rgba(130,145,180,.18);
+  background: rgba(255,255,255,.78);
+  color: #4b5c76;
+  box-shadow: 0 10px 24px rgba(44,65,110,.07);
+}
+.version-pill {
+  color: var(--theme-primary-strong);
+  background: linear-gradient(180deg, #fff, var(--theme-soft-card));
+}
+.sync-state-pill.online {
+  color: #087a5a;
+  background: #eafff6;
+  border-color: rgba(15,163,116,.18);
+}
+.sync-state-pill.local {
+  color: #9a5b00;
+  background: #fff6e6;
+  border-color: rgba(242,153,46,.20);
+}
+.reminder-metric-strip-v20 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.backup-sync-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.backup-sync-strip article,
+.flowdesk-v20-checklist article {
+  border: 1px solid rgba(130,145,180,.14);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(247,250,255,.82));
+  box-shadow: 0 12px 28px rgba(44,65,110,.07);
+}
+.backup-sync-strip article {
+  padding: 14px;
+}
+.backup-sync-strip span,
+.flowdesk-v20-checklist span {
+  display: block;
+  margin-bottom: 6px;
+  color: #7b879c;
+  font-size: 12px;
+  font-weight: 900;
+}
+.backup-sync-strip strong,
+.flowdesk-v20-checklist strong {
+  color: #22304a;
+}
+.flowdesk-v20-checklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.flowdesk-v20-checklist article {
+  padding: 14px;
+}
+.flowdesk-v20-checklist p {
+  margin: 6px 0 0;
+  color: #63718a;
+  line-height: 1.55;
+}
+.flow-toolbar,
+.surface-toolbar,
+.purchase-filter-bar,
+.reminder-filter-bar {
+  scroll-margin-top: 18px;
+}
+.purchase-empty-state,
+.flow-empty-card {
+  border: 1px dashed rgba(130,145,180,.28);
+  background: rgba(255,255,255,.72);
+}
+@media (max-width: 980px) {
+  .reminder-metric-strip-v20,
+  .backup-sync-strip,
+  .flowdesk-v20-checklist {
+    grid-template-columns: 1fr;
+  }
+  .topbar-status-row {
+    margin-top: 8px;
+  }
+}
