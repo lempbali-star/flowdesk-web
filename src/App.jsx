@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.2.0'
+const FLOWDESK_APP_VERSION = '20.2.1'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
@@ -2641,7 +2641,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projectViewMode, setProjectViewMode] = useState('cards')
   const [projectPage, setProjectPage] = useState(1)
   const [projectPageSize, setProjectPageSize] = useState(8)
-  const [projectModalId, setProjectModalId] = useState(null)
   const [previewProjectId, setPreviewProjectId] = useState(null)
   const [pinnedGanttIds, setPinnedGanttIds] = useState(() => new Set())
   const [allGanttExpanded, setAllGanttExpanded] = useState(false)
@@ -2720,7 +2719,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setSelectedId(next.id)
     setDetailTab('overview')
     setTimelineMode('focus')
-    setProjectModalId(next.id)
   }
 
   function updateProject(projectId, patch, recordText) {
@@ -2793,13 +2791,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setProjects((rows) => [next, ...rows])
     setSelectedId(next.id)
     setDetailTab('overview')
-    setProjectModalId(next.id)
   }
 
   function deleteProject(projectId) {
     const target = projects.find((project) => project.id === projectId)
     if (!confirmDestructiveAction(target?.name || projectId || '專案')) return
-    setProjectModalId(null)
     setProjects((rows) => {
       const next = rows.filter((project) => project.id !== projectId)
       setSelectedId(next[0]?.id)
@@ -2826,7 +2822,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setPreviewProjectId(projectId)
     setTimelineMode('focus')
     setDetailTab('overview')
-    setProjectModalId(projectId)
   }
 
   function getProjectDragProps(projectId) {
@@ -3130,7 +3125,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div>
             <p className="eyebrow">PROJECT BOARD</p>
             <h3>專案檢視</h3>
-            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；甘特圖固定在預覽區，點擊或固定才切換焦點。</small>
+            <small>卡片 / 清單只負責選取與排序；下方專案工作區集中編輯、甘特圖、任務與紀錄。</small>
           </div>
           <div className="project-board-controls">
             <div className="project-board-filters">
@@ -3151,29 +3146,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           </div>
         </div>
         {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
-        {projects.length > 0 && filteredProjects.length > 0 && (
-          <section className="project-gantt-focus-panel" aria-label="焦點甘特圖預覽">
-            <div className="project-gantt-focus-head">
-              <div>
-                <p className="eyebrow">GANTT PREVIEW</p>
-                <h3>{allGanttExpanded ? '全部專案甘特圖' : (ganttPanelProjects[0]?.name || '焦點甘特圖')}</h3>
-                <small>{ganttPanelModeText} · 點擊卡片 / 清單才切換焦點；固定後可保留多個專案時程。</small>
-              </div>
-              <div className="project-gantt-focus-actions">
-                {previewProjectId && <button type="button" onClick={() => toggleProjectGanttPin(previewProjectId)}>{pinnedGanttIds.has(previewProjectId) ? '取消固定目前專案' : '固定目前專案'}</button>}
-                <button type="button" onClick={expandAllProjectGantts}>全部展開</button>
-                <button type="button" onClick={collapseAllProjectGantts}>全部收起</button>
-              </div>
-            </div>
-            <div className="project-gantt-focus-stack">
-              {ganttPanelProjects.map((project) => (
-                <article key={project.id} className="project-gantt-focus-item">
-                  {renderInlineProjectGantt(project)}
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
         {projectViewMode === 'cards' ? (
           <div className="project-board-grid project-board-grid-v2014 project-board-grid-v2016">
             {paginatedProjects.map((project) => {
@@ -3198,7 +3170,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   ].filter(Boolean).join(' ')}
                   onClick={() => openProjectDetail(project.id)}
                   onKeyDown={(event) => handleProjectCardKeyDown(project.id, event)}
-                  title="點擊切換焦點甘特圖與查看明細，拖曳調整順序"
+                  title="點擊選取專案；拖曳調整順序"
                 >
                   <div className="project-board-card-top">
                     <span className="record-id">☰ {project.id}</span>
@@ -3211,10 +3183,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div>
                     <strong>{project.progress}%</strong><small>估 {estimated}%</small>
                   </div>
-                  <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>{ganttOpen ? '焦點甘特圖' : '點擊切換焦點'}</span></div>
+                  <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>{selectedProject?.id === project.id ? '已選取' : '點擊選取'}</span></div>
                   <div className="project-board-actions-row" onClick={(event) => event.stopPropagation()}>
-                    <button type="button" onClick={(event) => { event.stopPropagation(); toggleProjectGanttPin(project.id) }}>{isPinned ? '取消固定' : '固定甘特圖'}</button>
-                    <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>明細</button>
+                    <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>{selectedProject?.id === project.id ? '目前專案' : '選取'}</button>
                   </div>
                 </article>
               )
@@ -3245,7 +3216,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   ].filter(Boolean).join(' ')}
                   onClick={() => openProjectDetail(project.id)}
                   onKeyDown={(event) => handleProjectCardKeyDown(project.id, event)}
-                  title="點擊切換焦點甘特圖與查看明細，拖曳調整順序"
+                  title="點擊選取專案；拖曳調整順序"
                 >
                   <div className="project-list-row-main">
                     <span className="project-list-title"><small>☰ {project.id}</small><strong>{project.name}</strong><em>{project.next || '尚未設定下一步'}</em></span>
@@ -3254,8 +3225,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.milestones?.length || 0} 里程碑</small></span>
                     <span className="project-list-badges"><Badge value={project.phase} /><Badge value={project.health} /></span>
                     <span className="project-list-actions" onClick={(event) => event.stopPropagation()}>
-                      <button type="button" onClick={(event) => { event.stopPropagation(); toggleProjectGanttPin(project.id) }}>{isPinned ? '取消固定' : '固定'}</button>
-                      <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>明細</button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>{selectedProject?.id === project.id ? '目前專案' : '選取'}</button>
                     </span>
                   </div>
                 </article>
@@ -3282,17 +3252,19 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
 
 
-      {selectedProject && projectModalId && (
-        <div className="modal-backdrop project-info-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setProjectModalId(null) }}>
-          <section className="project-info-modal" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="project-info-modal-head">
-              <div>
-                <p className="eyebrow">PROJECT DETAIL</p>
-                <h3>{selectedProject.name}</h3>
-                <span>{selectedProject.id} · {selectedProject.phase} · {formatMonthDayWeekday(selectedProject.startDate)} → {formatMonthDayWeekday(selectedProject.endDate)}</span>
-              </div>
-              <button type="button" onClick={() => setProjectModalId(null)}>關閉</button>
+      {selectedProject && (
+        <section className="project-selected-workspace-v2021">
+          <div className="project-selected-head-v2021">
+            <div>
+              <p className="eyebrow">PROJECT WORKSPACE</p>
+              <h3>{selectedProject.name}</h3>
+              <span>{selectedProject.id} · {selectedProject.phase} · {formatMonthDayWeekday(selectedProject.startDate)} → {formatMonthDayWeekday(selectedProject.endDate)}</span>
             </div>
+            <div className="project-selected-head-actions">
+              <button type="button" onClick={autoEstimateSelectedProject}>估算進度</button>
+              <button type="button" onClick={() => setDetailTab('gantt')}>看甘特圖</button>
+            </div>
+          </div>
           <section className="project-focus-shell">
             <article className="project-focus-summary-card">
               <div className="detail-hero-line"><span className="record-id">{selectedProject.id}</span><Badge value={selectedProject.health} /></div>
@@ -3338,11 +3310,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <section className="project-detail-shell">
             <div className="project-section-head compact">
               <div>
-                <p className="eyebrow">PROJECT DETAILS</p>
-                <h3>焦點專案明細</h3>
+                <p className="eyebrow">PROJECT WORKSPACE</p>
+                <h3>專案工作區</h3>
               </div>
               <div className="project-segmented-tabs">
                 <button type="button" className={detailTab === 'overview' ? 'active' : ''} onClick={() => setDetailTab('overview')}>總覽</button>
+                <button type="button" className={detailTab === 'gantt' ? 'active' : ''} onClick={() => setDetailTab('gantt')}>甘特圖</button>
                 <button type="button" className={detailTab === 'tasks' ? 'active' : ''} onClick={() => setDetailTab('tasks')}>任務</button>
                 <button type="button" className={detailTab === 'milestones' ? 'active' : ''} onClick={() => setDetailTab('milestones')}>里程碑</button>
                 <button type="button" className={detailTab === 'records' ? 'active' : ''} onClick={() => setDetailTab('records')}>紀錄</button>
@@ -3374,6 +3347,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   </div>
                 </section>
               </div>
+            )}
+
+            {detailTab === 'gantt' && (
+              <section className="detail-block project-gantt-workspace-tab">
+                <div className="detail-block-headline">
+                  <p className="eyebrow">專案甘特圖</p>
+                  <button type="button" onClick={autoEstimateSelectedProject}>依任務估算進度</button>
+                </div>
+                {renderInlineProjectGantt(selectedProject)}
+              </section>
             )}
 
             {detailTab === 'tasks' && (
@@ -3431,9 +3414,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </section>
             )}
           </section>
-
-          </section>
-        </div>
+        </section>
       )}
     </div>
   )

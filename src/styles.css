@@ -12723,3 +12723,128 @@ button {
   max-width: 760px;
 }
 
+
+/* FlowDesk v20.2.1 Project management single workspace layout */
+.project-ux-shell .project-board-shell {
+  margin-bottom: 18px;
+}
+
+.project-selected-workspace-v2021 {
+  border: 1px solid rgba(124, 151, 255, 0.22);
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,251,255,0.94));
+  box-shadow: 0 24px 60px rgba(47, 77, 150, 0.12);
+  padding: 18px;
+  overflow: hidden;
+}
+
+.project-selected-head-v2021 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 6px 6px 18px;
+  border-bottom: 1px solid rgba(124, 151, 255, 0.14);
+  margin-bottom: 18px;
+}
+
+.project-selected-head-v2021 h3 {
+  margin: 4px 0 5px;
+  font-size: 23px;
+  color: var(--ink);
+}
+
+.project-selected-head-v2021 span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.project-selected-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.project-selected-head-actions button,
+.project-board-actions-row button,
+.project-list-actions button {
+  border: 1px solid rgba(124, 151, 255, 0.25);
+  background: rgba(255,255,255,0.92);
+  color: #1c3361;
+  border-radius: 999px;
+  padding: 9px 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.project-selected-head-actions button:hover,
+.project-board-actions-row button:hover,
+.project-list-actions button:hover {
+  background: rgba(230, 240, 255, 0.92);
+  border-color: rgba(73, 120, 255, 0.35);
+}
+
+.project-selected-workspace-v2021 .project-focus-shell {
+  grid-template-columns: minmax(300px, .8fr) minmax(420px, 1.2fr);
+  margin-bottom: 18px;
+}
+
+.project-selected-workspace-v2021 .project-detail-shell {
+  margin-top: 0;
+  box-shadow: none;
+  border-color: rgba(124, 151, 255, 0.16);
+}
+
+.project-gantt-workspace-tab .project-inline-gantt {
+  margin: 0;
+  box-shadow: none;
+  border-radius: 22px;
+}
+
+.project-gantt-workspace-tab .project-inline-gantt-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.project-gantt-workspace-tab .project-inline-gantt-grid {
+  min-width: 780px;
+}
+
+.project-board-grid-v2016 .project-board-card.active,
+.project-list-view-v2016 .project-list-row.active {
+  border-color: rgba(49, 109, 255, 0.48);
+  background: linear-gradient(180deg, rgba(242, 248, 255, 0.98), rgba(255,255,255,0.96));
+  box-shadow: 0 18px 42px rgba(57, 91, 180, 0.13);
+}
+
+.project-board-card-v2016.gantt-open,
+.project-list-row-v2016.gantt-open {
+  outline: none;
+}
+
+.project-gantt-focus-panel {
+  display: none !important;
+}
+
+@media (max-width: 1180px) {
+  .project-selected-workspace-v2021 .project-focus-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .project-selected-workspace-v2021 {
+    padding: 14px;
+    border-radius: 24px;
+  }
+  .project-selected-head-v2021 {
+    flex-direction: column;
+  }
+  .project-selected-head-actions {
+    justify-content: flex-start;
+  }
+}
