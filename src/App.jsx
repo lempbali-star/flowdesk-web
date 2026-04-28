@@ -2783,11 +2783,142 @@ function RemindersPage({ reminders, setReminders }) {
 
 function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
   const [settingsView, setSettingsView] = useState('home')
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [backupMessage, setBackupMessage] = useState('')
+  const restoreInputRef = useRef(null)
   const activeTheme = themeOptions.find((theme) => theme.id === uiTheme) || themeOptions[0]
   const activeIconStyle = iconStyleOptions.find((style) => style.id === resolvedIconStyle) || iconStyleOptions[1]
   const selectedIconStyle = iconStyleOptions.find((style) => style.id === iconStyleMode) || iconStyleOptions[0]
   const sortedCollections = [...collections].sort((a, b) => (a.order || 0) - (b.order || 0))
   const [newCollectionName, setNewCollectionName] = useState('')
+  const backupWorkspaceKeys = [
+    { key: 'work_items', label: '工作看板' },
+    { key: 'reminders', label: '提醒中心' },
+    { key: 'collections', label: '資料集合' },
+    { key: 'purchases', label: '採購資料' },
+    { key: 'purchase_history', label: '採購歷程' },
+    { key: 'purchase_stages', label: '採購流程' },
+    { key: 'projects', label: '專案管理' },
+  ]
+  const backupLocalKeys = [
+    'flowdesk-work-items-v196',
+    'flowdesk-reminders-v193',
+    'flowdesk-collections-v194',
+    'flowdesk-purchases-v19',
+    'flowdesk-purchase-history-v19',
+    'flowdesk-purchase-stages',
+    'flowdesk-module-order',
+    'flowdesk-ui-theme',
+    'flowdesk-icon-style-mode',
+    'flowdesk-module-icons',
+    'flowdesk-base-table-icons',
+  ]
+
+  function readLocalBackupValue(key) {
+    const raw = window.localStorage.getItem(key)
+    if (raw === null) return null
+    try {
+      return { type: 'json', value: JSON.parse(raw) }
+    } catch {
+      return { type: 'text', value: raw }
+    }
+  }
+
+  function writeLocalBackupValue(key, entry) {
+    if (!entry) return
+    const value = entry.type === 'text' ? String(entry.value ?? '') : JSON.stringify(entry.value)
+    window.localStorage.setItem(key, value)
+  }
+
+  function downloadBackupFile(payload) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `FlowDesk備份_${todayDate()}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function exportWorkspaceBackup() {
+    if (backupBusy) return
+    setBackupBusy(true)
+    setBackupMessage('')
+    try {
+      const local = {}
+      backupLocalKeys.forEach((key) => {
+        const value = readLocalBackupValue(key)
+        if (value) local[key] = value
+      })
+
+      const cloud = {}
+      if (flowdeskCloud) {
+        for (const item of backupWorkspaceKeys) {
+          const { data } = await flowdeskCloud.getWorkspaceData(item.key)
+          cloud[item.key] = data ?? null
+        }
+      }
+
+      downloadBackupFile({
+        app: 'FlowDesk',
+        version: '19.7.5',
+        exportedAt: new Date().toISOString(),
+        cloudEnabled: Boolean(flowdeskCloud),
+        local,
+        cloud,
+      })
+      setBackupMessage('備份已匯出')
+    } catch {
+      setBackupMessage('備份失敗，請稍後再試')
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  async function restoreWorkspaceBackup(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || backupBusy) return
+    setBackupBusy(true)
+    setBackupMessage('')
+    try {
+      const raw = await file.text()
+      const payload = JSON.parse(raw)
+      if (payload?.local && typeof payload.local === 'object') {
+        Object.entries(payload.local).forEach(([key, entry]) => writeLocalBackupValue(key, entry))
+      }
+      if (payload?.cloud && flowdeskCloud) {
+        for (const [key, value] of Object.entries(payload.cloud)) {
+          if (backupWorkspaceKeys.some((item) => item.key === key)) {
+            await flowdeskCloud.setWorkspaceData(key, value ?? [])
+          }
+        }
+      }
+      setBackupMessage('還原完成，重新整理後生效')
+      window.setTimeout(() => window.location.reload(), 600)
+    } catch {
+      setBackupMessage('還原失敗，請確認檔案格式')
+      setBackupBusy(false)
+    }
+  }
+
+  async function clearWorkspaceData() {
+    if (!window.confirm('確定要清空 FlowDesk 工作資料？此動作會保留登入設定。')) return
+    setBackupBusy(true)
+    try {
+      backupLocalKeys.filter((key) => !key.includes('theme') && !key.includes('icon') && !key.includes('module-order')).forEach((key) => window.localStorage.removeItem(key))
+      if (flowdeskCloud) {
+        for (const item of backupWorkspaceKeys) await flowdeskCloud.setWorkspaceData(item.key, [])
+      }
+      setBackupMessage('資料已清空，重新整理後生效')
+      window.setTimeout(() => window.location.reload(), 600)
+    } catch {
+      setBackupMessage('清空資料失敗')
+      setBackupBusy(false)
+    }
+  }
 
   function resetPurchaseDemo() {
     window.localStorage.removeItem('flowdesk-purchases-v19')
@@ -2872,8 +3003,9 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
   }
 
   function resetReminderDemo() {
-    setReminders(initialReminders)
+    setReminders([])
     window.localStorage.removeItem('flowdesk-reminders-v193')
+    if (flowdeskCloud) flowdeskCloud.setWorkspaceData('reminders', []).catch(() => null)
   }
 
   const settingCards = [
@@ -2882,8 +3014,9 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
     { id: 'collections', title: '資料集合設定', eyebrow: 'COLLECTIONS', summary: `${collections.filter((item) => item.visible !== false).length} 個顯示中，管理集合入口、視圖與外觀`, icon: '📚' },
     { id: 'sidebar', title: '側邊欄設定', eyebrow: 'LAYOUT', summary: '模組順序與側邊欄排序', icon: '🧭' },
     { id: 'icons', title: '圖示設定', eyebrow: 'ICONS', summary: `目前風格：${iconStyleMode === 'auto' ? '跟隨 UI 主題' : activeIconStyle.name}`, icon: '✨' },
-    { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與範例資料', icon: '🔔' },
-    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.5.2 功能收斂版', icon: '⚙️' },
+    { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與資料整理', icon: '🔔' },
+    { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原與清空工作資料', icon: '💾' },
+    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: 'FlowDesk v19.7.5', icon: '⚙️' },
   ]
 
   return (
@@ -2940,8 +3073,8 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
       {settingsView === 'purchase' && (
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="採購設定" title="採購資料" />
-          <p className="settings-note">採購是獨立資料應用，保留多品項、搜尋篩選、分頁與採購流程設定；其他資料集合暫不硬套流程。</p>
-          <button className="ghost-btn" type="button" onClick={resetPurchaseDemo}>重置資料</button>
+          <p className="settings-note">採購是獨立資料應用，保留多品項、搜尋篩選、分頁與採購流程設定。</p>
+          <button className="ghost-btn" type="button" onClick={resetPurchaseDemo}>清空採購資料</button>
         </section>
       )}
 
@@ -3036,21 +3169,49 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
       {settingsView === 'reminders' && (
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="提醒設定" title="提醒中心" />
-          <p className="settings-note">提醒中心目前支援一般提醒、追蹤提醒、廠商回覆、簽核、到貨與續約提醒。後續可再加通知規則與預設天數。</p>
+          <p className="settings-note">提醒中心目前支援一般提醒、追蹤提醒、廠商回覆、簽核、到貨與續約提醒。</p>
           <div className="settings-info-list">
             <div><span>提醒類型</span><strong>{reminderTypeOptions.length} 種</strong></div>
             <div><span>提醒狀態</span><strong>{reminderStatusOptions.join(' / ')}</strong></div>
             <div><span>首頁摘要</span><strong>逾期 / 今日 / 本週 / 未結</strong></div>
           </div>
-          <button className="ghost-btn" type="button" onClick={resetReminderDemo}>重載提醒範例</button>
+          <button className="ghost-btn" type="button" onClick={resetReminderDemo}>清空提醒資料</button>
+        </section>
+      )}
+
+      {settingsView === 'data' && (
+        <section className="panel wide settings-panel settings-detail-panel data-backup-panel">
+          <PanelTitle eyebrow="資料備份" title="備份與還原" />
+          <div className="backup-action-grid">
+            <article>
+              <span>匯出資料</span>
+              <strong>下載 JSON 備份</strong>
+              <button className="primary-btn" type="button" onClick={exportWorkspaceBackup} disabled={backupBusy}>{backupBusy ? '處理中...' : '匯出備份'}</button>
+            </article>
+            <article>
+              <span>還原資料</span>
+              <strong>從備份檔還原</strong>
+              <button className="ghost-btn" type="button" onClick={() => restoreInputRef.current?.click()} disabled={backupBusy}>選擇備份檔</button>
+              <input ref={restoreInputRef} className="hidden-file-input" type="file" accept="application/json,.json" onChange={restoreWorkspaceBackup} />
+            </article>
+            <article className="danger">
+              <span>清空資料</span>
+              <strong>保留登入設定</strong>
+              <button className="danger" type="button" onClick={clearWorkspaceData} disabled={backupBusy}>清空工作資料</button>
+            </article>
+          </div>
+          <div className="settings-info-list backup-key-list">
+            {backupWorkspaceKeys.map((item) => <div key={item.key}><span>{item.label}</span><strong>{item.key}</strong></div>)}
+          </div>
+          {backupMessage && <div className="backup-message">{backupMessage}</div>}
         </section>
       )}
 
       {settingsView === 'system' && (
         <section className="panel settings-panel settings-detail-panel">
-          <PanelTitle eyebrow="系統資訊" title="FlowDesk v19.5.2" />
+          <PanelTitle eyebrow="系統資訊" title="FlowDesk v19.7.5" />
           <div className="settings-info-list">
-            <div><span>版本基底</span><strong>v17 → v19.5.1 → v19.5.2</strong></div>
+            <div><span>版本狀態</span><strong>雲端登入 / 雲端資料 / 備份中心</strong></div>
             <div><span>目前主題</span><strong>{activeTheme.name}</strong></div>
             <div><span>圖示風格</span><strong>{iconStyleMode === 'auto' ? `跟隨 UI 主題（${activeIconStyle.name}）` : activeIconStyle.name}</strong></div>
             <div><span>提醒中心</span><strong>獨立運作</strong></div>
