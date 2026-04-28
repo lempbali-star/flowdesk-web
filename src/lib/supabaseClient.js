@@ -64,17 +64,21 @@ function toSession(payload) {
 }
 
 async function requestAuth(path, body, accessToken) {
-  const response = await fetch(getAuthEndpoint(path), {
-    method: 'POST',
-    headers: getHeaders(accessToken),
-    body: JSON.stringify(body || {}),
-  })
+  try {
+    const response = await fetch(getAuthEndpoint(path), {
+      method: 'POST',
+      headers: getHeaders(accessToken),
+      body: JSON.stringify(body || {}),
+    })
 
-  const payload = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    return { data: null, error: { message: payload?.msg || payload?.message || '登入服務發生錯誤' } }
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { data: null, error: { message: payload?.msg || payload?.message || '登入服務發生錯誤', details: payload } }
+    }
+    return { data: payload, error: null }
+  } catch (error) {
+    return { data: null, error: { message: '登入服務無法連線', details: error } }
   }
-  return { data: payload, error: null }
 }
 
 async function requestRest(path, options = {}) {
@@ -82,27 +86,31 @@ async function requestRest(path, options = {}) {
   const accessToken = session?.access_token
   if (!accessToken) return { data: null, error: { message: '尚未登入' } }
 
-  const response = await fetch(getRestEndpoint(path), {
-    method: options.method || 'GET',
-    headers: {
-      ...getHeaders(accessToken),
-      ...(options.prefer ? { Prefer: options.prefer } : {}),
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  })
-
-  const text = await response.text()
-  let payload = null
   try {
-    payload = text ? JSON.parse(text) : null
-  } catch {
-    payload = text
-  }
+    const response = await fetch(getRestEndpoint(path), {
+      method: options.method || 'GET',
+      headers: {
+        ...getHeaders(accessToken),
+        ...(options.prefer ? { Prefer: options.prefer } : {}),
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    })
 
-  if (!response.ok) {
-    return { data: null, error: { message: payload?.message || payload?.msg || '資料庫連線失敗', details: payload } }
+    const text = await response.text()
+    let payload = null
+    try {
+      payload = text ? JSON.parse(text) : null
+    } catch {
+      payload = text
+    }
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload?.message || payload?.msg || '資料庫連線失敗', details: payload } }
+    }
+    return { data: payload, error: null }
+  } catch (error) {
+    return { data: null, error: { message: '資料庫無法連線，已保留本機資料', details: error } }
   }
-  return { data: payload, error: null }
 }
 
 function notify(event, session) {
@@ -192,10 +200,25 @@ export const flowdeskCloud = hasSupabaseConfig
       },
 
       async setWorkspaceData(dataKey, payload) {
-        const update = await requestRest(`flowdesk_workspace_data?data_key=eq.${encodeURIComponent(dataKey)}`, {
+        const safeKey = String(dataKey || '').trim()
+        if (!safeKey) return { data: null, error: { message: '資料鍵不可為空' } }
+
+        const safePayload = payload === undefined ? null : payload
+
+        const upsert = await requestRest('flowdesk_workspace_data?on_conflict=user_id,data_key', {
+          method: 'POST',
+          prefer: 'resolution=merge-duplicates,return=representation',
+          body: { data_key: safeKey, payload: safePayload },
+        })
+
+        if (!upsert.error) {
+          return { data: Array.isArray(upsert.data) ? upsert.data[0] : upsert.data, error: null }
+        }
+
+        const update = await requestRest(`flowdesk_workspace_data?data_key=eq.${encodeURIComponent(safeKey)}`, {
           method: 'PATCH',
           prefer: 'return=representation',
-          body: { payload, updated_at: new Date().toISOString() },
+          body: { payload: safePayload, updated_at: new Date().toISOString() },
         })
 
         if (!update.error && Array.isArray(update.data) && update.data.length) {
@@ -205,9 +228,9 @@ export const flowdeskCloud = hasSupabaseConfig
         const insert = await requestRest('flowdesk_workspace_data', {
           method: 'POST',
           prefer: 'return=representation',
-          body: { data_key: dataKey, payload },
+          body: { data_key: safeKey, payload: safePayload },
         })
-        if (insert.error) return insert
+        if (insert.error) return upsert.error ? upsert : insert
         return { data: Array.isArray(insert.data) ? insert.data[0] : insert.data, error: null }
       },
     }

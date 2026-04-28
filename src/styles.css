@@ -10012,3 +10012,87 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v19.7.2 core usability polish: keep existing layout, add functional editors */
+.task-search-bar {
+  margin-top: -8px;
+}
+.task-action-row-expanded {
+  flex-wrap: wrap;
+}
+.task-action-row-expanded .danger,
+.project-quick-actions .danger {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, .24);
+  background: rgba(254, 242, 242, .9);
+}
+.task-modal {
+  max-width: min(920px, calc(100vw - 28px));
+}
+.project-quick-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 22px;
+  background: rgba(248, 250, 252, .86);
+  margin: 12px 0;
+}
+.project-quick-editor label,
+.task-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+.project-quick-editor input,
+.project-quick-editor select,
+.project-quick-editor textarea,
+.task-modal input,
+.task-modal select,
+.task-modal textarea {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, .28);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, .94);
+  color: #0f172a;
+  outline: none;
+}
+.project-quick-editor textarea,
+.task-modal textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+.project-quick-editor .wide-field,
+.project-quick-editor .project-quick-actions {
+  grid-column: 1 / -1;
+}
+.project-quick-actions,
+.purchase-detail-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.project-quick-actions button,
+.purchase-detail-actions button {
+  border: 1px solid rgba(148, 163, 184, .24);
+  background: rgba(255, 255, 255, .9);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 800;
+  color: #334155;
+  cursor: pointer;
+}
+.purchase-detail-actions {
+  margin: -2px 0 8px;
+}
+@media (max-width: 760px) {
+  .project-quick-editor {
+    grid-template-columns: 1fr;
+  }
+}

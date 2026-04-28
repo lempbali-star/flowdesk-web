@@ -1175,7 +1175,29 @@ function BasePage({ tables, records, activeTable }) {
     } else {
       writeHistory(next.id, next.item, '更新採購資料。')
     }
+    setSelectedPurchase(next)
     setEditingPurchase(null)
+  }
+
+  function updatePurchaseStatus(row, status) {
+    if (!row || !status) return
+    const next = { ...row, status }
+    setPurchases((rows) => rows.map((item) => item.id === row.id ? next : item))
+    setSelectedPurchase(next)
+    writeHistory(row.id, purchaseTitle(row), `狀態改為「${status}」。`)
+  }
+
+  function advancePurchase(row) {
+    if (!row) return
+    const currentIndex = activeStages.findIndex((stage) => stage.name === row.status)
+    const nextStage = activeStages[Math.min(activeStages.length - 1, currentIndex + 1)]
+    if (nextStage && nextStage.name !== row.status) updatePurchaseStatus(row, nextStage.name)
+  }
+
+  function completePurchase(row) {
+    if (!row) return
+    const doneStage = purchaseStages.find((stage) => stage.done || stage.name.includes('完成'))?.name || '已完成'
+    updatePurchaseStatus(row, doneStage)
   }
 
   function deletePurchase(id) {
@@ -1189,6 +1211,7 @@ function BasePage({ tables, records, activeTable }) {
     const cancelStage = purchaseStages.find((stage) => stage.cancel || stage.name.includes('取消'))?.name || '已取消'
     const next = { ...row, status: cancelStage }
     setPurchases((rows) => rows.map((item) => item.id === row.id ? next : item))
+    setSelectedPurchase(next)
     writeHistory(row.id, purchaseTitle(row), `狀態改為「${cancelStage}」。`)
   }
 
@@ -1376,7 +1399,7 @@ function BasePage({ tables, records, activeTable }) {
               <aside className="purchase-side-panel">
                 <section className="purchase-detail-card compact-detail-card">
                   <PanelTitle eyebrow="採購明細" title={selectedPurchase ? purchaseTitle(selectedPurchase) : '請選擇採購項目'} />
-                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
+                  {selectedPurchase ? <PurchaseDetail row={selectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(selectedPurchase)} onEdit={() => setEditingPurchase(selectedPurchase)} onAdvance={() => advancePurchase(selectedPurchase)} onComplete={() => completePurchase(selectedPurchase)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
                 </section>
                 <section className="purchase-history-card compact-history-card">
                   <PanelTitle eyebrow="狀態歷程" title="最近變更" />
@@ -1528,20 +1551,177 @@ function PurchaseStageSettings({ stages, stageDragId, setStageDragId, moveStage,
   )
 }
 
+function todayDate() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function addDaysDate(days) {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function nextRunningId(prefix, rows = []) {
+  const maxNumber = rows.reduce((max, item) => {
+    const matched = String(item.id || '').match(new RegExp(`${prefix}-(\\d+)`))
+    return matched ? Math.max(max, Number(matched[1])) : max
+  }, 0)
+  return `${prefix}-${String(maxNumber + 1).padStart(3, '0')}`
+}
+
+function createEmptyTask() {
+  return {
+    title: '',
+    source: '手動新增',
+    category: '一般任務',
+    status: '待跟進',
+    priority: '中',
+    owner: 'Kyle',
+    progress: 0,
+    due: todayDate(),
+    next: '',
+    relatedPurchase: '',
+    relatedVendor: '',
+    relatedProject: '',
+    tagsText: '',
+    note: '',
+  }
+}
+
+function normalizeTask(row = {}) {
+  const tags = Array.isArray(row.tags)
+    ? row.tags
+    : String(row.tagsText || row.tags || '').split(',').map((tag) => tag.trim()).filter(Boolean)
+  const next = String(row.next || row.note || '').trim()
+  return {
+    id: row.id || `TASK-${Date.now()}`,
+    title: String(row.title || '未命名任務').trim(),
+    source: row.source || '手動新增',
+    category: row.category || '一般任務',
+    status: row.status || '待跟進',
+    priority: row.priority || '中',
+    owner: row.owner || 'Kyle',
+    progress: Math.max(0, Math.min(100, Number(row.progress || 0))),
+    due: row.due || todayDate(),
+    next: next || '補上下一步。',
+    relatedPurchase: row.relatedPurchase || '',
+    relatedVendor: row.relatedVendor || '',
+    relatedProject: row.relatedProject || '',
+    tags,
+    records: Array.isArray(row.records) && row.records.length ? row.records : ['建立任務。'],
+  }
+}
+
 function TaskTrackingPage({ tasks: sourceTasks }) {
-  const [tasks, setTasks] = useState(sourceTasks)
+  const [tasks, setTasks] = useState(() => {
+    if (typeof window === 'undefined') return sourceTasks
+    try {
+      const saved = window.localStorage.getItem('flowdesk-tasks-v1972')
+      const parsed = saved ? JSON.parse(saved) : null
+      return Array.isArray(parsed) && parsed.length ? parsed.map(normalizeTask) : sourceTasks.map(normalizeTask)
+    } catch {
+      return sourceTasks.map(normalizeTask)
+    }
+  })
+  const [tasksCloudReady, setTasksCloudReady] = useState(!flowdeskCloud)
+  const tasksCloudSaveTimer = useRef(null)
   const [filter, setFilter] = useState('全部')
+  const [keyword, setKeyword] = useState('')
   const [selectedId, setSelectedId] = useState(sourceTasks[0]?.id)
+  const [showTaskForm, setShowTaskForm] = useState(false)
+  const [editingTask, setEditingTask] = useState(null)
   const statusOptions = ['全部', '待跟進', '跟進中', '等回覆', '卡關', '已收斂']
+  const taskStatusOptions = statusOptions.filter((item) => item !== '全部')
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadTasksFromCloud() {
+      if (!flowdeskCloud) {
+        setTasksCloudReady(true)
+        return
+      }
+      const { data } = await flowdeskCloud.getWorkspaceData('tasks')
+      if (cancelled) return
+      if (Array.isArray(data)) {
+        const normalized = data.map(normalizeTask)
+        setTasks(normalized)
+        setSelectedId(normalized[0]?.id)
+      }
+      setTasksCloudReady(true)
+    }
+    loadTasksFromCloud()
+    return () => {
+      cancelled = true
+      clearTimeout(tasksCloudSaveTimer.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('flowdesk-tasks-v1972', JSON.stringify(tasks))
+    if (!tasksCloudReady || !flowdeskCloud) return
+    clearTimeout(tasksCloudSaveTimer.current)
+    tasksCloudSaveTimer.current = window.setTimeout(() => {
+      flowdeskCloud.setWorkspaceData('tasks', tasks).catch(() => null)
+    }, 600)
+  }, [tasks, tasksCloudReady])
+
+  useEffect(() => {
+    if (!tasks.length) {
+      setSelectedId(null)
+      return
+    }
+    if (!selectedId || !tasks.some((task) => task.id === selectedId)) setSelectedId(tasks[0].id)
+  }, [selectedId, tasks])
+
   const selectedTask = tasks.find((task) => task.id === selectedId) || tasks[0]
-  const visibleTasks = filter === '全部' ? tasks : tasks.filter((task) => task.status === filter)
+  const visibleTasks = tasks.filter((task) => {
+    const statusMatched = filter === '全部' || task.status === filter
+    const q = keyword.trim().toLowerCase()
+    const text = [task.id, task.title, task.source, task.category, task.status, task.priority, task.owner, task.next, task.relatedPurchase, task.relatedVendor, task.relatedProject, ...(Array.isArray(task.tags) ? task.tags : [])].join(' ').toLowerCase()
+    return statusMatched && (!q || text.includes(q))
+  })
   const openCount = tasks.filter((task) => task.status !== '已收斂').length
   const waitingCount = tasks.filter((task) => ['等回覆', '卡關'].includes(task.status)).length
-  const todayCount = tasks.filter((task) => task.due === '今日').length
-  const avgProgress = Math.round(tasks.reduce((sum, task) => sum + task.progress, 0) / Math.max(tasks.length, 1))
+  const todayCount = tasks.filter((task) => task.due === todayDate() || task.due === '今日').length
+  const avgProgress = Math.round(tasks.reduce((sum, task) => sum + Number(task.progress || 0), 0) / Math.max(tasks.length, 1))
+
+  function updateTask(id, patch, recordText) {
+    setTasks((current) => current.map((task) => {
+      if (task.id !== id) return task
+      const next = normalizeTask({ ...task, ...patch })
+      if (recordText) next.records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜${recordText}`, ...(task.records || [])].slice(0, 20)
+      return next
+    }))
+  }
 
   function updateTaskStatus(id, status) {
-    setTasks((current) => current.map((task) => task.id === id ? { ...task, status, progress: status === '已收斂' ? 100 : task.progress } : task))
+    const target = tasks.find((task) => task.id === id)
+    updateTask(id, { status, progress: status === '已收斂' ? 100 : status === '跟進中' ? Math.max(target?.progress || 0, 35) : target?.progress }, `狀態改為「${status}」。`)
+  }
+
+  function addTask(form) {
+    const next = normalizeTask({ ...form, id: nextRunningId('TASK', tasks), records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜建立任務。`] })
+    setTasks((current) => [next, ...current])
+    setSelectedId(next.id)
+    setShowTaskForm(false)
+  }
+
+  function saveTask(form) {
+    const next = normalizeTask(form)
+    setTasks((current) => current.map((task) => task.id === next.id ? { ...next, records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜更新任務內容。`, ...(task.records || [])].slice(0, 20) } : task))
+    setSelectedId(next.id)
+    setEditingTask(null)
+  }
+
+  function duplicateTask(task) {
+    const next = normalizeTask({ ...task, id: nextRunningId('TASK', tasks), title: `${task.title || '未命名任務'} 複本`, status: '待跟進', progress: 0, records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜由 ${task.id} 複製。`] })
+    setTasks((current) => [next, ...current])
+    setSelectedId(next.id)
+  }
+
+  function removeTask(id) {
+    setTasks((current) => current.filter((task) => task.id !== id))
   }
 
   function statusCount(status) {
@@ -1558,8 +1738,8 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
         </div>
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">等待 / 卡關 {waitingCount}</span>
-          <button className="ghost-btn" type="button">整理視圖</button>
-          <button className="primary-btn" type="button">新增任務</button>
+          <button className="ghost-btn" type="button" onClick={() => { setFilter('全部'); setKeyword('') }}>整理視圖</button>
+          <button className="primary-btn" type="button" onClick={() => setShowTaskForm(true)}>新增任務</button>
         </div>
       </section>
 
@@ -1577,6 +1757,11 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
           </button>
         ))}
       </section>
+
+      <div className="purchase-filter-bar task-search-bar">
+        <label className="purchase-search-field">搜尋<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="任務、廠商、採購、專案、下一步..." /></label>
+        <button className="ghost-btn" type="button" onClick={() => { setKeyword(''); setFilter('全部') }}>清除篩選</button>
+      </div>
 
       <div className="task-board-layout task-board-layout-v2">
         <section className="task-feed-panel task-feed-panel-v2">
@@ -1619,7 +1804,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
                 </div>
                 <h3>{selectedTask.title}</h3>
                 <p>{selectedTask.source} · {selectedTask.category}</p>
-                <div className="tag-list">{selectedTask.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+                <div className="tag-list">{(selectedTask.tags || []).map((tag) => <span key={tag}>{tag}</span>)}</div>
                 <div className="flow-progress big"><span style={{ width: `${selectedTask.progress}%` }} /></div>
               </div>
               <section className="detail-block next-action-card">
@@ -1637,21 +1822,72 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
               <section className="detail-block">
                 <p className="eyebrow">處理紀錄</p>
                 <div className="timeline-notes flow-timeline-notes">
-                  {selectedTask.records.map((record, index) => <div key={record}><span>{index + 1}</span><p>{record}</p></div>)}
+                  {(selectedTask.records || []).map((record, index) => <div key={`${record}-${index}`}><span>{index + 1}</span><p>{record}</p></div>)}
                 </div>
               </section>
-              <div className="task-action-row task-action-row-v2">
+              <div className="task-action-row task-action-row-v2 task-action-row-expanded">
                 <button type="button" onClick={() => updateTaskStatus(selectedTask.id, '跟進中')}>跟進中</button>
                 <button type="button" onClick={() => updateTaskStatus(selectedTask.id, '等回覆')}>等回覆</button>
                 <button type="button" onClick={() => updateTaskStatus(selectedTask.id, '已收斂')}>收斂</button>
+                <button type="button" onClick={() => setEditingTask(selectedTask)}>編輯</button>
+                <button type="button" onClick={() => duplicateTask(selectedTask)}>複製</button>
+                <button className="danger" type="button" onClick={() => removeTask(selectedTask.id)}>刪除</button>
               </div>
             </>
           )}
         </aside>
       </div>
+      {showTaskForm && <TaskModal onClose={() => setShowTaskForm(false)} onSubmit={addTask} statusOptions={taskStatusOptions} />}
+      {editingTask && <TaskModal onClose={() => setEditingTask(null)} onSubmit={saveTask} statusOptions={taskStatusOptions} initial={editingTask} mode="edit" />}
     </div>
   )
 }
+
+function TaskModal({ onClose, onSubmit, statusOptions, initial, mode = 'create' }) {
+  const [form, setForm] = useState(() => ({ ...createEmptyTask(), ...(initial || {}), tagsText: Array.isArray(initial?.tags) ? initial.tags.join(', ') : initial?.tagsText || '' }))
+
+  function update(field, value) {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function submitTask() {
+    if (!String(form.title || '').trim()) return
+    onSubmit(form)
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <section className="launcher task-modal v16-modal">
+        <div className="launcher-head purchase-modal-head">
+          <div><p className="eyebrow">任務追蹤</p><h2>{mode === 'edit' ? '編輯任務' : '新增任務'}</h2></div>
+          <button type="button" onClick={onClose}>✕</button>
+        </div>
+        <div className="purchase-modal-body">
+          <div className="form-grid">
+            <label>標題<input value={form.title} onChange={(event) => update('title', event.target.value)} placeholder="例如：追蹤廠商報價" /></label>
+            <label>狀態<select value={form.status} onChange={(event) => update('status', event.target.value)}>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+            <label>優先級<select value={form.priority} onChange={(event) => update('priority', event.target.value)}><option>高</option><option>中</option><option>低</option></select></label>
+            <label>負責人<input value={form.owner} onChange={(event) => update('owner', event.target.value)} /></label>
+            <label>來源<input value={form.source} onChange={(event) => update('source', event.target.value)} /></label>
+            <label>類別<input value={form.category} onChange={(event) => update('category', event.target.value)} /></label>
+            <label>到期日<input type="date" value={form.due} onChange={(event) => update('due', event.target.value)} /></label>
+            <label>進度 %<input type="number" min="0" max="100" value={form.progress} onChange={(event) => update('progress', event.target.value)} /></label>
+            <label>關聯採購<input value={form.relatedPurchase} onChange={(event) => update('relatedPurchase', event.target.value)} placeholder="例如 PO-001" /></label>
+            <label>關聯廠商<input value={form.relatedVendor} onChange={(event) => update('relatedVendor', event.target.value)} /></label>
+            <label>關聯專案<input value={form.relatedProject} onChange={(event) => update('relatedProject', event.target.value)} placeholder="例如 PRJ-001" /></label>
+            <label>標籤<input value={form.tagsText} onChange={(event) => update('tagsText', event.target.value)} placeholder="以逗號分隔" /></label>
+            <label className="form-wide">下一步<textarea value={form.next} onChange={(event) => update('next', event.target.value)} /></label>
+          </div>
+        </div>
+        <div className="form-actions sticky-form-actions">
+          <button className="ghost-btn" type="button" onClick={onClose}>取消</button>
+          <button className="primary-btn" type="button" onClick={submitTask} disabled={!String(form.title || '').trim()}>儲存</button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 
 function ProjectManagementPage({ projects: initialProjectRows = [] }) {
   const [projects, setProjects] = useState(() => initialProjectRows)
@@ -1781,6 +2017,37 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
       const expanded = new Set(previous)
       expanded.add(next.id)
       return expanded
+    })
+  }
+
+  function updateProject(projectId, patch, recordText) {
+    setProjects((rows) => rows.map((project) => {
+      if (project.id !== projectId) return project
+      const next = { ...project, ...patch }
+      if (recordText) next.records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜${recordText}`, ...(project.records || [])].slice(0, 20)
+      return next
+    }))
+  }
+
+  function duplicateProject(project) {
+    if (!project) return
+    const next = {
+      ...project,
+      id: getNextProjectId(projects),
+      name: `${project.name || '未命名專案'} 複本`,
+      progress: 0,
+      health: '待確認',
+      records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜由 ${project.id} 複製。`],
+    }
+    setProjects((rows) => [next, ...rows])
+    setSelectedId(next.id)
+  }
+
+  function deleteProject(projectId) {
+    setProjects((rows) => {
+      const next = rows.filter((project) => project.id !== projectId)
+      setSelectedId(next[0]?.id)
+      return next
     })
   }
 
@@ -1920,6 +2187,20 @@ function ProjectManagementPage({ projects: initialProjectRows = [] }) {
                 <p>{selectedProject.next}</p>
                 <div className="flow-progress big"><span style={{ width: `${selectedProject.progress}%` }} /></div>
               </div>
+              <section className="project-quick-editor">
+                <label>專案名稱<input value={selectedProject.name} onChange={(event) => updateProject(selectedProject.id, { name: event.target.value }, '更新專案名稱。')} /></label>
+                <label>階段<input value={selectedProject.phase} onChange={(event) => updateProject(selectedProject.id, { phase: event.target.value }, '更新專案階段。')} /></label>
+                <label>負責人<input value={selectedProject.owner} onChange={(event) => updateProject(selectedProject.id, { owner: event.target.value }, '更新負責人。')} /></label>
+                <label>健康度<select value={selectedProject.health} onChange={(event) => updateProject(selectedProject.id, { health: event.target.value }, '更新健康度。')}><option>穩定推進</option><option>待確認</option><option>高風險</option><option>卡關</option></select></label>
+                <label>開始<input type="date" value={selectedProject.startDate} onChange={(event) => updateProject(selectedProject.id, { startDate: event.target.value }, '更新開始日期。')} /></label>
+                <label>結束<input type="date" value={selectedProject.endDate} onChange={(event) => updateProject(selectedProject.id, { endDate: event.target.value }, '更新結束日期。')} /></label>
+                <label>進度 %<input type="number" min="0" max="100" value={selectedProject.progress} onChange={(event) => updateProject(selectedProject.id, { progress: Math.max(0, Math.min(100, Number(event.target.value || 0))) }, '更新進度。')} /></label>
+                <label className="wide-field">下一步<textarea value={selectedProject.next} onChange={(event) => updateProject(selectedProject.id, { next: event.target.value }, '更新下一步。')} /></label>
+                <div className="project-quick-actions">
+                  <button type="button" onClick={() => duplicateProject(selectedProject)}>複製專案</button>
+                  <button className="danger" type="button" onClick={() => deleteProject(selectedProject.id)}>刪除專案</button>
+                </div>
+              </section>
               <div className="detail-section-grid project-fields detail-section-grid-v2">
                 <article><span>階段</span><strong>{selectedProject.phase}</strong></article>
                 <article><span>負責</span><strong>{selectedProject.owner}</strong></article>
@@ -2851,7 +3132,7 @@ function roundAmounts(amounts) {
   return Object.fromEntries(Object.entries(amounts).map(([key, value]) => [key, Math.round(Number(value || 0))]))
 }
 
-function PurchaseDetail({ row, stages, relatedTasks = [] }) {
+function PurchaseDetail({ row, stages, relatedTasks = [], onEdit, onAdvance, onComplete }) {
   const amount = calculatePurchase(row)
   const items = getPurchaseItems(row)
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -2863,6 +3144,11 @@ function PurchaseDetail({ row, stages, relatedTasks = [] }) {
         <StageBadge value={row.status} stages={stages} />
         <span>{row.department || '未填部門'}</span>
         <span>{row.requester || '未填申請人'}</span>
+      </div>
+      <div className="purchase-detail-actions">
+        <button type="button" onClick={onEdit}>編輯採購</button>
+        <button type="button" onClick={onAdvance}>下一流程</button>
+        <button type="button" onClick={onComplete}>視為完成</button>
       </div>
 
       <div className="detail-money-summary">
