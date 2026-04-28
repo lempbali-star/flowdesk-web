@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.1.9'
+const FLOWDESK_APP_VERSION = '20.2.0'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function confirmDestructiveAction(label = '這筆資料', detail = '刪除後無法直接復原。') {
@@ -2632,7 +2632,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projects, setProjects] = useState(() => initialProjectRows)
   const [projectsCloudReady, setProjectsCloudReady] = useState(!flowdeskCloud)
   const projectsCloudSaveTimer = useRef(null)
-  const projectHoverTimer = useRef(null)
   const [selectedId, setSelectedId] = useState(initialProjectRows[0]?.id)
   const [projectKeyword, setProjectKeyword] = useState('')
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
@@ -2668,7 +2667,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return () => {
       cancelled = true
       clearTimeout(projectsCloudSaveTimer.current)
-      clearTimeout(projectHoverTimer.current)
     }
   }, [])
 
@@ -2825,6 +2823,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function openProjectDetail(projectId) {
     if (!projectId) return
     setSelectedId(projectId)
+    setPreviewProjectId(projectId)
     setTimelineMode('focus')
     setDetailTab('overview')
     setProjectModalId(projectId)
@@ -2971,24 +2970,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setPreviewProjectId(selectedProject?.id || null)
   }
 
-  function scheduleGanttPreview(projectId, immediate = false) {
+  function setProjectGanttFocus(projectId) {
     if (!projectId || allGanttExpanded) return
-    clearTimeout(projectHoverTimer.current)
-    const applyPreview = () => {
-      setPreviewProjectId((current) => current === projectId ? current : projectId)
-    }
-    if (immediate) {
-      applyPreview()
-      return
-    }
-    projectHoverTimer.current = window.setTimeout(applyPreview, 180)
+    setSelectedId(projectId)
+    setPreviewProjectId((current) => current === projectId ? current : projectId)
   }
 
-  function getProjectHoverProps(projectId) {
+  function getProjectFocusProps(projectId) {
     return {
-      onMouseEnter: () => scheduleGanttPreview(projectId),
-      onMouseLeave: () => clearTimeout(projectHoverTimer.current),
-      onFocus: () => scheduleGanttPreview(projectId, true),
+      onFocus: () => setProjectGanttFocus(projectId),
     }
   }
 
@@ -3117,7 +3107,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <div>
           <p className="eyebrow">PROJECT FLOW</p>
           <h2>專案管理</h2>
-          <span>專案列表負責搜尋與排序；滑過卡片或清單會切換上方焦點甘特圖，點擊則開啟明細彈窗。</span>
+          <span>專案列表負責搜尋與排序；點擊卡片或清單列才切換焦點甘特圖並開啟明細，避免滑過時亂跳。</span>
         </div>
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">平均進度 {avgProgress}%</span>
@@ -3140,7 +3130,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div>
             <p className="eyebrow">PROJECT BOARD</p>
             <h3>專案檢視</h3>
-            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；甘特圖統一顯示在固定預覽區，避免卡片展開跑版或閃爍。</small>
+            <small>可切換卡片 / 清單、拖曳排序並分頁瀏覽；甘特圖固定在預覽區，點擊或固定才切換焦點。</small>
           </div>
           <div className="project-board-controls">
             <div className="project-board-filters">
@@ -3167,7 +3157,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <div>
                 <p className="eyebrow">GANTT PREVIEW</p>
                 <h3>{allGanttExpanded ? '全部專案甘特圖' : (ganttPanelProjects[0]?.name || '焦點甘特圖')}</h3>
-                <small>{ganttPanelModeText} · 滑過卡片 / 清單會延遲預覽焦點；固定後可保留多個專案時程。</small>
+                <small>{ganttPanelModeText} · 點擊卡片 / 清單才切換焦點；固定後可保留多個專案時程。</small>
               </div>
               <div className="project-gantt-focus-actions">
                 {previewProjectId && <button type="button" onClick={() => toggleProjectGanttPin(previewProjectId)}>{pinnedGanttIds.has(previewProjectId) ? '取消固定目前專案' : '固定目前專案'}</button>}
@@ -3194,7 +3184,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <article
                   key={project.id}
                   {...getProjectDragProps(project.id)}
-                  {...getProjectHoverProps(project.id)}
+                  {...getProjectFocusProps(project.id)}
                   role="button"
                   tabIndex={0}
                   className={[
@@ -3208,7 +3198,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   ].filter(Boolean).join(' ')}
                   onClick={() => openProjectDetail(project.id)}
                   onKeyDown={(event) => handleProjectCardKeyDown(project.id, event)}
-                  title="滑過切換甘特圖預覽，點擊查看明細，拖曳調整順序"
+                  title="點擊切換焦點甘特圖與查看明細，拖曳調整順序"
                 >
                   <div className="project-board-card-top">
                     <span className="record-id">☰ {project.id}</span>
@@ -3221,7 +3211,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div>
                     <strong>{project.progress}%</strong><small>估 {estimated}%</small>
                   </div>
-                  <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>{ganttOpen ? '甘特圖預覽中' : '滑過切換甘特圖'}</span></div>
+                  <div className="project-board-stats"><span>{project.tasks?.length || 0} 任務</span><span>{project.milestones?.length || 0} 里程碑</span><span>{ganttOpen ? '焦點甘特圖' : '點擊切換焦點'}</span></div>
                   <div className="project-board-actions-row" onClick={(event) => event.stopPropagation()}>
                     <button type="button" onClick={(event) => { event.stopPropagation(); toggleProjectGanttPin(project.id) }}>{isPinned ? '取消固定' : '固定甘特圖'}</button>
                     <button type="button" onClick={(event) => { event.stopPropagation(); openProjectDetail(project.id) }}>明細</button>
@@ -3241,7 +3231,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <article
                   key={project.id}
                   {...getProjectDragProps(project.id)}
-                  {...getProjectHoverProps(project.id)}
+                  {...getProjectFocusProps(project.id)}
                   role="button"
                   tabIndex={0}
                   className={[
@@ -3255,7 +3245,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   ].filter(Boolean).join(' ')}
                   onClick={() => openProjectDetail(project.id)}
                   onKeyDown={(event) => handleProjectCardKeyDown(project.id, event)}
-                  title="滑過切換甘特圖預覽，點擊查看明細，拖曳調整順序"
+                  title="點擊切換焦點甘特圖與查看明細，拖曳調整順序"
                 >
                   <div className="project-list-row-main">
                     <span className="project-list-title"><small>☰ {project.id}</small><strong>{project.name}</strong><em>{project.next || '尚未設定下一步'}</em></span>
