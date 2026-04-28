@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.1'
+const FLOWDESK_APP_VERSION = '20.3.3'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function ChineseTextField({ value = '', onCommit, multiline = false, ...props }) {
@@ -3182,14 +3182,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const frozenRange = ganttDragRange?.projectId === project.id ? ganttDragRange : null
     const displayStart = frozenRange?.start || addDaysToDateValue(project.startDate, -14)
     const displayEnd = frozenRange?.end || addDaysToDateValue(project.endDate, 14)
-    const ticks = buildGanttTicks(displayStart, displayEnd)
+    const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
+    const weekCellWidth = 140
     return (
       <div className="fd203-gantt-panel">
         <div className="fd203-gantt-summary">
           <div>
             <p className="eyebrow">PROJECT GANTT</p>
             <h3>{project.name}</h3>
-            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 拖曳色條中間可整段平移，拖曳左右端可調整日期；刻度以每日顯示</small>
+            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 日期改為每週顯示，中間保留每日刻度；拖曳色條中間可整段平移，拖曳左右端可調整日期</small>
           </div>
           <label>
             <span>專案進度 {project.progress}%</span>
@@ -3198,17 +3199,22 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         </div>
 
         <div className="fd203-gantt-scroll">
-          <div className="fd203-gantt-grid fd203-gantt-head" style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(42px, 42px))` }}>
+          <div className="fd203-gantt-grid fd203-gantt-head" style={{ gridTemplateColumns: `180px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))` }}>
             <span>項目</span>
-            {ticks.map((tick) => <span key={tick}>{formatMonthDayWeekday(tick)}</span>)}
+            {weekTicks.map((tick) => (
+              <span key={tick.key} className="fd203-week-head">
+                <b>{formatWeekRange(tick.start, tick.end)}</b>
+                <small>{tick.days} 天 · {formatWeekSpanLabel(tick.start, tick.end)}</small>
+              </span>
+            ))}
           </div>
 
-          <div className="fd203-gantt-grid fd203-gantt-row" style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(42px, 42px))` }}>
+          <div className="fd203-gantt-grid fd203-gantt-row" style={{ gridTemplateColumns: `180px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))` }}>
             <div className="fd203-gantt-label">
               <strong>專案總期程</strong>
               <small>{project.phase} · {project.progress}%</small>
             </div>
-            <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${ticks.length}` }}>
+            <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
               <span className={`fd203-gantt-bar project ${project.tone || 'blue'}`} style={ganttStyle(project.startDate, project.endDate, displayStart, displayEnd)} onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'move', event)} title="拖曳中間可整段平移；拖曳左右端可調整日期">
                 <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整專案開始日" onPointerDown={(event) => startGanttDateDrag(project, 'project', null, 'start', event)} />
                 <span>{project.progress}%</span>
@@ -3225,7 +3231,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const taskEnd = task.end || project.endDate
             const progress = clampPercent(task.progress)
             return (
-              <div className="fd203-gantt-grid fd203-gantt-row task" key={`${task.name}-${index}`} style={{ gridTemplateColumns: `180px repeat(${ticks.length}, minmax(42px, 42px))` }}>
+              <div className="fd203-gantt-grid fd203-gantt-row task" key={`${task.name}-${index}`} style={{ gridTemplateColumns: `180px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))` }}>
                 <div className="fd203-gantt-label">
                   <strong>{task.name || '未命名任務'}</strong>
                   <small>{task.owner || '未指定'} · {progress}%</small>
@@ -3238,7 +3244,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     aria-label={`${task.name || '任務'} 進度`}
                   />
                 </div>
-                <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${ticks.length}` }}>
+                <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                   <span className="fd203-gantt-bar task" style={ganttStyle(taskStart, taskEnd, displayStart, displayEnd)} onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'move', event)} title="拖曳中間可整段平移；拖曳左右端可調整日期">
                     <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label="調整任務開始日" onPointerDown={(event) => startGanttDateDrag(project, 'task', index, 'start', event)} />
                     <span>{progress}%</span>
@@ -3541,9 +3547,40 @@ function buildGanttTicks(start, end) {
   return ticks
 }
 
+function buildGanttWeekTicks(start, end) {
+  const ticks = []
+  let cursor = parseDate(start)
+  const finalDate = parseDate(end)
+  while (cursor <= finalDate) {
+    const weekStart = cursor.toISOString().slice(0, 10)
+    const weekEndDate = new Date(cursor.getTime() + (6 * 86400000))
+    const normalizedWeekEnd = weekEndDate > finalDate ? finalDate : weekEndDate
+    const weekEnd = normalizedWeekEnd.toISOString().slice(0, 10)
+    ticks.push({
+      key: `${weekStart}_${weekEnd}`,
+      start: weekStart,
+      end: weekEnd,
+      days: Math.round((normalizedWeekEnd - cursor) / 86400000) + 1,
+    })
+    cursor = new Date(normalizedWeekEnd.getTime() + 86400000)
+  }
+  return ticks
+}
+
 function formatMonthDay(value) {
   const date = parseDate(value)
   return (date.getMonth() + 1) + '/' + String(date.getDate()).padStart(2, '0')
+}
+
+function formatWeekRange(start, end) {
+  return `${formatMonthDay(start)} - ${formatMonthDay(end)}`
+}
+
+function formatWeekSpanLabel(start, end) {
+  const weekdayMap = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+  const startDate = parseDate(start)
+  const endDate = parseDate(end)
+  return `${weekdayMap[startDate.getDay()]} ～ ${weekdayMap[endDate.getDay()]}`
 }
 
 function formatMonthDayWeekday(value) {
@@ -3551,6 +3588,7 @@ function formatMonthDayWeekday(value) {
   const weekdayMap = ['日', '一', '二', '三', '四', '五', '六']
   return `${date.getMonth() + 1}/${String(date.getDate()).padStart(2, '0')}(${weekdayMap[date.getDay()]})`
 }
+
 
 function DocsPage({ docs }) {
   return (

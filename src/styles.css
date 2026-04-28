@@ -2617,21 +2617,15 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   }
 }
 @media (max-width: 900px) {
-  .app-topbar-with-collections {
-    grid-template-columns: 1fr;
+  .fd203-week-head b {
+    font-size: 11px;
   }
-  .topbar-collection-switcher {
-    width: 100%;
-    max-width: none;
-    overflow-x: auto;
-  }
-  .topbar-collection-switcher .base-table {
-    min-width: 148px;
-  }
-  .app-topbar-with-collections .topbar-actions {
-    justify-content: flex-start;
+
+  .fd203-week-head small {
+    font-size: 9px;
   }
 }
+
 
 /* v19.5.6 採購主流程精簡：清單卡片、明細面板、流程列收斂 */
 .more-actions-menu {
@@ -2865,13 +2859,15 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   }
 }
 @media (max-width: 900px) {
-  .purchase-workspace-layout {
-    grid-template-columns: 1fr;
+  .fd203-week-head b {
+    font-size: 11px;
   }
-  .purchase-side-panel {
-    position: static;
+
+  .fd203-week-head small {
+    font-size: 9px;
   }
 }
+
 @media (max-width: 680px) {
   .purchase-card-meta-grid,
   .purchase-actions.compact-actions,
@@ -10180,16 +10176,15 @@ button {
 }
 
 @media (max-width: 900px) {
-  .project-task-editor-list .project-task-editor-row,
-  .milestone-editor-list .milestone-editor-row {
-    grid-template-columns: 1fr;
+  .fd203-week-head b {
+    font-size: 11px;
   }
 
-  .detail-block-headline {
-    align-items: flex-start;
-    flex-direction: column;
+  .fd203-week-head small {
+    font-size: 9px;
   }
 }
+
 
 
 /* v19.7.4 採購管理實戰補強：只針對採購模組 */
@@ -13344,6 +13339,7 @@ button {
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 0.96));
+  --fd203-week-width: 140px;
 }
 
 .fd203-gantt-grid {
@@ -13360,7 +13356,8 @@ button {
 }
 
 .fd203-gantt-head span {
-  padding: 10px 8px;
+  padding: 12px 8px;
+  min-height: 74px;
   color: #64748b;
   font-size: 11px;
   text-align: center;
@@ -13368,8 +13365,29 @@ button {
 }
 
 .fd203-gantt-head span:first-child {
+  min-height: auto;
   text-align: left;
   border-left: 0;
+}
+
+.fd203-week-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.fd203-week-head b {
+  color: #0f172a;
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.fd203-week-head small {
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.1;
 }
 
 .fd203-gantt-row {
@@ -13415,11 +13433,17 @@ button {
   margin: 22px 12px;
   min-height: 30px;
   border-radius: 999px;
-  background: repeating-linear-gradient(90deg, rgba(226, 232, 240, 0.64) 0, rgba(226, 232, 240, 0.64) 1px, rgba(248, 250, 252, 0.56) 1px, rgba(248, 250, 252, 0.56) 54px);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.22) 0, rgba(148, 163, 184, 0.22) 1px, transparent 1px, transparent calc(var(--fd203-week-width, 140px) / 7)),
+    repeating-linear-gradient(90deg, rgba(100, 116, 139, 0.32) 0, rgba(100, 116, 139, 0.32) 2px, transparent 2px, transparent var(--fd203-week-width, 140px)),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(241, 245, 249, 0.86));
 }
 
 .fd203-gantt-track.soft {
-  background: repeating-linear-gradient(90deg, rgba(226, 232, 240, 0.45) 0, rgba(226, 232, 240, 0.45) 1px, rgba(248, 250, 252, 0.45) 1px, rgba(248, 250, 252, 0.45) 54px);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.18) 0, rgba(148, 163, 184, 0.18) 1px, transparent 1px, transparent calc(var(--fd203-week-width, 140px) / 7)),
+    repeating-linear-gradient(90deg, rgba(100, 116, 139, 0.24) 0, rgba(100, 116, 139, 0.24) 2px, transparent 2px, transparent var(--fd203-week-width, 140px)),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.82), rgba(241, 245, 249, 0.72));
 }
 
 .fd203-gantt-bar {
