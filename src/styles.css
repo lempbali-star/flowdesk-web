@@ -16138,7 +16138,7 @@ button[data-primary="true"]:hover::after {
 }
 
 
-/* v20.3.33 theme motion enhancement */
+/* v20.3.34 theme motion enhancement */
 :root {
   --fd33-motion-fast: .18s;
   --fd33-motion-normal: .32s;
@@ -16424,5 +16424,226 @@ textarea:focus {
   .fd203-primary-btn:hover,
   button[data-primary="true"]:hover {
     transform: none !important;
+  }
+}
+
+
+/* v20.3.34 appearance mode and motion level controls */
+html[data-flowdesk-appearance="dark"] body {
+  color: #dbeafe;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(var(--fd31-primary-rgb), .22), transparent 32rem),
+    radial-gradient(circle at 84% 0%, rgba(var(--fd31-secondary-rgb), .18), transparent 30rem),
+    linear-gradient(135deg, #07111f 0%, #0f172a 48%, #111827 100%) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-flowdesk-appearance="system"] body {
+    color: #dbeafe;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(var(--fd31-primary-rgb), .22), transparent 32rem),
+      radial-gradient(circle at 84% 0%, rgba(var(--fd31-secondary-rgb), .18), transparent 30rem),
+      linear-gradient(135deg, #07111f 0%, #0f172a 48%, #111827 100%) !important;
+  }
+}
+
+html[data-flowdesk-appearance="dark"] .panel,
+html[data-flowdesk-appearance="dark"] .surface-toolbar,
+html[data-flowdesk-appearance="dark"] .settings-hero,
+html[data-flowdesk-appearance="dark"] .settings-category-card,
+html[data-flowdesk-appearance="dark"] .theme-option,
+html[data-flowdesk-appearance="dark"] .collection-card,
+html[data-flowdesk-appearance="dark"] .purchase-card,
+html[data-flowdesk-appearance="dark"] .fd203-project-card,
+html[data-flowdesk-appearance="dark"] .fd203-pane-head,
+html[data-flowdesk-appearance="dark"] .fd203-workspace-head {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-primary-rgb), .10), transparent 30%),
+    rgba(15, 23, 42, .86) !important;
+  border-color: rgba(148, 163, 184, .18) !important;
+  color: #e5eefc !important;
+  box-shadow: 0 22px 56px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-flowdesk-appearance="system"] .panel,
+  html[data-flowdesk-appearance="system"] .surface-toolbar,
+  html[data-flowdesk-appearance="system"] .settings-hero,
+  html[data-flowdesk-appearance="system"] .settings-category-card,
+  html[data-flowdesk-appearance="system"] .theme-option,
+  html[data-flowdesk-appearance="system"] .collection-card,
+  html[data-flowdesk-appearance="system"] .purchase-card,
+  html[data-flowdesk-appearance="system"] .fd203-project-card,
+  html[data-flowdesk-appearance="system"] .fd203-pane-head,
+  html[data-flowdesk-appearance="system"] .fd203-workspace-head {
+    background:
+      radial-gradient(circle at 100% 0%, rgba(var(--fd31-primary-rgb), .10), transparent 30%),
+      rgba(15, 23, 42, .86) !important;
+    border-color: rgba(148, 163, 184, .18) !important;
+    color: #e5eefc !important;
+    box-shadow: 0 22px 56px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255,255,255,.06) !important;
+  }
+}
+
+html[data-flowdesk-appearance="dark"] h1,
+html[data-flowdesk-appearance="dark"] h2,
+html[data-flowdesk-appearance="dark"] h3,
+html[data-flowdesk-appearance="dark"] strong,
+html[data-flowdesk-appearance="dark"] .theme-option strong,
+html[data-flowdesk-appearance="dark"] .settings-category-card strong {
+  color: #f8fafc !important;
+}
+
+html[data-flowdesk-appearance="dark"] p,
+html[data-flowdesk-appearance="dark"] small,
+html[data-flowdesk-appearance="dark"] .settings-note,
+html[data-flowdesk-appearance="dark"] .theme-option small {
+  color: #b6c7dd !important;
+}
+
+html[data-flowdesk-appearance="dark"] input,
+html[data-flowdesk-appearance="dark"] select,
+html[data-flowdesk-appearance="dark"] textarea {
+  background: rgba(15, 23, 42, .78) !important;
+  border-color: rgba(148, 163, 184, .25) !important;
+  color: #f8fafc !important;
+}
+
+html[data-flowdesk-appearance="dark"] .ghost-btn {
+  background: rgba(15, 23, 42, .64) !important;
+  border-color: rgba(148, 163, 184, .22) !important;
+  color: #dbeafe !important;
+}
+
+.fd34-appearance-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.fd34-control-card {
+  display: grid;
+  gap: 12px;
+  align-content: space-between;
+  min-height: 128px;
+  padding: 14px;
+  border: 1px solid rgba(var(--fd31-primary-rgb), .16);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-secondary-rgb), .12), transparent 36%),
+    rgba(255, 255, 255, .82);
+  box-shadow: 0 14px 34px rgba(var(--fd31-primary-rgb), .08);
+}
+
+.fd34-control-card span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.fd34-control-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #172033;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.fd34-control-card small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.fd34-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fd34-segmented button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 999px;
+  background: rgba(255,255,255,.84);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.fd34-segmented button.active {
+  color: #fff;
+  border-color: rgba(var(--fd31-primary-rgb), .26);
+  background: var(--fd31-vivid-gradient);
+  box-shadow: 0 12px 26px rgba(var(--fd31-primary-rgb), .20);
+}
+
+html[data-flowdesk-appearance="dark"] .fd34-control-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-secondary-rgb), .16), transparent 36%),
+    rgba(15, 23, 42, .72);
+  border-color: rgba(148, 163, 184, .18);
+}
+
+html[data-flowdesk-appearance="dark"] .fd34-control-card span,
+html[data-flowdesk-appearance="dark"] .fd34-control-card small {
+  color: #b6c7dd !important;
+}
+
+html[data-flowdesk-appearance="dark"] .fd34-control-card strong {
+  color: #f8fafc !important;
+}
+
+html[data-flowdesk-appearance="dark"] .fd34-segmented button {
+  background: rgba(15, 23, 42, .62);
+  border-color: rgba(148, 163, 184, .22);
+  color: #dbeafe;
+}
+
+html[data-flowdesk-motion="off"] *,
+html[data-flowdesk-motion="off"] *::before,
+html[data-flowdesk-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-flowdesk-motion="off"] .primary-btn::after,
+html[data-flowdesk-motion="off"] .solid-btn::after,
+html[data-flowdesk-motion="off"] .main-cta::after,
+html[data-flowdesk-motion="off"] .add-btn::after,
+html[data-flowdesk-motion="off"] .new-btn::after,
+html[data-flowdesk-motion="off"] .fd203-primary-btn::after,
+html[data-flowdesk-motion="off"] button[data-primary="true"]::after,
+html[data-flowdesk-motion="off"] .fd203-gantt-bar.project::after,
+html[data-flowdesk-motion="off"] .fd203-gantt-bar.task::after,
+html[data-flowdesk-motion="off"] .fd203-gantt-bar.subtask::after,
+html[data-flowdesk-motion="off"] .theme-swatch::before {
+  display: none !important;
+}
+
+html[data-flowdesk-motion="standard"] .theme-option.active,
+html[data-flowdesk-motion="standard"] .fd31-theme-option.active {
+  animation: none !important;
+}
+
+html[data-flowdesk-motion="standard"] .fd31-theme-toolbar-preview::after,
+html[data-flowdesk-motion="standard"] .fd203-gantt-bar.project::after,
+html[data-flowdesk-motion="standard"] .fd203-gantt-bar.task::after,
+html[data-flowdesk-motion="standard"] .fd203-gantt-bar.subtask::after,
+html[data-flowdesk-motion="standard"] .theme-swatch::before {
+  animation-duration: 7s !important;
+  opacity: .42 !important;
+}
+
+@media (max-width: 860px) {
+  .fd34-appearance-controls {
+    grid-template-columns: 1fr;
   }
 }

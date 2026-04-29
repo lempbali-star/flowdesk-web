@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.33'
+const FLOWDESK_APP_VERSION = '20.3.34'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -174,6 +174,18 @@ const themeOptions = [
   { id: 'prism', name: '稜鏡糖彩', description: '粉紫、薄荷與天藍混色，畫面會更活潑搶眼。', accent: '#ff4fd8', secondary: '#38bdf8', vibe: '糖彩炫光' },
 ]
 
+const appearanceModeOptions = [
+  { id: 'light', name: '淺色', description: '維持明亮乾淨的日常工作台。' },
+  { id: 'dark', name: '深色', description: '深色底搭配主題霓光，適合夜間或展示使用。' },
+  { id: 'system', name: '跟隨系統', description: '依照作業系統深色 / 淺色設定自動切換。' },
+]
+
+const motionLevelOptions = [
+  { id: 'off', name: '關閉', description: '關閉主題動畫與流光，保留基本色彩。' },
+  { id: 'standard', name: '標準', description: '保留柔和轉場、卡片浮起與低調光澤。' },
+  { id: 'vivid', name: '炫彩', description: '開啟完整流光、脈衝與主題氛圍效果。' },
+]
+
 const initialWorkItems = []
 
 const collectionColorOptions = [
@@ -313,6 +325,14 @@ function FlowDeskShell({ authSession, onLogout }) {
   const [uiTheme, setUiTheme] = useState(() => {
     if (typeof window === 'undefined') return 'blue'
     return window.localStorage.getItem('flowdesk-ui-theme') || 'blue'
+  })
+  const [appearanceMode, setAppearanceMode] = useState(() => {
+    if (typeof window === 'undefined') return 'light'
+    return window.localStorage.getItem('flowdesk-appearance-mode') || 'light'
+  })
+  const [motionLevel, setMotionLevel] = useState(() => {
+    if (typeof window === 'undefined') return 'standard'
+    return window.localStorage.getItem('flowdesk-motion-level') || 'standard'
   })
   const [iconStyleMode, setIconStyleMode] = useState(() => {
     if (typeof window === 'undefined') return 'auto'
@@ -591,6 +611,17 @@ function FlowDeskShell({ authSession, onLogout }) {
   }, [uiTheme])
 
   useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.flowdeskAppearance = appearanceMode
+      document.documentElement.dataset.flowdeskMotion = motionLevel
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('flowdesk-appearance-mode', appearanceMode)
+      window.localStorage.setItem('flowdesk-motion-level', motionLevel)
+    }
+  }, [appearanceMode, motionLevel])
+
+  useEffect(() => {
     if (typeof document === 'undefined') return
     document.documentElement.dataset.flowdeskIconStyle = resolvedIconStyle
     document.documentElement.dataset.flowdeskIconMode = iconStyleMode
@@ -745,7 +776,7 @@ function FlowDeskShell({ authSession, onLogout }) {
             setActive('board')
           }
         }} />}
-        {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
+        {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
       </main>
 
       {active === 'board' && (
@@ -5266,13 +5297,15 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   )
 }
 
-function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
+function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
   const [settingsView, setSettingsView] = useState('home')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
   const [restorePreview, setRestorePreview] = useState(null)
   const restoreInputRef = useRef(null)
   const activeTheme = themeOptions.find((theme) => theme.id === uiTheme) || themeOptions[0]
+  const activeAppearanceMode = appearanceModeOptions.find((mode) => mode.id === appearanceMode) || appearanceModeOptions[0]
+  const activeMotionLevel = motionLevelOptions.find((level) => level.id === motionLevel) || motionLevelOptions[1]
   const activeIconStyle = iconStyleOptions.find((style) => style.id === resolvedIconStyle) || iconStyleOptions[1]
   const selectedIconStyle = iconStyleOptions.find((style) => style.id === iconStyleMode) || iconStyleOptions[0]
   const sortedCollections = [...collections].sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -5566,7 +5599,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
   }
 
   const settingCards = [
-    { id: 'appearance', title: '外觀設定', eyebrow: 'UI THEME', summary: `目前主題：${activeTheme.name}`, icon: '🎨' },
+    { id: 'appearance', title: '外觀設定', eyebrow: 'UI THEME', summary: `目前主題：${activeTheme.name} · ${activeAppearanceMode.name} · ${activeMotionLevel.name}`, icon: '🎨' },
     { id: 'purchase', title: '採購設定', eyebrow: 'PURCHASE', summary: '採購資料與流程維護', icon: '🧾' },
     { id: 'collections', title: '資料集合設定', eyebrow: 'COLLECTIONS', summary: `${collections.filter((item) => item.visible !== false).length} 個顯示中，管理集合入口、視圖與外觀`, icon: '📚' },
     { id: 'sidebar', title: '側邊欄設定', eyebrow: 'LAYOUT', summary: '模組順序與側邊欄排序', icon: '🧭' },
@@ -5620,7 +5653,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.33 加入主題切換轉場、卡片浮起柔光、按鈕掃光、主題卡選中脈衝、甘特圖流光與背景氛圍光斑。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.34 新增深色模式、跟隨系統外觀與動效強度控制，可在正式工作、夜間檢視與展示情境間快速切換。</p>
           <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
@@ -5633,6 +5666,46 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
               <i />
             </div>
             <button className="ghost-btn fd30-reset-theme-btn" type="button" onClick={() => setUiTheme('blue')}>回復預設藍</button>
+          </div>
+          <div className="fd34-appearance-controls">
+            <div className="fd34-control-card">
+              <div>
+                <span>外觀模式</span>
+                <strong>{activeAppearanceMode.name}</strong>
+                <small>{activeAppearanceMode.description}</small>
+              </div>
+              <div className="fd34-segmented">
+                {appearanceModeOptions.map((mode) => (
+                  <button
+                    key={mode.id}
+                    className={appearanceMode === mode.id ? 'active' : ''}
+                    type="button"
+                    onClick={() => setAppearanceMode(mode.id)}
+                  >
+                    {mode.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="fd34-control-card">
+              <div>
+                <span>動效強度</span>
+                <strong>{activeMotionLevel.name}</strong>
+                <small>{activeMotionLevel.description}</small>
+              </div>
+              <div className="fd34-segmented">
+                {motionLevelOptions.map((level) => (
+                  <button
+                    key={level.id}
+                    className={motionLevel === level.id ? 'active' : ''}
+                    type="button"
+                    onClick={() => setMotionLevel(level.id)}
+                  >
+                    {level.name}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="theme-grid packaged-theme-grid fd30-theme-grid fd31-theme-grid">
             {themeOptions.map((theme) => (
