@@ -14010,8 +14010,12 @@ button {
   gap: 12px;
 }
 
-.fd203-project-entry + .fd203-project-entry {
-  margin-top: 12px;
+.fd203-project-card-list .fd203-project-entry + .fd203-project-entry {
+  margin-top: 0;
+}
+
+.fd203-project-table .fd203-project-entry + .fd203-project-entry {
+  margin-top: 10px;
 }
 
 .fd203-inline-gantt-shell {
@@ -14883,5 +14887,97 @@ button {
     align-items: flex-start;
     flex-direction: column;
     gap: 2px;
+  }
+}
+
+
+/* FlowDesk v20.3.20 project card alignment + compact running/next summary */
+.fd203-project-card-list {
+  align-items: stretch;
+  grid-auto-rows: 1fr;
+}
+
+.fd203-project-card-list .fd203-project-entry {
+  margin-top: 0 !important;
+  height: 100%;
+}
+
+.fd203-project-card-list .fd203-project-card {
+  height: 100%;
+}
+
+.fd203-project-card-list:not(.expanded-gantt) .fd203-project-entry + .fd203-project-entry {
+  margin-top: 0 !important;
+}
+
+.fd203-project-list-info.compact-v20 {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 8px;
+  padding: 9px;
+  border-radius: 17px;
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.88), rgba(248, 250, 252, 0.96));
+  border: 1px solid rgba(191, 219, 254, 0.76);
+  min-height: 92px;
+}
+
+.fd203-project-list-info.compact-v20 div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fd203-project-list-info.compact-v20 span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.10);
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.fd203-project-list-info.compact-v20 .next span {
+  background: rgba(20, 184, 166, 0.12);
+  color: #0f766e;
+}
+
+.fd203-project-list-info.compact-v20 strong {
+  min-height: 22px;
+  color: #0f172a;
+  font-size: 12.5px;
+  line-height: 1.45;
+  font-weight: 850;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.fd203-mini-link.soft {
+  background: rgba(14, 165, 233, 0.10);
+  color: #0369a1;
+  border-color: rgba(14, 165, 233, 0.18);
+}
+
+.fd203-mini-link.soft:hover {
+  background: rgba(14, 165, 233, 0.16);
+}
+
+@media (max-width: 760px) {
+  .fd203-project-list-info.compact-v20 div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .fd203-project-list-info.compact-v20 span {
+    width: max-content;
   }
 }

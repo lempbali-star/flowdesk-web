@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.19'
+const FLOWDESK_APP_VERSION = '20.3.20'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2844,6 +2844,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       end: maxIsoDate(end, start),
       progress,
       done,
+      manualProgress: Boolean(task.manualProgress),
       tone: task.tone || 'blue',
       subtasks: Array.isArray(task.subtasks) ? task.subtasks.map((subtask, subIndex) => normalizeSubtask(subtask, project, task, index, subIndex)) : [],
     }
@@ -2945,6 +2946,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     }))
   }
 
+  function estimateTaskProgress(task = {}) {
+    const subtasks = Array.isArray(task.subtasks) ? task.subtasks : []
+    if (!subtasks.length) return clampPercent(task.progress)
+    const values = subtasks.map((subtask) => clampPercent(subtask.progress))
+    return Math.round(values.reduce((sum, progress) => sum + progress, 0) / Math.max(values.length, 1))
+  }
+
   function updateProjectTask(projectId, taskIndex, patch, recordText) {
     const project = projects.find((item) => item.id === projectId)
     if (!project) return
@@ -2953,16 +2961,41 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       if (index !== taskIndex) return task
       const start = patch.start || task.start || safeProject.startDate
       const end = patch.end || task.end || safeProject.endDate
-      return normalizeTask({
+      const manualProgress = Object.prototype.hasOwnProperty.call(patch, 'manualProgress')
+        ? Boolean(patch.manualProgress)
+        : Object.prototype.hasOwnProperty.call(patch, 'progress')
+          ? true
+          : Boolean(task.manualProgress)
+      const merged = {
         ...task,
         ...patch,
+        manualProgress,
         start: minIsoDate(start, end),
         end: maxIsoDate(end, start),
-        progress: patch.progress === undefined ? clampPercent(task.progress) : clampPercent(patch.progress),
+      }
+      const nextProgress = Object.prototype.hasOwnProperty.call(patch, 'progress')
+        ? clampPercent(patch.progress)
+        : manualProgress
+          ? clampPercent(task.progress)
+          : estimateTaskProgress(merged)
+      return normalizeTask({
+        ...merged,
+        progress: nextProgress,
+        done: patch.done !== undefined ? patch.done : nextProgress >= 100,
       }, safeProject, index)
     })
     const nextProject = normalizeProject({ ...safeProject, tasks })
     updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, recordText)
+  }
+
+  function autoEstimateProjectTask(projectId, taskIndex) {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+    const safeProject = normalizeProject(project)
+    const targetTask = safeProject.tasks[taskIndex]
+    if (!targetTask) return
+    const nextProgress = estimateTaskProgress(targetTask)
+    updateProjectTask(projectId, taskIndex, { progress: nextProgress, manualProgress: false, done: nextProgress >= 100 }, `依子任務自動估算任務進度為 ${nextProgress}%。`)
   }
 
   function addProjectTask(projectId) {
@@ -3016,7 +3049,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           progress: patch.progress === undefined ? clampPercent(subtask.progress) : clampPercent(patch.progress),
         }, safeProject, task, index, subIndex)
       })
-      return { ...task, subtasks }
+      const nextTask = { ...task, subtasks }
+      if (nextTask.manualProgress) return nextTask
+      const nextProgress = estimateTaskProgress(nextTask)
+      return { ...nextTask, progress: nextProgress, done: nextProgress >= 100 }
     })
     const nextProject = normalizeProject({ ...safeProject, tasks })
     updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, recordText)
@@ -3045,7 +3081,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           tone: 'cyan',
         },
       ]
-      return { ...task, subtasks }
+      const nextTask = { ...task, subtasks }
+      if (nextTask.manualProgress) return nextTask
+      const nextProgress = estimateTaskProgress(nextTask)
+      return { ...nextTask, progress: nextProgress, done: nextProgress >= 100 }
     })
     setGanttShowSubtasks(true)
     const targetTask = project.tasks?.[taskIndex]
@@ -3064,7 +3103,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     if (!confirmDestructiveAction(target?.name || '子任務')) return
     const tasks = project.tasks.map((task, index) => {
       if (index !== taskIndex) return task
-      return { ...task, subtasks: (task.subtasks || []).filter((_, subIndex) => subIndex !== subtaskIndex) }
+      const nextTask = { ...task, subtasks: (task.subtasks || []).filter((_, subIndex) => subIndex !== subtaskIndex) }
+      if (nextTask.manualProgress || !(nextTask.subtasks || []).length) return nextTask
+      const nextProgress = estimateTaskProgress(nextTask)
+      return { ...nextTask, progress: nextProgress, done: nextProgress >= 100 }
     })
     const nextProject = normalizeProject({ ...project, tasks })
     updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '刪除子任務。')
@@ -3579,9 +3621,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <strong>{project.name || '未命名專案'}</strong>
             <Badge value={project.phase || '未分階段'} />
           </div>
-          <div className="fd203-project-list-info">
-            <div><span>正在進行</span><strong>{listInfo.running}</strong></div>
-            <div><span>下一步</span><strong>{listInfo.next}</strong></div>
+          <div className="fd203-project-list-info compact-v20">
+            <div className="running"><span>正在進行</span><strong>{listInfo.running}</strong></div>
+            <div className="next"><span>下一步</span><strong>{listInfo.next}</strong></div>
           </div>
           <div className="fd203-project-card-kpis">
             <span><b>{project.tasks?.length || 0}</b><small>任務</small></span>
@@ -3760,6 +3802,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
                     <div className="fd203-gantt-row-actions compact-v16">
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>＋子任務</button>
+                      {subtaskCount ? <button type="button" className="fd203-mini-link soft" onClick={() => autoEstimateProjectTask(project.id, index)}>自動%</button> : null}
                       {subtaskCount ? (
                         <button
                           type="button"
@@ -3922,11 +3965,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       <label>負責人<ChineseTextField commitOnBlur value={task.owner || ''} onCommit={(value) => updateProjectTask(project.id, index, { owner: value })} aria-label="負責人" /></label>
                       <label>開始日<input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskStart} onChange={(event) => updateProjectTask(project.id, index, { start: event.target.value }, '更新任務開始日。')} aria-label="開始日" /></label>
                       <label>結束日<input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskEnd} onChange={(event) => updateProjectTask(project.id, index, { end: event.target.value }, '更新任務結束日。')} aria-label="結束日" /></label>
-                      <label>進度<input type="range" min="0" max="100" value={clampPercent(task.progress)} onChange={(event) => updateProjectTask(project.id, index, { progress: clampPercent(event.target.value) })} aria-label="進度" /></label>
+                      <label>進度<input type="range" min="0" max="100" value={clampPercent(task.progress)} onChange={(event) => updateProjectTask(project.id, index, { progress: clampPercent(event.target.value) })} aria-label="進度" /><small>{task.manualProgress ? '手動%' : '自動%'}</small></label>
                     </div>
                     <div className="project-detail-card-actions">
                       <button type="button" onClick={() => createWorkItemFromProjectTask(project, task)}>建立工作</button>
                       <button type="button" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
+                      <button type="button" onClick={() => autoEstimateProjectTask(project.id, index)} disabled={!(task.subtasks || []).length}>依子任務估%</button>
                       <button type="button" onClick={() => updateProjectTask(project.id, index, { done: true, progress: 100 }, '任務視為完成。')}>視為完成</button>
                       <button type="button" onClick={() => removeProjectTask(project.id, index)}>刪除</button>
                     </div>
