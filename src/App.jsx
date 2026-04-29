@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.28'
+const FLOWDESK_APP_VERSION = '20.3.29'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3050,6 +3050,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     }))
   }
 
+  function finalizeProjectDependencySchedule(projectId, recordText) {
+    setProjects((rows) => rows.map((project) => {
+      if (project.id !== projectId) return project
+      const safeProject = normalizeProject(project)
+      const scheduled = resolveProjectTaskDependencies(safeProject)
+      const nextProject = normalizeProject(scheduled.project)
+      nextProject.progress = estimateProjectProgress(nextProject)
+      if (recordText || scheduled.changed) {
+        const message = scheduled.changed ? `${recordText ? `${recordText}；` : ''}依前置任務完成日重新排定後續任務。` : recordText
+        nextProject.records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜${message}`, ...(safeProject.records || [])].slice(0, 30)
+      }
+      return nextProject
+    }))
+  }
+
   function estimateTaskProgress(task = {}) {
     const subtasks = Array.isArray(task.subtasks) ? task.subtasks : []
     if (!subtasks.length) return clampPercent(task.progress)
@@ -3157,6 +3172,32 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       waiting: !predecessorDone,
       startAfter,
     }
+  }
+
+  function getTaskStatusMeta(project = {}, task = {}, taskIndex = 0) {
+    const today = todayDate()
+    const dependencyMeta = getTaskDependencyMeta(project, task, taskIndex)
+    const progress = clampPercent(task.progress)
+    const start = task.start || project.startDate || today
+    const end = task.end || project.endDate || start
+    if (Boolean(task.done) || progress >= 100) return { label: '已完成', tone: 'done' }
+    if (dependencyMeta.waiting) return { label: '等待前置', tone: 'waiting' }
+    if (end < today) return { label: '逾期', tone: 'overdue' }
+    if (start > today) return { label: '未開始', tone: 'pending' }
+    if (progress > 0) return { label: '進行中', tone: 'active' }
+    return { label: '未啟動', tone: 'idle' }
+  }
+
+  function getSubtaskStatusMeta(project = {}, task = {}, subtask = {}) {
+    const today = todayDate()
+    const progress = clampPercent(subtask.progress)
+    const start = subtask.start || task.start || project.startDate || today
+    const end = subtask.end || task.end || project.endDate || start
+    if (Boolean(subtask.done) || progress >= 100) return { label: '已完成', tone: 'done' }
+    if (end < today) return { label: '逾期', tone: 'overdue' }
+    if (start > today) return { label: '未開始', tone: 'pending' }
+    if (progress > 0) return { label: '進行中', tone: 'active' }
+    return { label: '未啟動', tone: 'idle' }
   }
 
   function getAvailablePredecessorTasks(project = {}, taskIndex = 0) {
@@ -3793,7 +3834,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       window.removeEventListener('pointerup', stopMove)
       const actionText = edge === 'move' ? '平移' : '調整'
       const scopeText = scope === 'project' ? '專案' : scope === 'subtask' ? '子任務' : '任務'
-      updateProject(safeProject.id, {}, `使用甘特圖${actionText}${scopeText}期程。`)
+      finalizeProjectDependencySchedule(safeProject.id, `使用甘特圖${actionText}${scopeText}期程。`)
     }
 
     window.addEventListener('pointermove', applyMove)
@@ -4106,6 +4147,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const taskKey = getGanttTaskKey(project, task, index)
             const subtaskCount = (task.subtasks || []).length
             const dependencyMeta = getTaskDependencyMeta(project, task, index)
+            const taskStatus = getTaskStatusMeta(project, task, index)
             const subtasksOpen = isGanttTaskSubtasksOpen(project, task, index)
             return (
               <div key={taskKey} className={`fd203-gantt-task-group ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'} ${task.done ? 'is-complete' : 'is-incomplete'}`}>
@@ -4126,6 +4168,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                         <span className="fd203-subtask-chevron empty">•</span>
                       )}
                       <ChineseTextField commitOnBlur className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
+                      <span className={`fd203-gantt-status-chip ${taskStatus.tone}`}>{taskStatus.label}</span>
                       <label className={`fd203-gantt-done-check ${task.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={task.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
                         <input
                           type="checkbox"
@@ -4138,25 +4181,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     </div>
                     <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
                     {dependencyMeta.hasDependency ? <div className={`fd203-task-dependency-note ${dependencyMeta.waiting ? 'waiting' : 'ready'}`}>{dependencyMeta.waiting ? '等待前置' : '前置完成'}：{dependencyMeta.predecessorName}，排定 {formatMonthDay(dependencyMeta.startAfter)}</div> : null}
-                    <div className="fd203-gantt-row-actions compact-v16">
+                    <div className="fd203-gantt-row-actions compact-v16 fd203-gantt-row-actions-v29">
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>＋子任務</button>
                       {subtaskCount ? <button type="button" className="fd203-mini-link soft" onClick={() => autoEstimateProjectTask(project.id, index)}>自動%</button> : null}
-                      {subtaskCount ? (
-                        <button
-                          type="button"
-                          className={`fd203-subtask-toggle ${subtasksOpen ? 'open' : 'closed'}`}
-                          onClick={() => toggleGanttTaskSubtasks(project, task, index)}
-                          aria-expanded={subtasksOpen}
-                          title={subtasksOpen ? `目前已展開 ${subtaskCount} 個子任務` : `目前已收合 ${subtaskCount} 個子任務`}
-                        >
-                          <span className="fd203-subtask-toggle-icon">{subtasksOpen ? '▾' : '▸'}</span>
-                          <span>子任務</span>
-                          <b>{subtaskCount}</b>
-                        </button>
-                      ) : (
-                        <span className="fd203-mini-muted">0 子任務</span>
-                      )}
-                      <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectTask(project.id, index)}>刪除</button>
+                      {subtaskCount ? <span className={`fd203-subtask-count-pill ${subtasksOpen ? 'open' : 'closed'}`}>{subtasksOpen ? '已展開' : '已收合'} {subtaskCount}</span> : <span className="fd203-mini-muted">0 子任務</span>}
+                      <button type="button" className="fd203-mini-link danger ghost-danger" onClick={() => removeProjectTask(project.id, index)}>刪除</button>
                     </div>
                   </div>
                   <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
@@ -4179,12 +4208,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   const subStart = subtask.start || taskStart
                   const subEnd = subtask.end || taskEnd
                   const subProgress = clampPercent(subtask.progress)
+                  const subtaskStatus = getSubtaskStatusMeta(project, task, subtask)
                   const subtaskKey = getGanttSubtaskKey(project, task, subtask, index, subIndex)
                   return (
                     <div className={`fd203-gantt-grid fd203-gantt-row subtask ${subtask.done ? 'is-complete' : 'is-incomplete'}`} key={subtaskKey} style={{ gridTemplateColumns: gridColumns }}>
                       <div className="fd203-gantt-label subtask" title={dateRangeLabel(subStart, subEnd)}>
                         <div className="fd203-gantt-subtask-title-line compact-v16">
                           <ChineseTextField commitOnBlur className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
+                          <span className={`fd203-gantt-status-chip subtask ${subtaskStatus.tone}`}>{subtaskStatus.label}</span>
                           <label className={`fd203-gantt-done-check subtask ${subtask.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={subtask.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
                             <input
                               type="checkbox"
