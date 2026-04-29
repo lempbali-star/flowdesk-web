@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.37'
+const FLOWDESK_APP_VERSION = '20.3.38'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -195,6 +195,54 @@ const motionLevelOptions = [
   { id: 'holo', name: '全息極光', description: '開啟全息玻璃、霓虹邊框與更強的展示級光效。' },
 ]
 
+const appearancePresetOptions = [
+  {
+    id: 'business',
+    name: '商務日常',
+    description: '淺色、標準動效、預設藍，適合日常工作與正式場合。',
+    theme: 'blue',
+    appearance: 'light',
+    motion: 'standard',
+    badge: '穩定'
+  },
+  {
+    id: 'focus',
+    name: '夜間專注',
+    description: '深色、標準動效、星雲黑，長時間查看專案與甘特圖比較舒服。',
+    theme: 'nebula',
+    appearance: 'dark',
+    motion: 'standard',
+    badge: '專注'
+  },
+  {
+    id: 'showcase',
+    name: '展示模式',
+    description: '深色、全息極光動效、全息極光主題，適合 Demo 或展示系統。',
+    theme: 'hologlass',
+    appearance: 'dark',
+    motion: 'holo',
+    badge: '展示'
+  },
+  {
+    id: 'alert',
+    name: '高能提醒',
+    description: '電漿金橘搭配炫彩動效，提醒、待處理與專案推進更醒目。',
+    theme: 'plasma',
+    appearance: 'light',
+    motion: 'vivid',
+    badge: '提醒'
+  },
+  {
+    id: 'calm',
+    name: '低干擾',
+    description: '冰川青、關閉動效，適合資料密集、會議投影或低干擾操作。',
+    theme: 'ice',
+    appearance: 'light',
+    motion: 'off',
+    badge: '安靜'
+  },
+]
+
 const defaultCustomTheme = {
   primary: '#2563eb',
   secondary: '#14b8a6',
@@ -214,6 +262,34 @@ function hexToRgbParts(hex, fallback = '37, 99, 235') {
   const b = parseInt(safe.slice(4, 6), 16)
   if ([r, g, b].some((part) => Number.isNaN(part))) return fallback
   return `${r}, ${g}, ${b}`
+}
+
+function getHexLuminance(hex) {
+  const safe = normalizeHexColor(hex, '#2563eb').replace('#', '')
+  const rgb = [0, 2, 4].map((idx) => parseInt(safe.slice(idx, idx + 2), 16) / 255)
+  const linear = rgb.map((value) => value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+}
+
+function adjustHexBrightness(hex, amount = -28) {
+  const safe = normalizeHexColor(hex, '#2563eb').replace('#', '')
+  const next = [0, 2, 4].map((idx) => {
+    const value = parseInt(safe.slice(idx, idx + 2), 16)
+    const adjusted = Math.max(0, Math.min(255, value + amount))
+    return adjusted.toString(16).padStart(2, '0')
+  })
+  return `#${next.join('')}`
+}
+
+function protectThemeContrast(theme) {
+  const primary = normalizeHexColor(theme.primary, defaultCustomTheme.primary)
+  const secondary = normalizeHexColor(theme.secondary, defaultCustomTheme.secondary)
+  const accent = normalizeHexColor(theme.accent, defaultCustomTheme.accent)
+  return {
+    primary: getHexLuminance(primary) > 0.72 ? adjustHexBrightness(primary, -70) : primary,
+    secondary: getHexLuminance(secondary) > 0.78 ? adjustHexBrightness(secondary, -62) : secondary,
+    accent: getHexLuminance(accent) > 0.82 ? adjustHexBrightness(accent, -56) : accent,
+  }
 }
 
 const initialWorkItems = []
@@ -5365,6 +5441,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   const activeTheme = themeOptions.find((theme) => theme.id === uiTheme) || themeOptions[0]
   const activeAppearanceMode = appearanceModeOptions.find((mode) => mode.id === appearanceMode) || appearanceModeOptions[0]
   const activeMotionLevel = motionLevelOptions.find((level) => level.id === motionLevel) || motionLevelOptions[1]
+  const activeAppearancePreset = appearancePresetOptions.find((preset) => preset.theme === uiTheme && preset.appearance === appearanceMode && preset.motion === motionLevel)
   const activeIconStyle = iconStyleOptions.find((style) => style.id === resolvedIconStyle) || iconStyleOptions[1]
   const selectedIconStyle = iconStyleOptions.find((style) => style.id === iconStyleMode) || iconStyleOptions[0]
   const sortedCollections = [...collections].sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -5608,6 +5685,19 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
     if (typeof window !== 'undefined') window.localStorage.removeItem('flowdesk-custom-theme')
   }
 
+  function applyAppearancePreset(preset) {
+    if (!preset) return
+    setUiTheme(preset.theme)
+    setAppearanceMode(preset.appearance)
+    setMotionLevel(preset.motion)
+  }
+
+  function protectCurrentCustomTheme() {
+    const protectedTheme = protectThemeContrast(customTheme)
+    setCustomTheme(protectedTheme)
+    setUiTheme('custom')
+  }
+
   function addCollection() {
     const name = newCollectionName.trim()
     if (!name) return
@@ -5675,7 +5765,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   }
 
   const settingCards = [
-    { id: 'appearance', title: '外觀設定', eyebrow: 'UI THEME', summary: `目前主題：${activeTheme.name} · ${activeAppearanceMode.name} · ${activeMotionLevel.name}`, icon: '🎨' },
+    { id: 'appearance', title: '外觀設定', eyebrow: 'UI THEME', summary: `目前方案：${activeAppearancePreset?.name || '自訂組合'} · ${activeTheme.name}`, icon: '🎨' },
     { id: 'purchase', title: '採購設定', eyebrow: 'PURCHASE', summary: '採購資料與流程維護', icon: '🧾' },
     { id: 'collections', title: '資料集合設定', eyebrow: 'COLLECTIONS', summary: `${collections.filter((item) => item.visible !== false).length} 個顯示中，管理集合入口、視圖與外觀`, icon: '📚' },
     { id: 'sidebar', title: '側邊欄設定', eyebrow: 'LAYOUT', summary: '模組順序與側邊欄排序', icon: '🧭' },
@@ -5729,7 +5819,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.37 加入全息極光特效、霓虹描邊、極光流體背景與甘特圖狀態光效，展示時更有科技感。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.38 新增一鍵外觀方案、快速套用流程與自訂色對比保護，讓主題系統更適合日常、夜間與展示情境。</p>
           <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
@@ -5742,6 +5832,30 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               <i />
             </div>
             <button className="ghost-btn fd30-reset-theme-btn" type="button" onClick={() => setUiTheme('blue')}>回復預設藍</button>
+          </div>
+          <div className="fd38-preset-panel">
+            <div className="fd38-preset-head">
+              <div>
+                <span>一鍵外觀方案</span>
+                <strong>{activeAppearancePreset?.name || '自訂組合'}</strong>
+                <small>快速切換日常、夜間、展示、提醒與低干擾模式，不用逐一調整主題、外觀與動效。</small>
+              </div>
+              <em>{activeTheme.name} · {activeAppearanceMode.name} · {activeMotionLevel.name}</em>
+            </div>
+            <div className="fd38-preset-grid">
+              {appearancePresetOptions.map((preset) => (
+                <button
+                  key={preset.id}
+                  className={activeAppearancePreset?.id === preset.id ? 'fd38-preset-card active' : 'fd38-preset-card'}
+                  type="button"
+                  onClick={() => applyAppearancePreset(preset)}
+                >
+                  <span>{preset.badge}</span>
+                  <strong>{preset.name}</strong>
+                  <small>{preset.description}</small>
+                </button>
+              ))}
+            </div>
           </div>
           <div className="fd34-appearance-controls">
             <div className="fd34-control-card">
@@ -5833,6 +5947,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
                 <small>調整三個核心色後，可立即套用成「我的主題」。</small>
               </div>
               <div className="fd36-builder-actions">
+                <button className="ghost-btn" type="button" onClick={protectCurrentCustomTheme}>自動提高對比</button>
                 <button className="ghost-btn" type="button" onClick={resetCustomTheme}>恢復預設自訂色</button>
                 <button className="primary-btn" type="button" onClick={applyCustomTheme}>套用我的主題</button>
               </div>
