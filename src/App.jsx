@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.18'
+const FLOWDESK_APP_VERSION = '20.3.19'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2961,7 +2961,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         progress: patch.progress === undefined ? clampPercent(task.progress) : clampPercent(patch.progress),
       }, safeProject, index)
     })
-    updateProject(projectId, { tasks }, recordText)
+    const nextProject = normalizeProject({ ...safeProject, tasks })
+    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, recordText)
   }
 
   function addProjectTask(projectId) {
@@ -2983,7 +2984,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         subtasks: [],
       },
     ]
-    updateProject(projectId, { tasks }, '新增專案任務。')
+    const nextProject = normalizeProject({ ...project, tasks })
+    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '新增專案任務。')
   }
 
   function removeProjectTask(projectId, taskIndex) {
@@ -2992,7 +2994,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const target = (project.tasks || [])[taskIndex]
     if (!confirmDestructiveAction(target?.name || '專案任務')) return
     const tasks = (project.tasks || []).filter((_, index) => index !== taskIndex)
-    updateProject(projectId, { tasks }, '刪除專案任務。')
+    const nextProject = normalizeProject({ ...project, tasks })
+    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '刪除專案任務。')
   }
 
   function updateProjectSubtask(projectId, taskIndex, subtaskIndex, patch, recordText) {
@@ -3015,7 +3018,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       })
       return { ...task, subtasks }
     })
-    updateProject(projectId, { tasks }, recordText)
+    const nextProject = normalizeProject({ ...safeProject, tasks })
+    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, recordText)
   }
 
   function addProjectSubtask(projectId, taskIndex) {
@@ -3049,7 +3053,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       const taskKey = getGanttTaskToggleKey(project, targetTask, taskIndex)
       setGanttExpandedTasks((rows) => ({ ...rows, [taskKey]: true }))
     }
-    updateProject(projectId, { tasks }, '新增子任務。')
+    const nextProject = normalizeProject({ ...project, tasks })
+    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '新增子任務。')
   }
 
   function removeProjectSubtask(projectId, taskIndex, subtaskIndex) {
@@ -3061,7 +3066,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       if (index !== taskIndex) return task
       return { ...task, subtasks: (task.subtasks || []).filter((_, subIndex) => subIndex !== subtaskIndex) }
     })
-    updateProject(projectId, { tasks }, '刪除子任務。')
+    const nextProject = normalizeProject({ ...project, tasks })
+    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '刪除子任務。')
   }
 
   function getGanttTaskKey(project, task, index) {
@@ -3527,12 +3533,17 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     })
 
     const openItems = flatItems.filter((item) => !item.done)
-    const inProgress = openItems.find((item) => item.progress > 0 && item.progress < 100)
-    const inDateRange = openItems.find((item) => item.start <= today && item.end >= today)
+    const itemRank = (item) => (item.type === '任務' ? 0 : 1)
+    const currentItems = openItems
+      .filter((item) => item.start <= today && item.end >= today)
+      .sort((a, b) => (itemRank(a) - itemRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)))
+    const activeItems = openItems
+      .filter((item) => item.progress > 0 && item.progress < 100 && item.start <= today)
+      .sort((a, b) => (itemRank(a) - itemRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)))
     const upcoming = openItems
       .filter((item) => item.start >= today)
-      .sort((a, b) => String(a.start).localeCompare(String(b.start)))[0]
-    const runningItem = inProgress || inDateRange || upcoming || openItems[0]
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)) || (itemRank(a) - itemRank(b)))[0]
+    const runningItem = currentItems[0] || activeItems[0] || upcoming || openItems[0]
 
     return {
       running: runningItem ? `${runningItem.type}：${runningItem.label}` : '尚未設定正在進行',
