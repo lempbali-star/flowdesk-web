@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.31'
+const FLOWDESK_APP_VERSION = '20.3.32'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -149,6 +149,9 @@ const iconAutoStyleByTheme = {
   cyber: 'tech',
   sunset: 'card',
   midnight: 'minimal',
+  galaxy: 'tech',
+  lava: 'card',
+  prism: 'card',
 }
 
 const themeOptions = [
@@ -166,6 +169,9 @@ const themeOptions = [
   { id: 'cyber', name: '賽博紫', description: '紫色主調加電光青，讓系統偏向科技儀表板風格。', accent: '#8b5cf6', secondary: '#06b6d4', vibe: '科技炫光' },
   { id: 'sunset', name: '暮光橘', description: '橘紅漸層更有行動感，適合提醒、跟催與專案推進。', accent: '#fb923c', secondary: '#ef4444', vibe: '暖色推進' },
   { id: 'midnight', name: '午夜藍', description: '深藍搭配冷光藍，保留正式感但更有視覺張力。', accent: '#1e3a8a', secondary: '#38bdf8', vibe: '深色質感' },
+  { id: 'galaxy', name: '銀河紫', description: '紫藍星霧感更重，適合想把 FlowDesk 做成科幻儀表板。', accent: '#6d5dfc', secondary: '#24d4ff', vibe: '星霧科幻' },
+  { id: 'lava', name: '熔岩紅', description: '紅橘高對比，提醒、跟催與待處理會更有衝擊感。', accent: '#ff5a36', secondary: '#ffb000', vibe: '高能警示' },
+  { id: 'prism', name: '稜鏡糖彩', description: '粉紫、薄荷與天藍混色，畫面會更活潑搶眼。', accent: '#ff4fd8', secondary: '#38bdf8', vibe: '糖彩炫光' },
 ]
 
 const initialWorkItems = []
@@ -5614,7 +5620,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.31 另外加強了炫彩主題、預覽卡片、柔光陰影與甘特圖光澤效果。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.32 再加強銀河紫、熔岩紅、稜鏡糖彩三組更炫主題，並提升主題卡片光澤、按鈕霓光、分頁高亮與甘特圖任務條層次。</p>
           <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
