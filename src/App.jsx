@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.7'
+const FLOWDESK_APP_VERSION = '20.3.8'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
-function ChineseTextField({ value = '', onCommit, multiline = false, ...props }) {
+function ChineseTextField({ value = '', onCommit, multiline = false, commitOnBlur = false, ...props }) {
   const [draft, setDraft] = useState(value ?? '')
   const composingRef = useRef(false)
 
@@ -19,7 +19,7 @@ function ChineseTextField({ value = '', onCommit, multiline = false, ...props })
   const handleChange = (event) => {
     const nextValue = event.target.value
     setDraft(nextValue)
-    if (!composingRef.current) commitValue(nextValue)
+    if (!composingRef.current && !commitOnBlur) commitValue(nextValue)
   }
 
   const handleCompositionStart = () => {
@@ -30,7 +30,12 @@ function ChineseTextField({ value = '', onCommit, multiline = false, ...props })
     composingRef.current = false
     const nextValue = event.currentTarget.value
     setDraft(nextValue)
-    commitValue(nextValue)
+    if (!commitOnBlur) commitValue(nextValue)
+  }
+
+  const handleBlur = (event) => {
+    if (commitOnBlur) commitValue(event.currentTarget.value)
+    if (typeof props.onBlur === 'function') props.onBlur(event)
   }
 
   const Component = multiline ? 'textarea' : 'input'
@@ -41,6 +46,7 @@ function ChineseTextField({ value = '', onCommit, multiline = false, ...props })
       onChange={handleChange}
       onCompositionStart={handleCompositionStart}
       onCompositionEnd={handleCompositionEnd}
+      onBlur={handleBlur}
       autoComplete={props.autoComplete || 'off'}
       spellCheck={false}
       lang="zh-Hant"
@@ -2693,6 +2699,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [ganttDragRange, setGanttDragRange] = useState(null)
   const [ganttDragPreview, setGanttDragPreview] = useState(null)
   const [ganttProgressEditor, setGanttProgressEditor] = useState(null)
+  const [ganttShowSubtasks, setGanttShowSubtasks] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -2948,6 +2955,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       return { ...task, subtasks: (task.subtasks || []).filter((_, subIndex) => subIndex !== subtaskIndex) }
     })
     updateProject(projectId, { tasks }, '刪除子任務。')
+  }
+
+  function getGanttTaskKey(project, task, index) {
+    return `${project?.id || 'project'}-${task?.id || `task-${index}`}`
+  }
+
+  function getGanttSubtaskKey(project, task, subtask, taskIndex, subIndex) {
+    return `${project?.id || 'project'}-${task?.id || `task-${taskIndex}`}-${subtask?.id || `subtask-${subIndex}`}`
   }
 
   function updateProjectMilestone(projectId, milestoneIndex, patch, recordText) {
@@ -3444,7 +3459,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
         {renderGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, label)}
         <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label={`調整${label}開始日`} onPointerDown={startHandler} />
-        <button type="button" className={`fd203-gantt-progress-trigger${activeEditor ? ' active' : ''}`} onClick={(event) => openGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, event)}>{progress}%</button>
+        <button type="button" className={`fd203-gantt-progress-trigger${activeEditor ? ' active' : ''}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => openGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, event)}>{progress}%</button>
         <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label={`調整${label}結束日`} onPointerDown={endHandler} />
       </span>
     )
@@ -3470,12 +3485,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <h3>{project.name}</h3>
             <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 每週顯示，中間保留每日刻度；滑過色條可看起訖日期，拖曳中間可整段平移{showToday ? ` · 今日：${formatMonthDayWeekday(todayValue)}` : ''}</small>
           </div>
-          {!compact && (
-            <label>
-              <span>專案進度 {project.progress}%</span>
-              <input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} />
-            </label>
-          )}
+          <div className="fd203-gantt-actions">
+            {!compact && (
+              <label>
+                <span>專案進度 {project.progress}%</span>
+                <input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} />
+              </label>
+            )}
+            <button type="button" onClick={() => addProjectTask(project.id)}>新增任務</button>
+            <button type="button" onClick={() => setGanttShowSubtasks((value) => !value)}>{ganttShowSubtasks ? '收合子任務' : '展開子任務'}</button>
+          </div>
         </div>
 
         <div className="fd203-gantt-scroll">
@@ -3507,28 +3526,36 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const taskStart = task.start || project.startDate
             const taskEnd = task.end || project.endDate
             const progress = clampPercent(task.progress)
+            const taskKey = getGanttTaskKey(project, task, index)
             return (
-              <div key={task.id || index}>
+              <div key={taskKey} className="fd203-gantt-task-group">
                 <div className="fd203-gantt-grid fd203-gantt-row task" style={{ gridTemplateColumns: gridColumns }}>
                   <div className="fd203-gantt-label" title={dateRangeLabel(taskStart, taskEnd)}>
-                    <ChineseTextField className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
+                    <ChineseTextField commitOnBlur className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
                     <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
-                    <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
+                    <div className="fd203-gantt-row-actions">
+                      <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
+                      <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectTask(project.id, index)}>刪除任務</button>
+                    </div>
                   </div>
                   <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                     {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
                     {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}
                   </div>
                 </div>
-                {(task.subtasks || []).map((subtask, subIndex) => {
+                {ganttShowSubtasks && (task.subtasks || []).map((subtask, subIndex) => {
                   const subStart = subtask.start || taskStart
                   const subEnd = subtask.end || taskEnd
                   const subProgress = clampPercent(subtask.progress)
+                  const subtaskKey = getGanttSubtaskKey(project, task, subtask, index, subIndex)
                   return (
-                    <div className="fd203-gantt-grid fd203-gantt-row subtask" key={subtask.id || subIndex} style={{ gridTemplateColumns: gridColumns }}>
+                    <div className="fd203-gantt-grid fd203-gantt-row subtask" key={subtaskKey} style={{ gridTemplateColumns: gridColumns }}>
                       <div className="fd203-gantt-label subtask" title={dateRangeLabel(subStart, subEnd)}>
-                        <ChineseTextField className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
+                        <ChineseTextField commitOnBlur className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
                         <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {subProgress}% · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
+                        <div className="fd203-gantt-row-actions">
+                          <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectSubtask(project.id, index, subIndex)}>刪除子任務</button>
+                        </div>
                       </div>
                       <div className="fd203-gantt-track subtask" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                         {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}

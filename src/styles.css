@@ -14088,3 +14088,73 @@ button {
     font-size: 9px;
   }
 }
+
+/* FlowDesk v20.3.8 gantt action refinement */
+.fd203-gantt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.fd203-gantt-actions label {
+  min-width: 220px;
+}
+
+.fd203-gantt-actions button {
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.fd203-gantt-actions button:hover {
+  background: rgba(37, 99, 235, 0.14);
+}
+
+.fd203-gantt-task-group {
+  display: contents;
+}
+
+.fd203-gantt-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.fd203-mini-link.danger {
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.fd203-mini-link.danger:hover {
+  background: rgba(239, 68, 68, 0.14);
+  color: #b91c1c;
+}
+
+.fd203-gantt-panel.compact .fd203-gantt-actions {
+  justify-content: flex-start;
+}
+
+.fd203-gantt-panel.compact .fd203-gantt-actions button {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .fd203-gantt-actions {
+    justify-content: stretch;
+  }
+
+  .fd203-gantt-actions button,
+  .fd203-gantt-actions label {
+    width: 100%;
+  }
+}
