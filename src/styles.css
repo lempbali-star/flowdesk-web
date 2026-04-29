@@ -16136,3 +16136,293 @@ button[data-primary="true"]:hover::after {
     display: none;
   }
 }
+
+
+/* v20.3.33 theme motion enhancement */
+:root {
+  --fd33-motion-fast: .18s;
+  --fd33-motion-normal: .32s;
+  --fd33-motion-slow: .58s;
+}
+
+body,
+.app-shell,
+.panel,
+.card,
+.surface-toolbar,
+.settings-hero,
+.theme-option,
+.primary-btn,
+.solid-btn,
+.ghost-btn,
+.tab-button,
+.tabs button,
+.segmented button,
+.view-switch button,
+input,
+select,
+textarea,
+.fd203-gantt-bar,
+.fd203-project-card,
+.purchase-card,
+.settings-category-card,
+.collection-card {
+  transition:
+    background-color var(--fd33-motion-normal) ease,
+    background var(--fd33-motion-normal) ease,
+    border-color var(--fd33-motion-normal) ease,
+    box-shadow var(--fd33-motion-normal) ease,
+    color var(--fd33-motion-fast) ease,
+    transform var(--fd33-motion-fast) ease,
+    filter var(--fd33-motion-normal) ease;
+}
+
+.app-shell,
+.main-shell,
+.content-shell,
+.page-shell,
+.dashboard-page,
+.settings-layout {
+  position: relative;
+}
+
+.app-shell::before,
+.main-shell::before,
+.content-shell::before {
+  content: '';
+  position: fixed;
+  inset: -12% -8% auto -8%;
+  height: 420px;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(var(--fd31-primary-rgb), .13), transparent 34%),
+    radial-gradient(circle at 78% 12%, rgba(var(--fd31-secondary-rgb), .11), transparent 32%),
+    radial-gradient(circle at 52% 38%, rgba(var(--fd31-accent-rgb), .07), transparent 30%);
+  filter: blur(8px);
+  opacity: .82;
+}
+
+.panel,
+.surface-toolbar,
+.settings-hero,
+.fd203-workspace-head,
+.fd203-pane-head {
+  position: relative;
+  isolation: isolate;
+}
+
+.panel::before,
+.surface-toolbar::before,
+.settings-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-primary-rgb), .06), transparent 34%),
+    radial-gradient(circle at 0% 100%, rgba(var(--fd31-secondary-rgb), .045), transparent 32%);
+  opacity: .88;
+}
+
+.settings-category-card,
+.collection-card,
+.purchase-card,
+.fd203-project-card,
+.theme-option,
+.panel {
+  will-change: transform, box-shadow;
+}
+
+.settings-category-card:hover,
+.collection-card:hover,
+.purchase-card:hover,
+.fd203-project-card:hover,
+.theme-option:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 22px 56px rgba(var(--fd31-primary-rgb), .14),
+    0 0 0 1px rgba(var(--fd31-primary-rgb), .10) !important;
+}
+
+.theme-option.active,
+.fd31-theme-option.active {
+  animation: fd33-activePulse 2.8s ease-in-out infinite;
+}
+
+.fd31-theme-option .theme-swatch,
+.theme-swatch {
+  position: relative;
+  overflow: hidden;
+}
+
+.fd31-theme-option .theme-swatch::before,
+.theme-swatch::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background:
+    conic-gradient(from 120deg, rgba(255,255,255,.04), rgba(255,255,255,.55), rgba(255,255,255,.08), rgba(255,255,255,.44), rgba(255,255,255,.04));
+  opacity: .72;
+  animation: fd33-swatchOrbit 5.5s linear infinite;
+}
+
+.primary-btn,
+.solid-btn,
+.main-cta,
+.add-btn,
+.new-btn,
+.fd203-primary-btn,
+button[data-primary="true"] {
+  transform: translateZ(0);
+}
+
+.primary-btn:hover,
+.solid-btn:hover,
+.main-cta:hover,
+.add-btn:hover,
+.new-btn:hover,
+.fd203-primary-btn:hover,
+button[data-primary="true"]:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.08);
+  box-shadow:
+    0 18px 42px rgba(var(--fd31-primary-rgb), .28),
+    0 0 26px rgba(var(--fd31-secondary-rgb), .18) !important;
+}
+
+.view-switch button.active,
+.segmented button.active,
+.tab-button.active,
+.tabs button.active,
+.fd203-tab.active,
+.fd203-view-toggle button.active {
+  position: relative;
+  overflow: hidden;
+}
+
+.view-switch button.active::after,
+.segmented button.active::after,
+.tab-button.active::after,
+.tabs button.active::after,
+.fd203-tab.active::after,
+.fd203-view-toggle button.active::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--theme-primary), var(--theme-secondary), transparent);
+  box-shadow: 0 0 14px rgba(var(--fd31-primary-rgb), .42);
+  opacity: .9;
+}
+
+.fd203-gantt-bar.project,
+.fd203-gantt-bar.task,
+.fd203-gantt-bar.subtask {
+  box-shadow:
+    0 12px 28px rgba(var(--fd31-primary-rgb), .24),
+    inset 0 1px 0 rgba(255,255,255,.30),
+    inset 0 -10px 18px rgba(15,23,42,.08) !important;
+}
+
+.fd203-gantt-bar.project::before,
+.fd203-gantt-bar.task::before,
+.fd203-gantt-bar.subtask::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.32), transparent 44%),
+    radial-gradient(circle at 18% 50%, rgba(255,255,255,.22), transparent 28%);
+  pointer-events: none;
+}
+
+.fd203-gantt-status-chip.active,
+.fd203-gantt-status-chip.pending,
+.version-pill,
+.nav-chip.active,
+.filter-chip.active {
+  box-shadow:
+    0 8px 22px rgba(var(--fd31-primary-rgb), .12),
+    inset 0 1px 0 rgba(255,255,255,.62) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  box-shadow:
+    0 0 0 4px rgba(var(--fd31-primary-rgb), .10),
+    0 12px 26px rgba(var(--fd31-primary-rgb), .08) !important;
+}
+
+@keyframes fd33-activePulse {
+  0%, 100% {
+    box-shadow:
+      0 24px 58px rgba(var(--fd31-primary-rgb), .16),
+      0 0 0 1px rgba(var(--fd31-primary-rgb), .22) !important;
+  }
+  50% {
+    box-shadow:
+      0 28px 72px rgba(var(--fd31-primary-rgb), .24),
+      0 0 0 4px rgba(var(--fd31-primary-rgb), .08) !important;
+  }
+}
+
+@keyframes fd33-swatchOrbit {
+  from { transform: rotate(0deg) scale(1); }
+  to { transform: rotate(360deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .app-shell,
+  .panel,
+  .card,
+  .surface-toolbar,
+  .settings-hero,
+  .theme-option,
+  .primary-btn,
+  .solid-btn,
+  .ghost-btn,
+  .tab-button,
+  .tabs button,
+  .segmented button,
+  .view-switch button,
+  input,
+  select,
+  textarea,
+  .fd203-gantt-bar,
+  .fd203-project-card,
+  .purchase-card,
+  .settings-category-card,
+  .collection-card {
+    transition: none !important;
+  }
+
+  .theme-option.active,
+  .fd31-theme-option.active,
+  .fd31-theme-option .theme-swatch::before,
+  .theme-swatch::before {
+    animation: none !important;
+  }
+
+  .settings-category-card:hover,
+  .collection-card:hover,
+  .purchase-card:hover,
+  .fd203-project-card:hover,
+  .theme-option:hover,
+  .primary-btn:hover,
+  .solid-btn:hover,
+  .main-cta:hover,
+  .add-btn:hover,
+  .new-btn:hover,
+  .fd203-primary-btn:hover,
+  button[data-primary="true"]:hover {
+    transform: none !important;
+  }
+}
