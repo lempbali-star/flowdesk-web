@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.48'
+const FLOWDESK_APP_VERSION = '20.3.49'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -74,8 +74,8 @@ function confirmResetAction(message) {
 
 const initialModules = [
   { id: 'home', name: '總覽', icon: 'overview' },
-  { id: 'board', name: '工作看板', icon: 'kanban' },
-  { id: 'base', name: '採購與紀錄', icon: 'records' },
+  { id: 'board', name: '工作事項', icon: 'kanban' },
+  { id: 'base', name: '採購管理', icon: 'records' },
   { id: 'desk', name: '跟進紀錄', icon: 'issue' },
   { id: 'roadmap', name: '專案管理', icon: 'project' },
   { id: 'docs', name: '文件備忘', icon: 'knowledge' },
@@ -88,9 +88,9 @@ const initialModules = [
 
 const modulePurposeMap = {
   home: { role: '總覽只做摘要與導引，不直接承接細節編輯。', scope: '今日重點、風險訊號、待處理摘要。', avoid: '不放完整報表、不塞所有操作。' },
-  board: { role: '工作看板只管理日常待辦與跟進事項。', scope: '今天要處理、需要追人、短期可完成的工作。', avoid: '不取代採購流程、不取代專案里程碑。' },
-  base: { role: '採購與紀錄負責資料本體與流程紀錄。', scope: '採購單、多品項、金額、廠商、付款、到貨與歷程。', avoid: '不把每個採購步驟都拆成獨立任務。' },
-  desk: { role: '跟進紀錄保留問題與處理脈絡。', scope: '需要紀錄處理狀況、原因、負責人與後續回覆的事項。', avoid: '不再做成第二個工作看板。' },
+  board: { role: '工作事項只管理日常待辦與跟進事項。', scope: '今天要處理、需要追人、短期可完成的工作。', avoid: '不取代採購流程、不取代專案里程碑。' },
+  base: { role: '採購管理負責資料本體與流程紀錄。', scope: '採購單、多品項、金額、廠商、付款、到貨與歷程。', avoid: '不把每個採購步驟都拆成獨立任務。' },
+  desk: { role: '跟進紀錄保留問題與處理脈絡。', scope: '需要紀錄處理狀況、原因、負責人與後續回覆的事項。', avoid: '不再做成第二個工作事項。' },
   roadmap: { role: '專案管理只放有階段、里程碑與起迄時間的長期工作。', scope: '專案、甘特圖、階段、里程碑、專案任務與進度。', avoid: '不放零散小事與單純提醒。' },
   docs: { role: '文件備忘只整理參考資料與範本。', scope: 'SOP、會議紀錄、設定筆記、常用範本。', avoid: '不承接待辦流程。' },
   flow: { role: '流程規則只放提醒與自動化規則。', scope: '到期提醒、資料規則、重複動作規則。', avoid: '不放實際任務清單。' },
@@ -102,30 +102,30 @@ const modulePurposeMap = {
 const flowdeskModuleBoundaries = [
   {
     id: 'board',
-    title: '工作看板',
+    title: '工作事項',
     keep: '日常待辦、短期跟進、今天要推進的小工作。',
     avoid: '不要放完整採購流程、專案里程碑、純時間提醒。',
-    handoff: '需要時間提醒 → 提醒中心；需要正式專案 → 專案管理；需要採購資料 → 採購與紀錄。',
+    handoff: '需要時間提醒 → 提醒中心；需要正式專案 → 專案管理；需要採購資料 → 採購管理。',
   },
   {
     id: 'reminders',
     title: '提醒中心',
     keep: '今日、明日、本週、逾期、延後與到期通知。',
     avoid: '不要變成第二套任務管理，也不要維護採購或專案主資料。',
-    handoff: '提醒本體回到來源模組處理，例如採購、專案或工作看板。',
+    handoff: '提醒本體回到來源模組處理，例如採購、專案或工作事項。',
   },
   {
     id: 'desk',
     title: '跟進紀錄',
     keep: '處理脈絡、溝通回覆、異常原因、後續追蹤紀錄。',
-    avoid: '不要變成第二個工作看板，也不要塞大量待辦清單。',
-    handoff: '需要今天執行 → 工作看板；需要到期提醒 → 提醒中心。',
+    avoid: '不要變成第二個工作事項，也不要塞大量待辦清單。',
+    handoff: '需要今天執行 → 工作事項；需要到期提醒 → 提醒中心。',
   },
   {
     id: 'base',
-    title: '採購與紀錄',
+    title: '採購管理',
     keep: '採購主檔、品項、金額、廠商、付款、到貨、驗收與歷程。',
-    avoid: '不要把每個採購步驟都拆成獨立工作看板任務。',
+    avoid: '不要把每個採購步驟都拆成獨立工作事項任務。',
     handoff: '需要追人可建立跟進紀錄；需要時間提醒可進提醒中心。',
   },
   {
@@ -133,13 +133,13 @@ const flowdeskModuleBoundaries = [
     title: '專案管理',
     keep: '有起訖、階段、里程碑、甘特圖、風險與前置相依的長期工作。',
     avoid: '不要把零散小事、單純提醒或一次性待辦塞進專案。',
-    handoff: '短期小事 → 工作看板；時間提醒 → 提醒中心。',
+    handoff: '短期小事 → 工作事項；時間提醒 → 提醒中心。',
   },
 ]
 
 const flowdeskFocusRules = [
-  { title: '工作看板', detail: '放日常待辦、追蹤事項、今天要推進的小工作。' },
-  { title: '採購與紀錄', detail: '放採購主檔、品項、金額、廠商、付款與到貨狀態。' },
+  { title: '工作事項', detail: '放日常待辦、追蹤事項、今天要推進的小工作。' },
+  { title: '採購管理', detail: '放採購主檔、品項、金額、廠商、付款與到貨狀態。' },
   { title: '專案管理', detail: '放有起訖、階段、里程碑、甘特圖的長期工作。' },
   { title: '提醒中心', detail: '只提醒時間，不再重複管理任務本體。' },
 ]
@@ -1392,8 +1392,8 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
           <p className="eyebrow hero-eyebrow">今日焦點</p>
           <h2>雲端工作總覽</h2>
           <div className="hero-actions">
-            <button type="button" onClick={() => setActive('board')}>工作看板</button>
-            <button type="button" onClick={() => setActive('base')}>採購與紀錄</button>
+            <button type="button" onClick={() => setActive('board')}>工作事項</button>
+            <button type="button" onClick={() => setActive('base')}>採購管理</button>
             <button type="button" onClick={() => setActive('roadmap')}>專案管理</button>
           </div>
         </div>
@@ -1543,7 +1543,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
       <section className="panel">
         <PanelTitle eyebrow="快速入口" title="常用視圖" />
         <div className="view-launchers view-launchers-min">
-          <button type="button" onClick={() => setActive('board')}><span><Icon name="kanban" /></span><strong>工作看板</strong></button>
+          <button type="button" onClick={() => setActive('board')}><span><Icon name="kanban" /></span><strong>工作事項</strong></button>
           <button type="button" onClick={() => setActive('base')}><span><Icon name="records" /></span><strong>紀錄中心</strong></button>
           <button type="button" onClick={() => setActive('roadmap')}><span><Icon name="project" /></span><strong>專案管理</strong></button>
           <button type="button" onClick={() => setActive('insight')}><span><Icon name="report" /></span><strong>分析摘要</strong></button>
@@ -1645,7 +1645,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
     const headers = ['編號', '標題', '狀態', '優先級', '負責人', '到期日', '來源', '關聯', '健康度', '備註']
     const rows = scopedItems.map((item) => [item.id, item.title, item.lane, item.priority, item.owner, item.due, item.channel, item.relation, item.health, item.note])
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
-    downloadFlowdeskText(`FlowDesk工作看板_${todayDate()}.csv`, `\ufeff${csv}`, 'text/csv;charset=utf-8;')
+    downloadFlowdeskText(`FlowDesk工作事項_${todayDate()}.csv`, `\ufeff${csv}`, 'text/csv;charset=utf-8;')
   }
 
   function clearBoardFilters() {
@@ -1662,7 +1662,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
       <section className="surface-toolbar board-toolbar">
         <div>
           <p className="eyebrow">工作管理</p>
-          <h2>工作看板</h2>
+          <h2>工作事項</h2>
         </div>
         <div className="board-toolbar-actions">
           <div className="segmented board-view-switch">
@@ -2178,7 +2178,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       note: [row.vendor, purchaseTitle(row), formatMoney(amount.taxedTotal), row.note].filter(Boolean).join('｜'),
       tags: ['採購', row.vendor, row.status].filter(Boolean),
     })
-    writeHistory(row.id, purchaseTitle(row), '建立工作看板追蹤。')
+    writeHistory(row.id, purchaseTitle(row), '建立工作事項追蹤。')
   }
 
   function createPurchaseReminder(row, reminderKind = '追蹤') {
@@ -5055,7 +5055,7 @@ function InsightPage({ metrics, records, tickets }) {
   }, [])
 
   const keyword = reportSearch.trim().toLowerCase()
-  const workRows = reportData.workItems.map((row) => ({ ...row, __source: '工作看板', __date: row.due || row.createdAt || todayDate() }))
+  const workRows = reportData.workItems.map((row) => ({ ...row, __source: '工作事項', __date: row.due || row.createdAt || todayDate() }))
   const taskRows = reportData.tasks.map((row) => ({ ...row, __source: '任務追蹤', __date: row.due || todayDate() }))
   const allTaskRows = [...workRows, ...taskRows]
   const scopedPurchases = reportData.purchases.filter((row) => isReportInScope(row.requestDate || row.orderDate || row.arrivalDate, reportScope)).filter((row) => matchReportKeyword(row, keyword))
@@ -5320,7 +5320,7 @@ function buildReportTableRows(tab, data) {
   const summary = [
     { 項目: '採購筆數', 數值: data.purchases.length, 備註: '目前篩選期間內的採購紀錄' },
     { 項目: '採購總額', 數值: data.purchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0), 備註: '含稅金額加總' },
-    { 項目: '任務筆數', 數值: data.tasks.length, 備註: '工作看板與任務追蹤合併' },
+    { 項目: '任務筆數', 數值: data.tasks.length, 備註: '工作事項與任務追蹤合併' },
     { 項目: '專案筆數', 數值: data.projects.length, 備註: '目前篩選期間內的專案' },
     { 項目: '提醒筆數', 數值: data.reminders.length, 備註: '目前篩選期間內的提醒' },
   ]
@@ -5548,7 +5548,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   const sortedCollections = [...collections].sort((a, b) => (a.order || 0) - (b.order || 0))
   const [newCollectionName, setNewCollectionName] = useState('')
   const backupWorkspaceKeys = [
-    { key: 'work_items', label: '工作看板' },
+    { key: 'work_items', label: '工作事項' },
     { key: 'reminders', label: '提醒中心' },
     { key: 'collections', label: '資料集合' },
     { key: 'purchases', label: '採購資料' },
@@ -5877,7 +5877,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
     { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: FLOWDESK_VERSION_LABEL, icon: '⚙️' },
   ]
   const v20Checklist = [
-    ['功能收斂', '工作看板、採購、專案、提醒中心用途重新劃分，避免互相重複'],
+    ['功能收斂', '工作事項、採購、專案、提醒中心用途重新劃分，避免互相重複'],
     ['採購管理', '多品項、稅額總額、PO/報價、預算差異、提醒、歷程與清單選取穩定化'],
     ['專案管理', '甘特圖、里程碑完成、建立工作、進度估算、摘要匯出'],
     ['提醒中心', '逾期、今日、明日、本週分組，支援延後與關聯開啟'],
@@ -5920,7 +5920,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.48 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.49 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -6363,7 +6363,7 @@ function ContextPanel({ selected, onUpdateItem, onDeleteItem, onDuplicateItem })
       <div className="context-inner context-empty">
         <p className="eyebrow">詳細預覽</p>
         <h2>未選取工作</h2>
-        <p>工作看板目前沒有可預覽的項目。</p>
+        <p>工作事項目前沒有可預覽的項目。</p>
       </div>
     )
   }
@@ -7539,7 +7539,7 @@ if (typeof window !== 'undefined' && !window.__flowdeskWorkboardOuterWidthReady)
     clearMarks()
     if (isProjectPage()) return
 
-    const heading = visibleHeadings().find(({ text }) => text === '工作看板')?.node
+    const heading = visibleHeadings().find(({ text }) => text === '工作事項')?.node
     if (!heading) return
 
     const main = heading.closest('main') || heading.closest('[role="main"]') || heading.closest('.page, .page-content, .main-content, .content, .workspace-content')
@@ -7552,7 +7552,7 @@ if (typeof window !== 'undefined' && !window.__flowdeskWorkboardOuterWidthReady)
     while (current && current !== document.body) {
       chain.push(current)
       const text = current.textContent || ''
-      const hasWorkboard = text.includes('工作看板')
+      const hasWorkboard = text.includes('工作事項')
       const hasItems = /\b(?:FD|TASK)-\d+\b/.test(text)
       const notProject = !text.includes('PROJECT FLOW') && !text.includes('專案管理')
 
