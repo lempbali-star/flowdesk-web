@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.10'
+const FLOWDESK_APP_VERSION = '20.3.11'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function ChineseTextField({ value = '', onCommit, multiline = false, commitOnBlur = false, ...props }) {
@@ -2700,6 +2700,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [ganttDragPreview, setGanttDragPreview] = useState(null)
   const [ganttProgressEditor, setGanttProgressEditor] = useState(null)
   const [ganttShowSubtasks, setGanttShowSubtasks] = useState(true)
+  const [ganttExpandedTasks, setGanttExpandedTasks] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -2968,6 +2969,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       return { ...task, subtasks }
     })
     setGanttShowSubtasks(true)
+    const targetTask = project.tasks?.[taskIndex]
+    if (targetTask) {
+      const taskKey = getGanttTaskToggleKey(project, targetTask, taskIndex)
+      setGanttExpandedTasks((rows) => ({ ...rows, [taskKey]: true }))
+    }
     updateProject(projectId, { tasks }, '新增子任務。')
   }
 
@@ -2989,6 +2995,27 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
   function getGanttSubtaskKey(project, task, subtask, taskIndex, subIndex) {
     return `${project?.id || 'project'}-${task?.id || `task-${taskIndex}`}-${subtask?.id || `subtask-${subIndex}`}`
+  }
+
+
+  function getGanttTaskToggleKey(project, task, taskIndex) {
+    return `${project?.id || 'project'}::${task?.id || `task-${taskIndex}`}`
+  }
+
+  function isGanttTaskSubtasksOpen(project, task, taskIndex) {
+    const key = getGanttTaskToggleKey(project, task, taskIndex)
+    return ganttExpandedTasks[key] ?? ganttShowSubtasks
+  }
+
+  function toggleGanttTaskSubtasks(project, task, taskIndex) {
+    const key = getGanttTaskToggleKey(project, task, taskIndex)
+    const current = isGanttTaskSubtasksOpen(project, task, taskIndex)
+    setGanttExpandedTasks((rows) => ({ ...rows, [key]: !current }))
+  }
+
+  function toggleAllGanttSubtasks() {
+    setGanttShowSubtasks((value) => !value)
+    setGanttExpandedTasks({})
   }
 
   function updateProjectMilestone(projectId, milestoneIndex, patch, recordText) {
@@ -3523,7 +3550,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </label>
             )}
             <button type="button" onClick={() => addProjectTask(project.id)}>新增任務</button>
-            <button type="button" onClick={() => setGanttShowSubtasks((value) => !value)}>{ganttShowSubtasks ? '收合子任務' : '展開子任務'}</button>
+            <button type="button" onClick={toggleAllGanttSubtasks}>{ganttShowSubtasks ? '全部收合子任務' : '全部展開子任務'}</button>
           </div>
         </div>
 
@@ -3557,6 +3584,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const taskEnd = task.end || project.endDate
             const progress = clampPercent(task.progress)
             const taskKey = getGanttTaskKey(project, task, index)
+            const subtaskCount = (task.subtasks || []).length
+            const subtasksOpen = isGanttTaskSubtasksOpen(project, task, index)
             return (
               <div key={taskKey} className="fd203-gantt-task-group">
                 <div className="fd203-gantt-grid fd203-gantt-row task" style={{ gridTemplateColumns: gridColumns }}>
@@ -3565,6 +3594,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
                     <div className="fd203-gantt-row-actions">
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
+                      {subtaskCount ? (
+                        <button type="button" className="fd203-mini-link" onClick={() => toggleGanttTaskSubtasks(project, task, index)}>
+                          {subtasksOpen ? `收合 ${subtaskCount} 子任務` : `展開 ${subtaskCount} 子任務`}
+                        </button>
+                      ) : (
+                        <span className="fd203-mini-muted">0 子任務</span>
+                      )}
                       <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectTask(project.id, index)}>刪除任務</button>
                     </div>
                   </div>
@@ -3573,7 +3609,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}
                   </div>
                 </div>
-                {ganttShowSubtasks && (task.subtasks || []).map((subtask, subIndex) => {
+                {subtasksOpen && (task.subtasks || []).map((subtask, subIndex) => {
                   const subStart = subtask.start || taskStart
                   const subEnd = subtask.end || taskEnd
                   const subProgress = clampPercent(subtask.progress)
