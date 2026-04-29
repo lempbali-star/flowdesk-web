@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.6'
+const FLOWDESK_APP_VERSION = '20.3.7'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function ChineseTextField({ value = '', onCommit, multiline = false, ...props }) {
@@ -2679,6 +2679,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const projectsCloudSaveTimer = useRef(null)
   const [selectedId, setSelectedId] = useState(initialProjectRows[0]?.id)
   const [projectModalOpen, setProjectModalOpen] = useState(false)
+  const [projectListExpandAllGantt, setProjectListExpandAllGantt] = useState(false)
   const [projectKeyword, setProjectKeyword] = useState('')
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
   const [projectHealthFilter, setProjectHealthFilter] = useState('全部')
@@ -3357,45 +3358,47 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const isActive = selectedProject?.id === project.id && projectModalOpen
     const estimated = estimateProjectProgress(project)
     return (
-      <article
-        key={project.id}
-        {...getProjectDragProps(project.id)}
-        role="button"
-        tabIndex={0}
-        className={[
-          'fd203-project-card',
-          isActive ? 'active' : '',
-          draggingProjectId === project.id ? 'dragging' : '',
-          dropProjectId === project.id ? 'drop-target' : '',
-        ].filter(Boolean).join(' ')}
-        onClick={() => openProject(project.id)}
-        onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
-        title="點擊開啟專案彈窗；拖曳調整順序"
-      >
-        <div className="fd203-project-card-head">
-          <span className="record-id">☰ {project.id}</span>
-          <Badge value={project.health} />
-        </div>
-        <div className="fd203-project-card-title">
-          <strong>{project.name || '未命名專案'}</strong>
-          <Badge value={project.phase || '未分階段'} />
-        </div>
-        <p>{project.next || '尚未設定下一步'}</p>
-        <div className="fd203-project-card-meta">
-          <span>{project.owner || '未指定'}</span>
-          <span title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
-        </div>
-        <div className="task-progress-row">
-          <div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div>
-          <strong>{project.progress}%</strong>
-          <small>估 {estimated}%</small>
-        </div>
-        <div className="fd203-project-card-foot">
-          <span>{project.tasks?.length || 0} 任務</span>
-          <span>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</span>
-          <span>點擊開啟</span>
-        </div>
-      </article>
+      <div key={project.id} className="fd203-project-entry">
+        <article
+          {...getProjectDragProps(project.id)}
+          role="button"
+          tabIndex={0}
+          className={[
+            'fd203-project-card',
+            isActive ? 'active' : '',
+            draggingProjectId === project.id ? 'dragging' : '',
+            dropProjectId === project.id ? 'drop-target' : '',
+          ].filter(Boolean).join(' ')}
+          onClick={() => openProject(project.id)}
+          onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
+          title="點擊開啟專案彈窗；拖曳調整順序"
+        >
+          <div className="fd203-project-card-head">
+            <span className="record-id">☰ {project.id}</span>
+            <Badge value={project.health} />
+          </div>
+          <div className="fd203-project-card-title">
+            <strong>{project.name || '未命名專案'}</strong>
+            <Badge value={project.phase || '未分階段'} />
+          </div>
+          <p>{project.next || '尚未設定下一步'}</p>
+          <div className="fd203-project-card-meta">
+            <span>{project.owner || '未指定'}</span>
+            <span title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
+          </div>
+          <div className="task-progress-row">
+            <div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div>
+            <strong>{project.progress}%</strong>
+            <small>估 {estimated}%</small>
+          </div>
+          <div className="fd203-project-card-foot">
+            <span>{project.tasks?.length || 0} 任務</span>
+            <span>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</span>
+            <span>{projectListExpandAllGantt ? '下方已展開甘特圖' : '點擊開啟'}</span>
+          </div>
+        </article>
+        {projectListExpandAllGantt ? <div className="fd203-inline-gantt-shell">{renderGantt(project, { embedded: true, compact: true })}</div> : null}
+      </div>
     )
   }
 
@@ -3403,27 +3406,29 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const isActive = selectedProject?.id === project.id && projectModalOpen
     const estimated = estimateProjectProgress(project)
     return (
-      <article
-        key={project.id}
-        {...getProjectDragProps(project.id)}
-        role="button"
-        tabIndex={0}
-        className={[
-          'fd203-project-row',
-          isActive ? 'active' : '',
-          draggingProjectId === project.id ? 'dragging' : '',
-          dropProjectId === project.id ? 'drop-target' : '',
-        ].filter(Boolean).join(' ')}
-        onClick={() => openProject(project.id)}
-        onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
-        title="點擊開啟專案彈窗；拖曳調整順序"
-      >
-        <span className="fd203-row-main"><small>☰ {project.id}</small><strong>{project.name || '未命名專案'}</strong><em>{project.next || '尚未設定下一步'}</em></span>
-        <span><strong>{project.owner || '未指定'}</strong><small title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small></span>
-        <span className="fd203-row-progress"><div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div><small>{project.progress}% / 估 {estimated}%</small></span>
-        <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</small></span>
-        <span className="fd203-row-badges"><Badge value={project.phase} /><Badge value={project.health} /></span>
-      </article>
+      <div key={project.id} className="fd203-project-entry fd203-project-entry-row">
+        <article
+          {...getProjectDragProps(project.id)}
+          role="button"
+          tabIndex={0}
+          className={[
+            'fd203-project-row',
+            isActive ? 'active' : '',
+            draggingProjectId === project.id ? 'dragging' : '',
+            dropProjectId === project.id ? 'drop-target' : '',
+          ].filter(Boolean).join(' ')}
+          onClick={() => openProject(project.id)}
+          onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
+          title="點擊開啟專案彈窗；拖曳調整順序"
+        >
+          <span className="fd203-row-main"><small>☰ {project.id}</small><strong>{project.name || '未命名專案'}</strong><em>{project.next || '尚未設定下一步'}</em></span>
+          <span><strong>{project.owner || '未指定'}</strong><small title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small></span>
+          <span className="fd203-row-progress"><div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div><small>{project.progress}% / 估 {estimated}%</small></span>
+          <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</small></span>
+          <span className="fd203-row-badges"><Badge value={project.phase} /><Badge value={project.health} /></span>
+        </article>
+        {projectListExpandAllGantt ? <div className="fd203-inline-gantt-shell fd203-inline-gantt-shell-row">{renderGantt(project, { embedded: true, compact: true })}</div> : null}
+      </div>
     )
   }
 
@@ -3445,26 +3450,32 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     )
   }
 
-  function renderGantt(project) {
+  function renderGantt(project, options = {}) {
+    const { embedded = false, compact = false } = options
     if (!project?.id) return <div className="flow-empty-card">請先從專案列表開啟專案。</div>
     const frozenRange = ganttDragRange?.projectId === project.id ? ganttDragRange : null
     const displayStart = frozenRange?.start || addDaysToDateValue(project.startDate, -14)
     const displayEnd = frozenRange?.end || addDaysToDateValue(project.endDate, 14)
     const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
-    const weekCellWidth = 140
+    const weekCellWidth = compact ? 124 : 140
     const gridColumns = `180px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
+    const todayValue = new Date().toISOString().slice(0, 10)
+    const showToday = todayValue >= displayStart && todayValue <= displayEnd
+    const todayLeft = showToday ? `${ganttPoint(todayValue, displayStart, displayEnd)}%` : null
     return (
-      <div className="fd203-gantt-panel">
+      <div className={`fd203-gantt-panel${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`}>
         <div className="fd203-gantt-summary">
           <div>
             <p className="eyebrow">PROJECT GANTT</p>
             <h3>{project.name}</h3>
-            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 每週顯示，中間保留每日刻度；滑過色條可看起訖日期，拖曳中間可整段平移</small>
+            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 每週顯示，中間保留每日刻度；滑過色條可看起訖日期，拖曳中間可整段平移{showToday ? ` · 今日：${formatMonthDayWeekday(todayValue)}` : ''}</small>
           </div>
-          <label>
-            <span>專案進度 {project.progress}%</span>
-            <input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} />
-          </label>
+          {!compact && (
+            <label>
+              <span>專案進度 {project.progress}%</span>
+              <input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} />
+            </label>
+          )}
         </div>
 
         <div className="fd203-gantt-scroll">
@@ -3484,6 +3495,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <small>{project.phase} · {project.progress}%</small>
             </div>
             <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+              {showToday ? <span className="fd203-gantt-today-line" style={{ left: todayLeft }}><i>今天 {formatMonthDay(todayValue)}</i></span> : null}
               {renderGanttBar({ project, scope: 'project', start: project.startDate, end: project.endDate, displayStart, displayEnd, progress: project.progress, label: '專案進度', className: 'project', tone: project.tone || 'blue' })}
               {(project.milestones || []).map((milestone, index) => (
                 <i key={milestone.id || index} className={milestone.done ? 'milestone-dot done' : 'milestone-dot'} style={{ left: `${ganttPoint(milestone.date, displayStart, displayEnd)}%` }} title={`${milestone.name}｜${formatMonthDayWeekday(milestone.date)}`} />
@@ -3499,11 +3511,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <div key={task.id || index}>
                 <div className="fd203-gantt-grid fd203-gantt-row task" style={{ gridTemplateColumns: gridColumns }}>
                   <div className="fd203-gantt-label" title={dateRangeLabel(taskStart, taskEnd)}>
-                    <strong>{task.name || '未命名任務'}</strong>
-                    <small>{task.owner || '未指定'} · {progress}%</small>
+                    <ChineseTextField className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
+                    <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
                     <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
                   </div>
                   <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+                    {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
                     {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}
                   </div>
                 </div>
@@ -3514,10 +3527,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   return (
                     <div className="fd203-gantt-grid fd203-gantt-row subtask" key={subtask.id || subIndex} style={{ gridTemplateColumns: gridColumns }}>
                       <div className="fd203-gantt-label subtask" title={dateRangeLabel(subStart, subEnd)}>
-                        <strong>↳ {subtask.name || '未命名子任務'}</strong>
-                        <small>{subtask.owner || task.owner || '未指定'} · {subProgress}%</small>
+                        <ChineseTextField className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
+                        <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {subProgress}% · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
                       </div>
                       <div className="fd203-gantt-track subtask" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+                        {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
                         {renderGanttBar({ project, task, taskIndex: index, subtask, subtaskIndex: subIndex, scope: 'subtask', start: subStart, end: subEnd, displayStart, displayEnd, progress: subProgress, label: subtask.name || '子任務進度', className: 'subtask' })}
                       </div>
                     </div>
@@ -3732,12 +3746,17 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
       <section className="fd203-main-layout modal-mode">
         <aside className="fd203-project-list-pane full">
-          <div className="fd203-pane-head">
+          <div className="fd203-pane-head fd203-pane-head-stack">
             <div>
               <p className="eyebrow">PROJECT LIST</p>
               <h3>專案列表</h3>
             </div>
-            <small>{filteredProjects.length} 筆 · 可拖曳排序 · 點擊開啟彈窗</small>
+            <div className="fd203-pane-actions">
+              <small>{filteredProjects.length} 筆 · 可拖曳排序 · 點擊開啟彈窗</small>
+              <button type="button" className={projectListExpandAllGantt ? 'ghost-btn active' : 'ghost-btn'} onClick={() => setProjectListExpandAllGantt((value) => !value)}>
+                {projectListExpandAllGantt ? '收合全部甘特圖' : '展開全部甘特圖'}
+              </button>
+            </div>
           </div>
 
           {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
