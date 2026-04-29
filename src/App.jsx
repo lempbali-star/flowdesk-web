@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.21'
+const FLOWDESK_APP_VERSION = '20.3.22'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
+const PROJECT_PRIORITY_OPTIONS = ['緊急', '高', '中', '低']
+const PROJECT_SORT_OPTIONS = ['優先順序', '手動排序', '到期日', '進度', '名稱']
 
 function mergeOptionList(base = [], current) {
   return Array.from(new Set([...base, current].filter(Boolean)))
@@ -2718,6 +2720,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projectKeyword, setProjectKeyword] = useState('')
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
   const [projectHealthFilter, setProjectHealthFilter] = useState('全部')
+  const [projectPriorityFilter, setProjectPriorityFilter] = useState('全部')
+  const [projectSortMode, setProjectSortMode] = useState(() => {
+    if (typeof window === 'undefined') return '優先順序'
+    const saved = window.localStorage.getItem('flowdesk-project-sort-mode-v20322')
+    return PROJECT_SORT_OPTIONS.includes(saved) ? saved : '優先順序'
+  })
   const [detailTab, setDetailTab] = useState(() => {
     if (typeof window === 'undefined') return 'overview'
     const saved = window.localStorage.getItem('flowdesk-project-detail-tab-v20316')
@@ -2732,9 +2740,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return Math.max(1, Number(window.localStorage.getItem('flowdesk-project-page-v20316') || 1))
   })
   const [projectPageSize, setProjectPageSize] = useState(() => {
-    if (typeof window === 'undefined') return 8
-    const saved = Number(window.localStorage.getItem('flowdesk-project-page-size-v20316') || 8)
-    return [4, 8, 12, 20].includes(saved) ? saved : 8
+    if (typeof window === 'undefined') return 10
+    const saved = Number(window.localStorage.getItem('flowdesk-project-page-size-v20316') || 10)
+    return [10, 20, 30, 40, 50].includes(saved) ? saved : 10
   })
   const [draggingProjectId, setDraggingProjectId] = useState(null)
   const [dropProjectId, setDropProjectId] = useState(null)
@@ -2801,10 +2809,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     window.localStorage.setItem('flowdesk-project-modal-open-v20316', String(Boolean(projectModalOpen)))
     window.localStorage.setItem('flowdesk-project-detail-tab-v20316', detailTab)
     window.localStorage.setItem('flowdesk-project-view-mode-v20316', projectViewMode)
+    window.localStorage.setItem('flowdesk-project-sort-mode-v20322', projectSortMode)
     window.localStorage.setItem('flowdesk-project-page-v20316', String(projectPage))
     window.localStorage.setItem('flowdesk-project-page-size-v20316', String(projectPageSize))
     window.localStorage.setItem('flowdesk-gantt-show-subtasks-v20316', String(Boolean(ganttShowSubtasks)))
-  }, [selectedId, projectModalOpen, detailTab, projectViewMode, projectPage, projectPageSize, ganttShowSubtasks])
+  }, [selectedId, projectModalOpen, detailTab, projectViewMode, projectSortMode, projectPage, projectPageSize, ganttShowSubtasks])
 
   useEffect(() => {
     if (projectFilterInitRef.current) {
@@ -2812,7 +2821,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       return
     }
     setProjectPage(1)
-  }, [projectKeyword, projectPhaseFilter, projectHealthFilter, projectViewMode, projectPageSize])
+  }, [projectKeyword, projectPhaseFilter, projectHealthFilter, projectPriorityFilter, projectViewMode, projectSortMode, projectPageSize])
 
   useEffect(() => {
     const handleEsc = (event) => {
@@ -2828,6 +2837,91 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
   function stableId(prefix = 'id') {
     return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
+  function projectPriorityBaseScore(priority = '中') {
+    return priority === '緊急' ? 78 : priority === '高' ? 62 : priority === '低' ? 22 : 42
+  }
+
+  function getProjectPriorityMeta(project = {}) {
+    const today = todayDate()
+    const manual = PROJECT_PRIORITY_OPTIONS.includes(project.priority) ? project.priority : '中'
+    const progress = clampPercent(project.progress)
+    const endDate = project.endDate || today
+    const remainingDays = daysBetween(today, endDate)
+    const health = String(project.health || '')
+    const phase = String(project.phase || '')
+    const tasks = Array.isArray(project.tasks) ? project.tasks : []
+    const flatTasks = tasks.flatMap((task) => [
+      task,
+      ...(Array.isArray(task.subtasks) ? task.subtasks : []),
+    ])
+    const openItems = flatTasks.filter((item) => !(Boolean(item.done) || clampPercent(item.progress) >= 100))
+    const overdueItems = openItems.filter((item) => (item.end || endDate) < today).length
+    const activeItems = openItems.filter((item) => (item.start || project.startDate || today) <= today && (item.end || endDate) >= today).length
+    const blocked = health.includes('卡') || health.includes('風險') || health.includes('待')
+    let score = projectPriorityBaseScore(manual)
+    const reasons = [`手動優先：${manual}`]
+
+    if (progress >= 100 || phase === '已完成' || phase === '已取消') {
+      score -= 52
+      reasons.push('專案已完成或取消')
+    } else {
+      if (endDate < today) {
+        score += 30
+        reasons.push('專案已逾期')
+      } else if (remainingDays <= 3) {
+        score += 24
+        reasons.push('3 天內到期')
+      } else if (remainingDays <= 7) {
+        score += 18
+        reasons.push('7 天內到期')
+      } else if (remainingDays <= 14) {
+        score += 10
+        reasons.push('14 天內到期')
+      }
+      if (blocked) {
+        score += health.includes('高風險') || health.includes('卡') ? 18 : 10
+        reasons.push(`健康度：${project.health || '待確認'}`)
+      }
+      if (overdueItems > 0) {
+        score += Math.min(18, overdueItems * 6)
+        reasons.push(`${overdueItems} 個任務逾期`)
+      }
+      if (activeItems > 1) {
+        score += Math.min(8, activeItems * 2)
+        reasons.push(`${activeItems} 個項目進行中`)
+      }
+      if (progress > 0 && progress < 35 && remainingDays <= 14) {
+        score += 8
+        reasons.push('進度偏低')
+      }
+      if (phase === '暫緩') {
+        score -= 18
+        reasons.push('專案暫緩')
+      }
+    }
+
+    const finalScore = Math.max(0, Math.min(100, Math.round(score)))
+    const label = finalScore >= 82 ? '緊急' : finalScore >= 62 ? '高' : finalScore >= 35 ? '中' : '低'
+    const tone = label === '緊急' || label === '高' ? 'red' : label === '中' ? 'amber' : 'green'
+    return {
+      manual,
+      label,
+      score: finalScore,
+      tone,
+      reason: reasons.slice(0, 3).join(' / '),
+    }
+  }
+
+  function compareProjectsBySort(a, b) {
+    if (projectSortMode === '手動排序') return 0
+    if (projectSortMode === '到期日') return String(a.endDate || '9999-12-31').localeCompare(String(b.endDate || '9999-12-31')) || String(a.name).localeCompare(String(b.name), 'zh-Hant')
+    if (projectSortMode === '進度') return clampPercent(a.progress) - clampPercent(b.progress) || String(a.endDate || '9999-12-31').localeCompare(String(b.endDate || '9999-12-31'))
+    if (projectSortMode === '名稱') return String(a.name).localeCompare(String(b.name), 'zh-Hant')
+    const pa = getProjectPriorityMeta(a)
+    const pb = getProjectPriorityMeta(b)
+    return (pb.score - pa.score) || String(a.endDate || '9999-12-31').localeCompare(String(b.endDate || '9999-12-31')) || String(a.name).localeCompare(String(b.name), 'zh-Hant')
   }
 
   function normalizeTask(task = {}, project, index = 0) {
@@ -2890,6 +2984,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       phase: project.phase || '規劃中',
       owner: project.owner || 'Kyle',
       health: project.health || '待確認',
+      priority: PROJECT_PRIORITY_OPTIONS.includes(project.priority) ? project.priority : '中',
       next: project.next || '',
       tone: project.tone || 'blue',
       progress: clampPercent(project.progress),
@@ -2922,6 +3017,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       endDate: nextMonth,
       progress: 0,
       health: '待確認',
+      priority: '中',
       tone: 'blue',
       next: '補上專案目標、時程與負責人。',
       related: [],
@@ -3253,6 +3349,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       .map(normalizeProject)
       .filter((project) => projectPhaseFilter === '全部' || project.phase === projectPhaseFilter)
       .filter((project) => projectHealthFilter === '全部' || project.health === projectHealthFilter)
+      .filter((project) => projectPriorityFilter === '全部' || project.priority === projectPriorityFilter || getProjectPriorityMeta(project).label === projectPriorityFilter)
       .filter((project) => {
         if (!keyword) return true
         return [
@@ -3261,6 +3358,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           project.phase,
           project.owner,
           project.health,
+          project.priority,
+          getProjectPriorityMeta(project).label,
           project.next,
           ...(project.related || []),
           ...(project.records || []),
@@ -3268,15 +3367,18 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           ...(project.milestones || []).map((milestone) => milestone.name),
         ].join(' ').toLowerCase().includes(keyword)
       })
-  }, [projects, projectKeyword, projectPhaseFilter, projectHealthFilter])
+      .sort(compareProjectsBySort)
+  }, [projects, projectKeyword, projectPhaseFilter, projectHealthFilter, projectPriorityFilter, projectSortMode])
 
   const projectPhaseOptions = useMemo(() => ['全部', ...Array.from(new Set([...PROJECT_PHASE_OPTIONS, ...projects.map((project) => project.phase)].filter(Boolean)))], [projects])
   const projectHealthOptions = useMemo(() => ['全部', ...Array.from(new Set([...PROJECT_HEALTH_OPTIONS, ...projects.map((project) => project.health)].filter(Boolean)))], [projects])
+  const projectPriorityOptions = useMemo(() => ['全部', ...PROJECT_PRIORITY_OPTIONS], [])
   const selectedProject = normalizeProject(projects.find((project) => project.id === selectedId) || filteredProjects[0] || projects[0] || {})
   const hasSelectedProject = Boolean(selectedProject?.id)
   const avgProgress = Math.round(projects.reduce((sum, project) => sum + Number(project.progress || 0), 0) / Math.max(projects.length, 1))
   const riskCount = projects.filter((project) => project.tone === 'red' || String(project.health || '').includes('待') || String(project.health || '').includes('卡') || String(project.health || '').includes('風險')).length
   const overdueProjects = projects.filter((project) => project.endDate && project.endDate < todayDate() && Number(project.progress || 0) < 100).length
+  const highPriorityProjects = projects.map(normalizeProject).filter((project) => getProjectPriorityMeta(project).score >= 62 && clampPercent(project.progress) < 100).length
   const projectPageTotal = Math.max(1, Math.ceil(filteredProjects.length / projectPageSize))
   const safeProjectPage = Math.min(projectPage, projectPageTotal)
   const projectPageStart = (safeProjectPage - 1) * projectPageSize
@@ -3616,6 +3718,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const isActive = selectedProject?.id === project.id && projectModalOpen
     const estimated = estimateProjectProgress(project)
     const listInfo = getProjectListInfo(project)
+    const priorityMeta = getProjectPriorityMeta(project)
     return (
       <div key={project.id} className="fd203-project-entry">
         <article
@@ -3634,12 +3737,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         >
           <div className="fd203-project-card-head">
             <span className="record-id">☰ {project.id}</span>
-            <Badge value={project.health} />
+            <span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span>
           </div>
           <div className="fd203-project-card-title">
             <strong>{project.name || '未命名專案'}</strong>
-            <Badge value={project.phase || '未分階段'} />
+            <span className="fd203-project-title-badges"><Badge value={project.phase || '未分階段'} /><Badge value={project.health} /></span>
           </div>
+          <div className="fd203-project-priority-reason"><span>優先依據</span><strong>{priorityMeta.reason}</strong></div>
           <div className="fd203-project-list-info compact-v21">
             <div className="running"><span>正在進行</span><strong>{listInfo.running}</strong></div>
             <div className="next"><span>下一步</span><strong>{listInfo.next}</strong></div>
@@ -3672,6 +3776,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const isActive = selectedProject?.id === project.id && projectModalOpen
     const estimated = estimateProjectProgress(project)
     const listInfo = getProjectListInfo(project)
+    const priorityMeta = getProjectPriorityMeta(project)
     return (
       <div key={project.id} className="fd203-project-entry fd203-project-entry-row">
         <article
@@ -3697,7 +3802,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <span><strong>{project.owner || '未指定'}</strong><small title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small></span>
           <span className="fd203-row-progress"><div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div><small>{project.progress}% / 估 {estimated}%</small></span>
           <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</small></span>
-          <span className="fd203-row-badges"><Badge value={project.phase} /><Badge value={project.health} /></span>
+          <span className="fd203-row-badges"><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.phase} /><Badge value={project.health} /></span>
         </article>
         {projectListExpandAllGantt ? <div className="fd203-inline-gantt-shell fd203-inline-gantt-shell-row">{renderGantt(project, { embedded: true, compact: true })}</div> : null}
       </div>
@@ -3898,6 +4003,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
   function renderProjectWorkspace(project) {
     if (!project?.id) return null
+    const priorityMeta = getProjectPriorityMeta(project)
     return (
       <>
         <div className="fd203-workspace-head">
@@ -3924,12 +4030,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         {detailTab === 'overview' && (
           <div className="fd203-overview-panel">
             <section className="fd203-profile-card">
-              <div className="detail-hero-line"><span className="record-id">{project.id}</span><Badge value={project.health} /></div>
+              <div className="detail-hero-line"><span className="record-id">{project.id}</span><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.health} /></div>
               <h3>{project.name}</h3>
               <p>{project.next || '尚未設定下一步'}</p>
               <div className="flow-progress big"><span style={{ width: `${project.progress}%` }} /></div>
               <div className="project-focus-kpis fd203-kpis">
                 <article><span>階段</span><strong>{project.phase}</strong></article>
+                <article><span>建議優先</span><strong>{priorityMeta.label}</strong></article>
                 <article><span>負責人</span><strong>{project.owner}</strong></article>
                 <article><span>期間</span><strong>{daysBetween(project.startDate, project.endDate) + 1} 天</strong></article>
                 <article><span>任務</span><strong>{project.tasks?.length || 0}</strong></article>
@@ -3949,6 +4056,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <div className="project-editor-grid fd203-editor-grid">
                 <label>專案名稱<ChineseTextField commitOnBlur value={project.name} onCommit={(value) => updateProject(project.id, { name: value || '未命名專案' })} /></label>
                 <label>階段<select value={project.phase || '規劃中'} onChange={(event) => updateProject(project.id, { phase: event.target.value }, '更新專案階段。')}>{mergeOptionList(PROJECT_PHASE_OPTIONS, project.phase).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
+                <label>專案優先<select value={project.priority || '中'} onChange={(event) => updateProject(project.id, { priority: event.target.value }, `更新專案優先為 ${event.target.value}。`)}>{mergeOptionList(PROJECT_PRIORITY_OPTIONS, project.priority).map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
                 <label>負責人<ChineseTextField commitOnBlur value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} /></label>
                 <label>健康度<select value={project.health || '待確認'} onChange={(event) => updateProject(project.id, { health: event.target.value }, '更新健康度。')}>{mergeOptionList(PROJECT_HEALTH_OPTIONS, project.health).map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
                 <label>開始<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.startDate} onChange={(event) => updateProject(project.id, { startDate: minIsoDate(event.target.value, project.endDate) }, '更新開始日期。')} /></label>
@@ -4076,19 +4184,19 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <article><span>專案數</span><strong>{projects.length}</strong></article>
         <article><span>需注意</span><strong>{riskCount}</strong></article>
         <article><span>逾期專案</span><strong>{overdueProjects}</strong></article>
+        <article><span>高優先</span><strong>{highPriorityProjects}</strong></article>
         <article><span>最近開啟</span><strong>{hasSelectedProject ? selectedProject.name : '—'}</strong></article>
         <article><span>同步狀態</span><strong>{flowdeskCloud ? (projectsCloudReady ? '雲端模式' : '同步中') : '本機備援'}</strong></article>
       </section>
 
       <section className="fd203-filter-bar">
         <ChineseTextField value={projectKeyword} onCommit={setProjectKeyword} placeholder="搜尋專案、任務、子任務、里程碑..." />
-        <select value={projectPhaseFilter} onChange={(event) => setProjectPhaseFilter(event.target.value)}>{projectPhaseOptions.map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select>
-        <select value={projectHealthFilter} onChange={(event) => setProjectHealthFilter(event.target.value)}>{projectHealthOptions.map((health) => <option key={health} value={health}>{health}</option>)}</select>
+        <select value={projectPhaseFilter} onChange={(event) => setProjectPhaseFilter(event.target.value)}>{projectPhaseOptions.map((phase) => <option key={phase} value={phase}>{phase === '全部' ? '全部階段' : phase}</option>)}</select>
+        <select value={projectHealthFilter} onChange={(event) => setProjectHealthFilter(event.target.value)}>{projectHealthOptions.map((health) => <option key={health} value={health}>{health === '全部' ? '全部健康度' : health}</option>)}</select>
+        <select value={projectPriorityFilter} onChange={(event) => setProjectPriorityFilter(event.target.value)}>{projectPriorityOptions.map((priority) => <option key={priority} value={priority}>{priority === '全部' ? '全部優先' : `優先 ${priority}`}</option>)}</select>
+        <select value={projectSortMode} onChange={(event) => setProjectSortMode(event.target.value)} aria-label="排序方式">{PROJECT_SORT_OPTIONS.map((mode) => <option key={mode} value={mode}>排序：{mode}</option>)}</select>
         <select value={projectPageSize} onChange={(event) => setProjectPageSize(Number(event.target.value))} aria-label="每頁筆數">
-          <option value={6}>每頁 6 筆</option>
-          <option value={8}>每頁 8 筆</option>
-          <option value={12}>每頁 12 筆</option>
-          <option value={20}>每頁 20 筆</option>
+          {[10, 20, 30, 40, 50].map((size) => <option key={size} value={size}>每頁 {size} 筆</option>)}
         </select>
         <div className="project-view-toggle" aria-label="專案檢視切換">
           <button type="button" className={projectViewMode === 'cards' ? 'active' : ''} onClick={() => setProjectViewMode('cards')}>卡片</button>
@@ -4127,7 +4235,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           {filteredProjects.length > 0 && (
             <div className="project-pagination-bar fd203-pagination">
               <div>
-                <strong>{filteredProjects.length}</strong> 筆 · 第 {safeProjectPage} / {projectPageTotal} 頁
+                <strong>{filteredProjects.length}</strong> 筆 · 第 {safeProjectPage} / {projectPageTotal} 頁 · {projectSortMode}
                 <span>{projectPageStart + 1} - {Math.min(projectPageStart + paginatedProjects.length, filteredProjects.length)}</span>
               </div>
               <div className="project-pagination-actions">

@@ -15047,3 +15047,118 @@ button {
     width: max-content;
   }
 }
+
+/* FlowDesk v20.3.22 project priority and 10-step pagination */
+.fd203-overview-strip {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.fd203-filter-bar {
+  grid-template-columns: minmax(240px, 1.45fr) repeat(5, minmax(128px, .68fr)) auto;
+}
+
+.fd203-project-card {
+  min-height: 382px;
+}
+
+.fd203-project-title-badges,
+.fd203-row-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.fd203-priority-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 900;
+  white-space: nowrap;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(241, 245, 249, 0.94);
+  color: #334155;
+}
+
+.fd203-priority-chip.red {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.98), rgba(255, 247, 237, 0.92));
+  color: #b91c1c;
+}
+
+.fd203-priority-chip.amber {
+  border-color: rgba(251, 191, 36, 0.42);
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.98), rgba(254, 243, 199, 0.82));
+  color: #92400e;
+}
+
+.fd203-priority-chip.green {
+  border-color: rgba(34, 197, 94, 0.32);
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.98), rgba(220, 252, 231, 0.82));
+  color: #166534;
+}
+
+.fd203-project-priority-reason {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 8px 9px;
+  border-radius: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.36);
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.fd203-project-priority-reason span {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.fd203-project-priority-reason strong {
+  min-width: 0;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 820;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+@media (max-width: 1180px) {
+  .fd203-filter-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .fd203-overview-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .fd203-filter-bar,
+  .fd203-overview-strip {
+    grid-template-columns: 1fr;
+  }
+  .fd203-project-priority-reason {
+    grid-template-columns: 1fr;
+  }
+  .fd203-project-title-badges {
+    justify-content: flex-start;
+  }
+}
