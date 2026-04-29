@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.15'
+const FLOWDESK_APP_VERSION = '20.3.16'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -282,7 +282,11 @@ function FlowDeskShell({ authSession, onLogout }) {
     }
   })
   const [draggingId, setDraggingId] = useState(null)
-  const [active, setActive] = useState('home')
+  const [active, setActive] = useState(() => {
+    if (typeof window === 'undefined') return 'home'
+    const saved = window.localStorage.getItem('flowdesk-active-module-v20316')
+    return initialModules.some((item) => item.id === saved) ? saved : 'home'
+  })
   const [query, setQuery] = useState('')
   const [view, setView] = useState('看板')
   const [selected, setSelected] = useState(null)
@@ -296,7 +300,10 @@ function FlowDeskShell({ authSession, onLogout }) {
     if (typeof window === 'undefined') return 'auto'
     return window.localStorage.getItem('flowdesk-icon-style-mode') || 'auto'
   })
-  const [activeBaseTable, setActiveBaseTable] = useState('採購紀錄')
+  const [activeBaseTable, setActiveBaseTable] = useState(() => {
+    if (typeof window === 'undefined') return '採購紀錄'
+    return window.localStorage.getItem('flowdesk-active-base-table-v20316') || '採購紀錄'
+  })
   const [workItems, setWorkItems] = useState(() => {
     if (typeof window === 'undefined') return initialWorkItems
     try {
@@ -571,6 +578,16 @@ function FlowDeskShell({ authSession, onLogout }) {
     document.documentElement.dataset.flowdeskIconMode = iconStyleMode
     window.localStorage.setItem('flowdesk-icon-style-mode', iconStyleMode)
   }, [iconStyleMode, resolvedIconStyle])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('flowdesk-active-module-v20316', active)
+  }, [active])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('flowdesk-active-base-table-v20316', activeBaseTable)
+  }, [activeBaseTable])
 
 
   useEffect(() => {
@@ -2689,24 +2706,48 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projects, setProjects] = useState(() => initialProjectRows)
   const [projectsCloudReady, setProjectsCloudReady] = useState(!flowdeskCloud)
   const projectsCloudSaveTimer = useRef(null)
-  const [selectedId, setSelectedId] = useState(initialProjectRows[0]?.id)
-  const [projectModalOpen, setProjectModalOpen] = useState(false)
+  const [selectedId, setSelectedId] = useState(() => {
+    if (typeof window === 'undefined') return initialProjectRows[0]?.id
+    return window.localStorage.getItem('flowdesk-project-selected-id-v20316') || initialProjectRows[0]?.id
+  })
+  const [projectModalOpen, setProjectModalOpen] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('flowdesk-project-modal-open-v20316') === 'true'
+  })
   const [projectListExpandAllGantt, setProjectListExpandAllGantt] = useState(false)
   const [projectKeyword, setProjectKeyword] = useState('')
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
   const [projectHealthFilter, setProjectHealthFilter] = useState('全部')
-  const [detailTab, setDetailTab] = useState('overview')
-  const [projectViewMode, setProjectViewMode] = useState('cards')
-  const [projectPage, setProjectPage] = useState(1)
-  const [projectPageSize, setProjectPageSize] = useState(8)
+  const [detailTab, setDetailTab] = useState(() => {
+    if (typeof window === 'undefined') return 'overview'
+    const saved = window.localStorage.getItem('flowdesk-project-detail-tab-v20316')
+    return ['overview', 'gantt', 'tasks', 'milestones', 'records'].includes(saved) ? saved : 'overview'
+  })
+  const [projectViewMode, setProjectViewMode] = useState(() => {
+    if (typeof window === 'undefined') return 'cards'
+    return window.localStorage.getItem('flowdesk-project-view-mode-v20316') || 'cards'
+  })
+  const [projectPage, setProjectPage] = useState(() => {
+    if (typeof window === 'undefined') return 1
+    return Math.max(1, Number(window.localStorage.getItem('flowdesk-project-page-v20316') || 1))
+  })
+  const [projectPageSize, setProjectPageSize] = useState(() => {
+    if (typeof window === 'undefined') return 8
+    const saved = Number(window.localStorage.getItem('flowdesk-project-page-size-v20316') || 8)
+    return [4, 8, 12, 20].includes(saved) ? saved : 8
+  })
   const [draggingProjectId, setDraggingProjectId] = useState(null)
   const [dropProjectId, setDropProjectId] = useState(null)
   const [manualRecordText, setManualRecordText] = useState('')
   const [ganttDragRange, setGanttDragRange] = useState(null)
   const [ganttDragPreview, setGanttDragPreview] = useState(null)
   const [ganttProgressEditor, setGanttProgressEditor] = useState(null)
-  const [ganttShowSubtasks, setGanttShowSubtasks] = useState(true)
+  const [ganttShowSubtasks, setGanttShowSubtasks] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return window.localStorage.getItem('flowdesk-gantt-show-subtasks-v20316') !== 'false'
+  })
   const [ganttExpandedTasks, setGanttExpandedTasks] = useState({})
+  const projectFilterInitRef = useRef(true)
 
   useEffect(() => {
     let cancelled = false
@@ -2719,7 +2760,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       if (cancelled) return
       if (Array.isArray(data)) {
         setProjects(data)
-        setSelectedId(data[0]?.id)
+        const savedSelectedId = typeof window !== 'undefined' ? window.localStorage.getItem('flowdesk-project-selected-id-v20316') : null
+        setSelectedId((current) => {
+          if (current && data.some((project) => project.id === current)) return current
+          if (savedSelectedId && data.some((project) => project.id === savedSelectedId)) return savedSelectedId
+          return data[0]?.id
+        })
       }
       setProjectsCloudReady(true)
     }
@@ -2750,6 +2796,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }, [projects, selectedId])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (selectedId) window.localStorage.setItem('flowdesk-project-selected-id-v20316', selectedId)
+    window.localStorage.setItem('flowdesk-project-modal-open-v20316', String(Boolean(projectModalOpen)))
+    window.localStorage.setItem('flowdesk-project-detail-tab-v20316', detailTab)
+    window.localStorage.setItem('flowdesk-project-view-mode-v20316', projectViewMode)
+    window.localStorage.setItem('flowdesk-project-page-v20316', String(projectPage))
+    window.localStorage.setItem('flowdesk-project-page-size-v20316', String(projectPageSize))
+    window.localStorage.setItem('flowdesk-gantt-show-subtasks-v20316', String(Boolean(ganttShowSubtasks)))
+  }, [selectedId, projectModalOpen, detailTab, projectViewMode, projectPage, projectPageSize, ganttShowSubtasks])
+
+  useEffect(() => {
+    if (projectFilterInitRef.current) {
+      projectFilterInitRef.current = false
+      return
+    }
     setProjectPage(1)
   }, [projectKeyword, projectPhaseFilter, projectHealthFilter, projectViewMode, projectPageSize])
 
@@ -2773,7 +2834,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const start = task.start || project.startDate
     const end = task.end || project.endDate
     const progress = clampPercent(task.progress)
-    const done = task.done === undefined ? progress >= 100 : Boolean(task.done)
+    const done = progress >= 100
     return {
       ...task,
       id: task.id || `${project.id || 'project'}-task-${index + 1}`,
@@ -2794,7 +2855,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const start = clampIsoDate(subtask.start || taskStart, taskStart, taskEnd)
     const end = clampIsoDate(subtask.end || taskEnd, start, taskEnd)
     const progress = clampPercent(subtask.progress)
-    const done = subtask.done === undefined ? progress >= 100 : Boolean(subtask.done)
+    const done = progress >= 100
     return {
       ...subtask,
       id: subtask.id || `${project.id || 'project'}-task-${taskIndex + 1}-sub-${subIndex + 1}`,
@@ -3272,10 +3333,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       return
     }
     if (scope === 'subtask') {
-      updateProjectSubtask(projectId, taskIndex, subtaskIndex, { progress: safeValue })
+      updateProjectSubtask(projectId, taskIndex, subtaskIndex, { progress: safeValue, done: safeValue >= 100 })
       return
     }
-    updateProjectTask(projectId, taskIndex, { progress: safeValue })
+    updateProjectTask(projectId, taskIndex, { progress: safeValue, done: safeValue >= 100 })
   }
 
   function renderGanttProgressEditor(scope, projectId, taskIndex, subtaskIndex, value, label) {
@@ -3545,7 +3606,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const displayEnd = frozenRange?.end || addDaysToDateValue(project.endDate, 14)
     const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
     const weekCellWidth = compact ? 124 : 140
-    const gridColumns = `180px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
+    const labelColumnWidth = compact ? 224 : 248
+    const gridColumns = `${labelColumnWidth}px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
     const todayValue = new Date().toISOString().slice(0, 10)
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
     const todayLeft = showToday ? `${ganttPoint(todayValue, displayStart, displayEnd)}%` : null
@@ -3605,7 +3667,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <div key={taskKey} className={`fd203-gantt-task-group ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'} ${task.done ? 'is-complete' : 'is-incomplete'}`}>
                 <div className={`fd203-gantt-grid fd203-gantt-row task ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'} ${task.done ? 'is-complete' : 'is-incomplete'}`} style={{ gridTemplateColumns: gridColumns }}>
                   <div className="fd203-gantt-label" title={dateRangeLabel(taskStart, taskEnd)}>
-                    <div className="fd203-gantt-task-title-line">
+                    <div className="fd203-gantt-task-title-line compact-v16">
                       {subtaskCount ? (
                         <button
                           type="button"
@@ -3619,20 +3681,20 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       ) : (
                         <span className="fd203-subtask-chevron empty">•</span>
                       )}
+                      <ChineseTextField commitOnBlur className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
                       <label className={`fd203-gantt-done-check ${task.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={task.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
                         <input
                           type="checkbox"
                           checked={Boolean(task.done)}
-                          onChange={(event) => updateProjectTask(project.id, index, { done: event.target.checked, progress: event.target.checked ? 100 : progress }, event.target.checked ? '任務標記完成。' : '任務改為未完成。')}
+                          onChange={(event) => updateProjectTask(project.id, index, { done: event.target.checked, progress: event.target.checked ? 100 : Math.min(progress, 99) }, event.target.checked ? '任務標記完成。' : '任務改為未完成。')}
                           aria-label="任務完成狀態"
                         />
-                        <span>{task.done ? '已完成' : '未完成'}</span>
+                        <span>{task.done ? '完成' : '未完成'}</span>
                       </label>
-                      <ChineseTextField commitOnBlur className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
                     </div>
-                    <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {task.done ? '已完成' : '未完成'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
-                    <div className="fd203-gantt-row-actions">
-                      <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
+                    <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
+                    <div className="fd203-gantt-row-actions compact-v16">
+                      <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>＋子任務</button>
                       {subtaskCount ? (
                         <button
                           type="button"
@@ -3642,13 +3704,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                           title={subtasksOpen ? `目前已展開 ${subtaskCount} 個子任務` : `目前已收合 ${subtaskCount} 個子任務`}
                         >
                           <span className="fd203-subtask-toggle-icon">{subtasksOpen ? '▾' : '▸'}</span>
-                          <span>{subtasksOpen ? '子任務已展開' : '子任務已收合'}</span>
+                          <span>子任務</span>
                           <b>{subtaskCount}</b>
                         </button>
                       ) : (
                         <span className="fd203-mini-muted">0 子任務</span>
                       )}
-                      <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectTask(project.id, index)}>刪除任務</button>
+                      <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectTask(project.id, index)}>刪除</button>
                     </div>
                   </div>
                   <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
@@ -3660,7 +3722,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   <div className="fd203-gantt-grid fd203-gantt-row subtask-collapsed-note" style={{ gridTemplateColumns: gridColumns }}>
                     <div className="fd203-gantt-label subtask-collapsed-note-label">
                       <span>已收合 {subtaskCount} 個子任務</span>
-                      <button type="button" className="fd203-mini-link" onClick={() => toggleGanttTaskSubtasks(project, task, index)}>展開查看</button>
+                      <button type="button" className="fd203-mini-link" onClick={() => toggleGanttTaskSubtasks(project, task, index)}>展開</button>
                     </div>
                     <div className="fd203-gantt-track subtask-collapsed-note-track" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                       <span>子任務目前隱藏，點左側展開查看明細</span>
@@ -3675,21 +3737,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   return (
                     <div className={`fd203-gantt-grid fd203-gantt-row subtask ${subtask.done ? 'is-complete' : 'is-incomplete'}`} key={subtaskKey} style={{ gridTemplateColumns: gridColumns }}>
                       <div className="fd203-gantt-label subtask" title={dateRangeLabel(subStart, subEnd)}>
-                        <div className="fd203-gantt-subtask-title-line">
+                        <div className="fd203-gantt-subtask-title-line compact-v16">
+                          <ChineseTextField commitOnBlur className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
                           <label className={`fd203-gantt-done-check subtask ${subtask.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={subtask.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
                             <input
                               type="checkbox"
                               checked={Boolean(subtask.done)}
-                              onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { done: event.target.checked, progress: event.target.checked ? 100 : subProgress }, event.target.checked ? '子任務標記完成。' : '子任務改為未完成。')}
+                              onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { done: event.target.checked, progress: event.target.checked ? 100 : Math.min(subProgress, 99) }, event.target.checked ? '子任務標記完成。' : '子任務改為未完成。')}
                               aria-label="子任務完成狀態"
                             />
-                            <span>{subtask.done ? '已完成' : '未完成'}</span>
+                            <span>{subtask.done ? '完成' : '未完成'}</span>
                           </label>
-                          <ChineseTextField commitOnBlur className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
                         </div>
-                        <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {subtask.done ? '已完成' : '未完成'} · {subProgress}% · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
-                        <div className="fd203-gantt-row-actions">
-                          <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectSubtask(project.id, index, subIndex)}>刪除子任務</button>
+                        <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {subProgress}% · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
+                        <div className="fd203-gantt-row-actions compact-v16">
+                          <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectSubtask(project.id, index, subIndex)}>刪除</button>
                         </div>
                       </div>
                       <div className="fd203-gantt-track subtask" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>

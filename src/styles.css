@@ -14670,3 +14670,136 @@ button {
     width: max-content;
   }
 }
+
+
+/* FlowDesk v20.3.16 - cleaner gantt task label layout + persisted workspace state */
+.fd203-gantt-row.task {
+  min-height: 78px;
+}
+
+.fd203-gantt-row.subtask {
+  min-height: 68px;
+}
+
+.fd203-gantt-label {
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+.fd203-gantt-task-title-line.compact-v16 {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto !important;
+  gap: 7px;
+  align-items: center;
+}
+
+.fd203-gantt-subtask-title-line.compact-v16 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 7px;
+  align-items: center;
+}
+
+.fd203-gantt-name-input {
+  min-height: 30px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.fd203-gantt-name-input.subtask {
+  min-height: 28px;
+  font-size: 12px;
+}
+
+.fd203-gantt-done-check {
+  min-height: 28px;
+  padding: 4px 8px;
+  gap: 5px;
+  box-shadow: none;
+}
+
+.fd203-gantt-done-check input {
+  width: 13px !important;
+  height: 13px;
+}
+
+.fd203-gantt-done-check.subtask {
+  min-height: 26px;
+  padding: 3px 7px;
+}
+
+.fd203-gantt-label small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.fd203-gantt-row-actions.compact-v16 {
+  gap: 5px;
+  align-items: center;
+}
+
+.fd203-gantt-row-actions.compact-v16 .fd203-mini-link,
+.fd203-gantt-row-actions.compact-v16 .fd203-mini-muted,
+.fd203-gantt-row-actions.compact-v16 .fd203-subtask-toggle {
+  min-height: 24px;
+  padding: 3px 7px;
+  font-size: 10.5px;
+}
+
+.fd203-subtask-toggle {
+  gap: 5px;
+}
+
+.fd203-subtask-toggle b {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+}
+
+.fd203-subtask-chevron {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-label.subtask {
+  padding-left: 28px;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-label.subtask::before {
+  left: 10px;
+  top: 15px;
+  font-size: 13px;
+}
+
+.fd203-gantt-label.subtask-collapsed-note-label {
+  min-height: 46px;
+  padding: 8px 12px 8px 34px;
+}
+
+.fd203-gantt-row.subtask-collapsed-note {
+  min-height: 46px;
+}
+
+.fd203-gantt-track.subtask-collapsed-note-track {
+  margin-block: 10px;
+}
+
+.fd203-gantt-row.is-complete .fd203-gantt-name-input {
+  text-decoration-thickness: 1.5px;
+}
+
+@media (max-width: 900px) {
+  .fd203-gantt-task-title-line.compact-v16,
+  .fd203-gantt-subtask-title-line.compact-v16 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .fd203-gantt-done-check {
+    width: max-content;
+  }
+}
