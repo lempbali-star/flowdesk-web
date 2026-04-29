@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.34'
+const FLOWDESK_APP_VERSION = '20.3.35'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5653,7 +5653,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.34 新增深色模式、跟隨系統外觀與動效強度控制，可在正式工作、夜間檢視與展示情境間快速切換。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.35 加入主題即時預覽、首頁主題氛圍與甘特圖狀態視覺強化，讓外觀設定不只好看，也更好判斷工作狀態。</p>
           <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
@@ -5704,6 +5704,48 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
                     {level.name}
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+          <div className="fd35-theme-preview-panel">
+            <div className="fd35-preview-header">
+              <div>
+                <span>主題預覽</span>
+                <strong>{activeTheme.name} · {activeAppearanceMode.name}</strong>
+                <small>先看按鈕、標籤、進度、卡片與甘特條的套用效果。</small>
+              </div>
+              <em>{activeMotionLevel.name}</em>
+            </div>
+            <div className="fd35-preview-grid">
+              <div className="fd35-preview-card fd35-preview-card-main">
+                <span>按鈕與標籤</span>
+                <button className="fd35-preview-button" type="button">主要操作</button>
+                <div className="fd35-preview-tags">
+                  <b>進行中</b>
+                  <b>高優先</b>
+                  <b>今日</b>
+                </div>
+              </div>
+              <div className="fd35-preview-card">
+                <span>進度條</span>
+                <div className="fd35-preview-progress">
+                  <i style={{ width: '68%' }} />
+                </div>
+                <small>專案進度 68%</small>
+              </div>
+              <div className="fd35-preview-card">
+                <span>甘特圖</span>
+                <div className="fd35-preview-gantt">
+                  <i className="doing" />
+                  <i className="late" />
+                  <i className="done" />
+                </div>
+                <small>進行中 / 逾期 / 已完成</small>
+              </div>
+              <div className="fd35-preview-card fd35-preview-card-glow">
+                <span>卡片 Highlight</span>
+                <strong>今日重點</strong>
+                <small>主題色會套用到首頁、模組入口與重要卡片。</small>
               </div>
             </div>
           </div>
