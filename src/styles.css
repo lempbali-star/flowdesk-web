@@ -16138,7 +16138,7 @@ button[data-primary="true"]:hover::after {
 }
 
 
-/* v20.3.36 theme motion enhancement */
+/* v20.3.37 theme motion enhancement */
 :root {
   --fd33-motion-fast: .18s;
   --fd33-motion-normal: .32s;
@@ -16428,7 +16428,7 @@ textarea:focus {
 }
 
 
-/* v20.3.36 appearance mode and motion level controls */
+/* v20.3.37 appearance mode and motion level controls */
 html[data-flowdesk-appearance="dark"] body {
   color: #dbeafe;
   background:
@@ -16649,7 +16649,7 @@ html[data-flowdesk-motion="standard"] .theme-swatch::before {
 }
 
 
-/* v20.3.36 theme preview, home atmosphere, and gantt status visuals */
+/* v20.3.37 theme preview, home atmosphere, and gantt status visuals */
 .fd35-theme-preview-panel {
   position: relative;
   overflow: hidden;
@@ -16974,7 +16974,7 @@ html[data-flowdesk-appearance="dark"] .fd35-preview-tags b {
 }
 
 
-/* v20.3.36 custom theme color builder */
+/* v20.3.37 custom theme color builder */
 html[data-flowdesk-theme="custom"] {
   --theme-primary: var(--fd36-custom-primary, #2563eb);
   --theme-primary-strong: var(--fd36-custom-primary, #2563eb);
@@ -17131,5 +17131,350 @@ html[data-flowdesk-appearance="dark"] .fd36-color-field span {
 
   .fd36-color-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+
+/* v20.3.37 holographic aurora visual system */
+html[data-flowdesk-theme="hologlass"] {
+  --theme-primary: #7dd3fc;
+  --theme-primary-strong: #0369a1;
+  --theme-secondary: #c084fc;
+  --theme-accent: #34d399;
+  --theme-glow-a: rgba(125, 211, 252, .26);
+  --theme-glow-b: rgba(192, 132, 252, .22);
+  --theme-soft: #f0f9ff;
+  --theme-soft-2: #faf5ff;
+  --theme-soft-card: #fbfdff;
+  --theme-hero: #0284c7;
+  --theme-hero-dark: #1e1b4b;
+  --theme-shadow: rgba(14, 165, 233, .24);
+  --fd30-primary-rgb: 125, 211, 252;
+  --fd30-secondary-rgb: 192, 132, 252;
+  --fd30-accent-rgb: 52, 211, 153;
+  --fd31-primary-rgb: 125, 211, 252;
+  --fd31-secondary-rgb: 192, 132, 252;
+  --fd31-accent-rgb: 52, 211, 153;
+  --fd31-vivid-gradient: linear-gradient(135deg, #7dd3fc, #c084fc 56%, #34d399);
+}
+
+html[data-flowdesk-theme="nebula"] {
+  --theme-primary: #818cf8;
+  --theme-primary-strong: #4f46e5;
+  --theme-secondary: #22d3ee;
+  --theme-accent: #f472b6;
+  --theme-glow-a: rgba(129, 140, 248, .24);
+  --theme-glow-b: rgba(34, 211, 238, .20);
+  --theme-soft: #eef2ff;
+  --theme-soft-2: #ecfeff;
+  --theme-soft-card: #f8fbff;
+  --theme-hero: #4f46e5;
+  --theme-hero-dark: #0f172a;
+  --theme-shadow: rgba(79, 70, 229, .25);
+  --fd30-primary-rgb: 129, 140, 248;
+  --fd30-secondary-rgb: 34, 211, 238;
+  --fd30-accent-rgb: 244, 114, 182;
+  --fd31-primary-rgb: 129, 140, 248;
+  --fd31-secondary-rgb: 34, 211, 238;
+  --fd31-accent-rgb: 244, 114, 182;
+  --fd31-vivid-gradient: linear-gradient(135deg, #818cf8, #22d3ee 58%, #f472b6);
+}
+
+html[data-flowdesk-theme="plasma"] {
+  --theme-primary: #f59e0b;
+  --theme-primary-strong: #b45309;
+  --theme-secondary: #ef4444;
+  --theme-accent: #fde047;
+  --theme-glow-a: rgba(245, 158, 11, .24);
+  --theme-glow-b: rgba(239, 68, 68, .18);
+  --theme-soft: #fffbeb;
+  --theme-soft-2: #fff7ed;
+  --theme-soft-card: #fffaf0;
+  --theme-hero: #d97706;
+  --theme-hero-dark: #431407;
+  --theme-shadow: rgba(217, 119, 6, .25);
+  --fd30-primary-rgb: 245, 158, 11;
+  --fd30-secondary-rgb: 239, 68, 68;
+  --fd30-accent-rgb: 253, 224, 71;
+  --fd31-primary-rgb: 245, 158, 11;
+  --fd31-secondary-rgb: 239, 68, 68;
+  --fd31-accent-rgb: 253, 224, 71;
+  --fd31-vivid-gradient: linear-gradient(135deg, #f59e0b, #ef4444 55%, #fde047);
+}
+
+.theme-swatch.hologlass {
+  background: linear-gradient(135deg, #7dd3fc, #c084fc 55%, #34d399) !important;
+}
+
+.theme-swatch.nebula {
+  background: linear-gradient(135deg, #111827, #818cf8 48%, #22d3ee) !important;
+}
+
+.theme-swatch.plasma {
+  background: linear-gradient(135deg, #f59e0b, #ef4444 55%, #fde047) !important;
+}
+
+/* Aurora fluid atmosphere */
+html[data-flowdesk-motion="holo"] body::before,
+html[data-flowdesk-motion="holo"] body::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+}
+
+html[data-flowdesk-motion="holo"] body::before {
+  inset: -18% -12% auto -12%;
+  height: 520px;
+  background:
+    radial-gradient(circle at 18% 26%, rgba(var(--fd31-primary-rgb), .22), transparent 26%),
+    radial-gradient(circle at 64% 10%, rgba(var(--fd31-secondary-rgb), .20), transparent 30%),
+    radial-gradient(circle at 82% 44%, rgba(var(--fd31-accent-rgb), .14), transparent 28%);
+  filter: blur(18px) saturate(1.18);
+  opacity: .82;
+  animation: fd37-auroraDrift 16s ease-in-out infinite alternate;
+}
+
+html[data-flowdesk-motion="holo"] body::after {
+  inset: auto -10% -22% -10%;
+  height: 420px;
+  background:
+    conic-gradient(from 180deg at 50% 50%,
+      rgba(var(--fd31-primary-rgb), .05),
+      rgba(var(--fd31-secondary-rgb), .13),
+      rgba(var(--fd31-accent-rgb), .08),
+      rgba(var(--fd31-primary-rgb), .05));
+  filter: blur(28px);
+  opacity: .58;
+  animation: fd37-prismSpin 24s linear infinite;
+}
+
+/* Holographic glass panels */
+html[data-flowdesk-motion="holo"] .panel,
+html[data-flowdesk-motion="holo"] .surface-toolbar,
+html[data-flowdesk-motion="holo"] .settings-hero,
+html[data-flowdesk-motion="holo"] .settings-category-card,
+html[data-flowdesk-motion="holo"] .theme-option,
+html[data-flowdesk-motion="holo"] .collection-card,
+html[data-flowdesk-motion="holo"] .purchase-card,
+html[data-flowdesk-motion="holo"] .fd203-project-card,
+html[data-flowdesk-motion="holo"] .fd35-theme-preview-panel,
+html[data-flowdesk-motion="holo"] .fd36-custom-theme-builder,
+html[data-flowdesk-motion="holo"] .fd34-control-card {
+  border-color: rgba(var(--fd31-primary-rgb), .24) !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.78), rgba(255,255,255,.52)),
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-secondary-rgb), .14), transparent 30%) !important;
+  backdrop-filter: blur(16px) saturate(1.18);
+  box-shadow:
+    0 24px 70px rgba(var(--fd31-primary-rgb), .16),
+    inset 0 1px 0 rgba(255,255,255,.64),
+    0 0 0 1px rgba(var(--fd31-secondary-rgb), .08) !important;
+}
+
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .panel,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .surface-toolbar,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .settings-hero,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .settings-category-card,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .theme-option,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .collection-card,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .purchase-card,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .fd203-project-card,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .fd35-theme-preview-panel,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .fd36-custom-theme-builder,
+html[data-flowdesk-appearance="dark"][data-flowdesk-motion="holo"] .fd34-control-card {
+  background:
+    linear-gradient(135deg, rgba(15,23,42,.72), rgba(30,41,59,.58)),
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-secondary-rgb), .18), transparent 32%) !important;
+  border-color: rgba(var(--fd31-primary-rgb), .28) !important;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, .34),
+    0 0 38px rgba(var(--fd31-primary-rgb), .16),
+    inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+
+/* Prism edge outline */
+html[data-flowdesk-motion="holo"] .theme-option::before,
+html[data-flowdesk-motion="holo"] .settings-category-card::before,
+html[data-flowdesk-motion="holo"] .fd203-project-card::before,
+html[data-flowdesk-motion="holo"] .fd35-theme-preview-panel::after,
+html[data-flowdesk-motion="holo"] .fd36-custom-theme-builder::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+    rgba(var(--fd31-primary-rgb), .48),
+    rgba(var(--fd31-secondary-rgb), .38),
+    rgba(var(--fd31-accent-rgb), .42),
+    rgba(var(--fd31-primary-rgb), .30));
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  opacity: .78;
+}
+
+html[data-flowdesk-motion="holo"] .theme-option.active,
+html[data-flowdesk-motion="holo"] .fd31-theme-option.active {
+  animation: fd37-holoPulse 2.4s ease-in-out infinite;
+}
+
+/* Button energy ripple */
+html[data-flowdesk-motion="holo"] .primary-btn,
+html[data-flowdesk-motion="holo"] .solid-btn,
+html[data-flowdesk-motion="holo"] .main-cta,
+html[data-flowdesk-motion="holo"] .add-btn,
+html[data-flowdesk-motion="holo"] .new-btn,
+html[data-flowdesk-motion="holo"] .fd203-primary-btn,
+html[data-flowdesk-motion="holo"] button[data-primary="true"] {
+  box-shadow:
+    0 18px 48px rgba(var(--fd31-primary-rgb), .32),
+    0 0 26px rgba(var(--fd31-secondary-rgb), .22),
+    inset 0 1px 0 rgba(255,255,255,.34) !important;
+}
+
+html[data-flowdesk-motion="holo"] .primary-btn:active,
+html[data-flowdesk-motion="holo"] .solid-btn:active,
+html[data-flowdesk-motion="holo"] .fd203-primary-btn:active {
+  transform: translateY(0) scale(.985);
+}
+
+/* Gantt status glow */
+html[data-flowdesk-motion="holo"] .fd203-gantt-bar.project,
+html[data-flowdesk-motion="holo"] .fd203-gantt-bar.task,
+html[data-flowdesk-motion="holo"] .fd203-gantt-bar.subtask {
+  box-shadow:
+    0 14px 34px rgba(var(--fd31-primary-rgb), .30),
+    0 0 24px rgba(var(--fd31-secondary-rgb), .18),
+    inset 0 1px 0 rgba(255,255,255,.35) !important;
+}
+
+html[data-flowdesk-motion="holo"] .fd203-gantt-row:has(.fd203-gantt-status-chip.overdue) .fd203-gantt-bar,
+html[data-flowdesk-motion="holo"] .fd203-gantt-row:has(.fd203-gantt-status-chip.late) .fd203-gantt-bar,
+html[data-flowdesk-motion="holo"] .fd203-gantt-bar.overdue,
+html[data-flowdesk-motion="holo"] .fd203-gantt-bar.late {
+  animation: fd37-lateHeat 1.8s ease-in-out infinite;
+}
+
+html[data-flowdesk-motion="holo"] .fd203-gantt-row:has(.fd203-gantt-status-chip.done) .fd203-gantt-bar,
+html[data-flowdesk-motion="holo"] .fd203-gantt-row:has(.fd203-gantt-status-chip.completed) .fd203-gantt-bar,
+html[data-flowdesk-motion="holo"] .fd203-gantt-bar.done,
+html[data-flowdesk-motion="holo"] .fd203-gantt-bar.completed {
+  box-shadow:
+    0 12px 26px rgba(148, 163, 184, .18),
+    0 0 18px rgba(226, 232, 240, .16) !important;
+}
+
+html[data-flowdesk-motion="holo"] .fd203-gantt-today,
+html[data-flowdesk-motion="holo"] .fd203-today-line,
+html[data-flowdesk-motion="holo"] .today-line {
+  animation: fd37-todayBreath 2.2s ease-in-out infinite;
+}
+
+/* Tiny star dust only in holo mode, very low opacity */
+html[data-flowdesk-motion="holo"] .settings-layout::after,
+html[data-flowdesk-motion="holo"] .dashboard-page::after,
+html[data-flowdesk-motion="holo"] .home-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .18;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.72) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(var(--fd31-primary-rgb), .42) 0 1px, transparent 1.5px);
+  background-size: 92px 92px, 137px 137px;
+  background-position: 12px 18px, 44px 62px;
+  animation: fd37-starDrift 28s linear infinite;
+}
+
+@keyframes fd37-auroraDrift {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+  50% { transform: translate3d(3%, 2%, 0) scale(1.04); }
+  100% { transform: translate3d(-1%, 3%, 0) scale(1.02); }
+}
+
+@keyframes fd37-prismSpin {
+  from { transform: rotate(0deg) scale(1.02); }
+  to { transform: rotate(360deg) scale(1.02); }
+}
+
+@keyframes fd37-holoPulse {
+  0%, 100% {
+    box-shadow:
+      0 26px 70px rgba(var(--fd31-primary-rgb), .20),
+      0 0 0 1px rgba(var(--fd31-primary-rgb), .22),
+      0 0 28px rgba(var(--fd31-secondary-rgb), .12) !important;
+  }
+  50% {
+    box-shadow:
+      0 30px 84px rgba(var(--fd31-primary-rgb), .30),
+      0 0 0 4px rgba(var(--fd31-secondary-rgb), .10),
+      0 0 42px rgba(var(--fd31-accent-rgb), .16) !important;
+  }
+}
+
+@keyframes fd37-lateHeat {
+  0%, 100% {
+    box-shadow:
+      0 12px 28px rgba(249, 115, 22, .26),
+      0 0 0 1px rgba(251, 113, 133, .20) !important;
+  }
+  50% {
+    box-shadow:
+      0 16px 38px rgba(249, 115, 22, .38),
+      0 0 28px rgba(239, 68, 68, .22) !important;
+  }
+}
+
+@keyframes fd37-todayBreath {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(var(--fd31-primary-rgb), .22),
+      0 0 22px rgba(var(--fd31-primary-rgb), .28) !important;
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(var(--fd31-primary-rgb), .30),
+      0 0 34px rgba(var(--fd31-secondary-rgb), .34) !important;
+  }
+}
+
+@keyframes fd37-starDrift {
+  from { background-position: 12px 18px, 44px 62px; }
+  to { background-position: 104px 110px, 181px 199px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-flowdesk-motion="holo"] body::before,
+  html[data-flowdesk-motion="holo"] body::after,
+  html[data-flowdesk-motion="holo"] .theme-option.active,
+  html[data-flowdesk-motion="holo"] .fd31-theme-option.active,
+  html[data-flowdesk-motion="holo"] .fd203-gantt-bar.overdue,
+  html[data-flowdesk-motion="holo"] .fd203-gantt-bar.late,
+  html[data-flowdesk-motion="holo"] .fd203-gantt-today,
+  html[data-flowdesk-motion="holo"] .fd203-today-line,
+  html[data-flowdesk-motion="holo"] .today-line,
+  html[data-flowdesk-motion="holo"] .settings-layout::after,
+  html[data-flowdesk-motion="holo"] .dashboard-page::after,
+  html[data-flowdesk-motion="holo"] .home-page::after {
+    animation: none !important;
+  }
+}
+
+@supports not ((backdrop-filter: blur(10px))) {
+  html[data-flowdesk-motion="holo"] .panel,
+  html[data-flowdesk-motion="holo"] .surface-toolbar,
+  html[data-flowdesk-motion="holo"] .settings-hero,
+  html[data-flowdesk-motion="holo"] .settings-category-card,
+  html[data-flowdesk-motion="holo"] .theme-option,
+  html[data-flowdesk-motion="holo"] .collection-card,
+  html[data-flowdesk-motion="holo"] .purchase-card,
+  html[data-flowdesk-motion="holo"] .fd203-project-card {
+    background: rgba(255,255,255,.94) !important;
   }
 }

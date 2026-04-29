@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.36'
+const FLOWDESK_APP_VERSION = '20.3.37'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -153,6 +153,9 @@ const iconAutoStyleByTheme = {
   lava: 'card',
   prism: 'card',
   custom: 'card',
+  hologlass: 'tech',
+  nebula: 'tech',
+  plasma: 'card',
 }
 
 const themeOptions = [
@@ -173,6 +176,9 @@ const themeOptions = [
   { id: 'galaxy', name: '銀河紫', description: '紫藍星霧感更重，適合想把 FlowDesk 做成科幻儀表板。', accent: '#6d5dfc', secondary: '#24d4ff', vibe: '星霧科幻' },
   { id: 'lava', name: '熔岩紅', description: '紅橘高對比，提醒、跟催與待處理會更有衝擊感。', accent: '#ff5a36', secondary: '#ffb000', vibe: '高能警示' },
   { id: 'prism', name: '稜鏡糖彩', description: '粉紫、薄荷與天藍混色，畫面會更活潑搶眼。', accent: '#ff4fd8', secondary: '#38bdf8', vibe: '糖彩炫光' },
+  { id: 'hologlass', name: '全息極光', description: '藍紫極光搭配虹彩邊緣，適合展示與深色模式。', accent: '#7dd3fc', secondary: '#c084fc', vibe: '全息展示' },
+  { id: 'nebula', name: '星雲黑', description: '深色星雲感，讓卡片、甘特圖與重點區塊更像控制台。', accent: '#818cf8', secondary: '#22d3ee', vibe: '星雲控制台' },
+  { id: 'plasma', name: '電漿金橘', description: '金橘高能流光，適合提醒、待處理與專案推進情境。', accent: '#f59e0b', secondary: '#ef4444', vibe: '高能流光' },
   { id: 'custom', name: '我的主題', description: '自行調整主色、輔助色與強調色，建立 FlowDesk 個人化外觀。', accent: '#2563eb', secondary: '#14b8a6', vibe: '自訂色彩' },
 ]
 
@@ -186,6 +192,7 @@ const motionLevelOptions = [
   { id: 'off', name: '關閉', description: '關閉主題動畫與流光，保留基本色彩。' },
   { id: 'standard', name: '標準', description: '保留柔和轉場、卡片浮起與低調光澤。' },
   { id: 'vivid', name: '炫彩', description: '開啟完整流光、脈衝與主題氛圍效果。' },
+  { id: 'holo', name: '全息極光', description: '開啟全息玻璃、霓虹邊框與更強的展示級光效。' },
 ]
 
 const defaultCustomTheme = {
@@ -5722,7 +5729,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.36 新增自訂主題色，可調整主色、輔助色與強調色，並立即套用到按鈕、卡片、預覽面板與甘特圖。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.37 加入全息極光特效、霓虹描邊、極光流體背景與甘特圖狀態光效，展示時更有科技感。</p>
           <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
