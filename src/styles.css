@@ -15321,3 +15321,50 @@ button {
 .project-detail-form-grid label input:disabled { background: rgba(241, 245, 249, 0.85); color: #94a3b8; cursor: not-allowed; }
 .fd203-gantt-row.task:has(.fd203-task-dependency-note.waiting) .fd203-gantt-label { box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.65); }
 @media (max-width: 900px) { .fd203-task-dependency-note { white-space: normal; } }
+
+
+/* FlowDesk v20.3.26 - Gantt row alignment + dependency drag reschedule fix */
+.fd203-gantt-grid.fd203-gantt-row {
+  align-items: stretch !important;
+}
+
+.fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-label {
+  min-height: inherit !important;
+}
+
+.fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-track {
+  align-self: stretch !important;
+  height: auto !important;
+  min-height: inherit !important;
+  margin: 0 12px !important;
+  border-radius: 0 !important;
+}
+
+.fd203-gantt-grid.fd203-gantt-row.subtask-collapsed-note > .fd203-gantt-track.subtask-collapsed-note-track {
+  min-height: inherit !important;
+  margin: 0 12px !important;
+}
+
+.fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-track .fd203-gantt-bar {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-track .milestone-dot {
+  top: 50% !important;
+}
+
+.fd203-gantt-task-group {
+  position: relative;
+}
+
+.fd203-gantt-row.task.is-complete .fd203-gantt-track.soft {
+  background-color: rgba(240, 253, 244, 0.55);
+}
+
+.fd203-gantt-row.task .fd203-gantt-label,
+.fd203-gantt-row.task .fd203-gantt-track,
+.fd203-gantt-row.subtask .fd203-gantt-label,
+.fd203-gantt-row.subtask .fd203-gantt-track {
+  box-sizing: border-box;
+}

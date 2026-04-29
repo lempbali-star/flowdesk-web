@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.25'
+const FLOWDESK_APP_VERSION = '20.3.26'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3198,11 +3198,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           ? clampPercent(task.progress)
           : estimateTaskProgress(merged)
       const nextDone = safePatch.done !== undefined ? Boolean(safePatch.done) : nextProgress >= 100
+      const dateChanged = Object.prototype.hasOwnProperty.call(safePatch, 'start') || Object.prototype.hasOwnProperty.call(safePatch, 'end')
+      const nextCompletedAt = nextDone
+        ? (safePatch.completedAt || (dateChanged ? maxIsoDate(end, start) : task.completedAt || maxIsoDate(end, start) || todayDate()))
+        : ''
       return normalizeTask({
         ...merged,
         progress: nextProgress,
         done: nextDone,
-        completedAt: nextDone ? (safePatch.completedAt || task.completedAt || todayDate()) : '',
+        completedAt: nextCompletedAt,
       }, safeProject, index)
     })
     const scheduled = resolveProjectTaskDependencies({ ...safeProject, tasks })
