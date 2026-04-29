@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.12'
+const FLOWDESK_APP_VERSION = '20.3.14'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3556,7 +3556,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </label>
             )}
             <button type="button" onClick={() => addProjectTask(project.id)}>新增任務</button>
-            <button type="button" onClick={toggleAllGanttSubtasks}>{ganttShowSubtasks ? '全部收合子任務' : '全部展開子任務'}</button>
+            <button type="button" className={ganttShowSubtasks ? 'fd203-gantt-global-toggle open' : 'fd203-gantt-global-toggle closed'} onClick={toggleAllGanttSubtasks}>{ganttShowSubtasks ? '全部收合子任務' : '全部展開子任務'}</button>
           </div>
         </div>
 
@@ -3593,16 +3593,39 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const subtaskCount = (task.subtasks || []).length
             const subtasksOpen = isGanttTaskSubtasksOpen(project, task, index)
             return (
-              <div key={taskKey} className="fd203-gantt-task-group">
-                <div className="fd203-gantt-grid fd203-gantt-row task" style={{ gridTemplateColumns: gridColumns }}>
+              <div key={taskKey} className={`fd203-gantt-task-group ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'}`}>
+                <div className={`fd203-gantt-grid fd203-gantt-row task ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'}`} style={{ gridTemplateColumns: gridColumns }}>
                   <div className="fd203-gantt-label" title={dateRangeLabel(taskStart, taskEnd)}>
-                    <ChineseTextField commitOnBlur className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
+                    <div className="fd203-gantt-task-title-line">
+                      {subtaskCount ? (
+                        <button
+                          type="button"
+                          className={`fd203-subtask-chevron ${subtasksOpen ? 'open' : 'closed'}`}
+                          onClick={() => toggleGanttTaskSubtasks(project, task, index)}
+                          aria-expanded={subtasksOpen}
+                          title={subtasksOpen ? `收合 ${subtaskCount} 個子任務` : `展開 ${subtaskCount} 個子任務`}
+                        >
+                          {subtasksOpen ? '▾' : '▸'}
+                        </button>
+                      ) : (
+                        <span className="fd203-subtask-chevron empty">•</span>
+                      )}
+                      <ChineseTextField commitOnBlur className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
+                    </div>
                     <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
                     <div className="fd203-gantt-row-actions">
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
                       {subtaskCount ? (
-                        <button type="button" className="fd203-mini-link" onClick={() => toggleGanttTaskSubtasks(project, task, index)}>
-                          {subtasksOpen ? `收合 ${subtaskCount} 子任務` : `展開 ${subtaskCount} 子任務`}
+                        <button
+                          type="button"
+                          className={`fd203-subtask-toggle ${subtasksOpen ? 'open' : 'closed'}`}
+                          onClick={() => toggleGanttTaskSubtasks(project, task, index)}
+                          aria-expanded={subtasksOpen}
+                          title={subtasksOpen ? `目前已展開 ${subtaskCount} 個子任務` : `目前已收合 ${subtaskCount} 個子任務`}
+                        >
+                          <span className="fd203-subtask-toggle-icon">{subtasksOpen ? '▾' : '▸'}</span>
+                          <span>{subtasksOpen ? '子任務已展開' : '子任務已收合'}</span>
+                          <b>{subtaskCount}</b>
                         </button>
                       ) : (
                         <span className="fd203-mini-muted">0 子任務</span>
@@ -3615,6 +3638,17 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}
                   </div>
                 </div>
+                {!subtasksOpen && subtaskCount > 0 ? (
+                  <div className="fd203-gantt-grid fd203-gantt-row subtask-collapsed-note" style={{ gridTemplateColumns: gridColumns }}>
+                    <div className="fd203-gantt-label subtask-collapsed-note-label">
+                      <span>已收合 {subtaskCount} 個子任務</span>
+                      <button type="button" className="fd203-mini-link" onClick={() => toggleGanttTaskSubtasks(project, task, index)}>展開查看</button>
+                    </div>
+                    <div className="fd203-gantt-track subtask-collapsed-note-track" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+                      <span>子任務目前隱藏，點左側展開查看明細</span>
+                    </div>
+                  </div>
+                ) : null}
                 {subtasksOpen && (task.subtasks || []).map((subtask, subIndex) => {
                   const subStart = subtask.start || taskStart
                   const subEnd = subtask.end || taskEnd

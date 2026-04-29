@@ -14355,3 +14355,219 @@ button {
     min-height: 420px !important;
   }
 }
+
+/* FlowDesk v20.3.14 - clearer gantt task/subtask collapse controls */
+.fd203-gantt-actions .fd203-gantt-global-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+}
+
+.fd203-gantt-actions .fd203-gantt-global-toggle.open {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.fd203-gantt-actions .fd203-gantt-global-toggle.closed {
+  background: rgba(15, 23, 42, 0.08);
+  color: #334155;
+}
+
+.fd203-gantt-row.task.has-subtasks {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.055), rgba(255, 255, 255, 0.98));
+}
+
+.fd203-gantt-row.task.subtasks-open .fd203-gantt-label {
+  border-left: 4px solid rgba(37, 99, 235, 0.55);
+  box-shadow: inset 0 -1px 0 rgba(37, 99, 235, 0.08);
+}
+
+.fd203-gantt-row.task.subtasks-collapsed .fd203-gantt-label {
+  border-left: 4px solid rgba(100, 116, 139, 0.34);
+}
+
+.fd203-gantt-task-title-line {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.fd203-subtask-chevron {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 16px;
+  font-weight: 1000;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease, color .15s ease;
+}
+
+.fd203-subtask-chevron:hover {
+  transform: translateY(-1px);
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.fd203-subtask-chevron.closed {
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
+  border-color: rgba(100, 116, 139, 0.2);
+}
+
+.fd203-subtask-chevron.empty {
+  cursor: default;
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+.fd203-subtask-chevron.empty:hover {
+  transform: none;
+}
+
+.fd203-subtask-toggle {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  padding: 4px 8px 4px 7px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+
+.fd203-subtask-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.fd203-subtask-toggle.open {
+  background: rgba(37, 99, 235, 0.13);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+.fd203-subtask-toggle.closed {
+  background: rgba(15, 23, 42, 0.075);
+  color: #475569;
+  border-color: rgba(100, 116, 139, 0.2);
+}
+
+.fd203-subtask-toggle-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16);
+}
+
+.fd203-subtask-toggle b {
+  min-width: 22px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: inherit;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.fd203-gantt-row.subtask {
+  position: relative;
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.08), rgba(248, 250, 252, 0.88));
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-label.subtask {
+  border-left: 4px solid rgba(14, 165, 233, 0.42);
+  padding-left: 34px;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-label.subtask::before {
+  content: '↳';
+  position: absolute;
+  left: 14px;
+  top: 18px;
+  color: #0284c7;
+  font-weight: 1000;
+}
+
+.fd203-gantt-row.subtask-collapsed-note {
+  min-height: 54px;
+  background: rgba(248, 250, 252, 0.9);
+  border-top: 1px dashed rgba(100, 116, 139, 0.22);
+}
+
+.fd203-gantt-label.subtask-collapsed-note-label {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px 10px 42px;
+  border-left: 4px dashed rgba(100, 116, 139, 0.32);
+  background: rgba(248, 250, 252, 0.98);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd203-gantt-track.subtask-collapsed-note-track {
+  min-height: 26px;
+  margin-block: 14px;
+  border-radius: 14px;
+  background: repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.12) 0, rgba(148, 163, 184, 0.12) 1px, rgba(248, 250, 252, 0.72) 1px, rgba(248, 250, 252, 0.72) calc(var(--fd203-week-width, 140px) / 7));
+}
+
+.fd203-gantt-track.subtask-collapsed-note-track span {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .fd203-gantt-task-title-line {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .fd203-subtask-chevron {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .fd203-subtask-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .fd203-gantt-track.subtask-collapsed-note-track span {
+    max-width: calc(100vw - 130px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
