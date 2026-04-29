@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.38'
+const FLOWDESK_APP_VERSION = '20.3.39'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -403,6 +403,17 @@ function normalizeModuleOrder(list) {
   return next
 }
 
+function activeThemeName(options, currentId) {
+  return options.find((item) => item.id === currentId)?.name || '自訂主題'
+}
+
+function motionLabel(value) {
+  if (value === 'off') return '關閉動效'
+  if (value === 'vivid') return '炫彩'
+  if (value === 'holo') return '全息極光'
+  return '標準動效'
+}
+
 function FlowDeskShell({ authSession, onLogout }) {
   const [modules, setModules] = useState(() => {
     if (typeof window === 'undefined') return initialModules
@@ -427,6 +438,7 @@ function FlowDeskShell({ authSession, onLogout }) {
   const [view, setView] = useState('看板')
   const [selected, setSelected] = useState(null)
   const [showLauncher, setShowLauncher] = useState(false)
+  const [showAppearanceQuick, setShowAppearanceQuick] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [uiTheme, setUiTheme] = useState(() => {
     if (typeof window === 'undefined') return 'blue'
@@ -475,6 +487,7 @@ function FlowDeskShell({ authSession, onLogout }) {
   const shellCloudSaveTimers = useRef({})
 
   const resolvedIconStyle = iconStyleMode === 'auto' ? (iconAutoStyleByTheme[uiTheme] || 'soft') : iconStyleMode
+  const shellAppearancePreset = appearancePresetOptions.find((preset) => preset.theme === uiTheme && preset.appearance === appearanceMode && preset.motion === motionLevel)
 
   const [moduleIcons, setModuleIcons] = useState(() => {
     if (typeof window === 'undefined') return defaultModuleIcons
@@ -796,6 +809,19 @@ function FlowDeskShell({ authSession, onLogout }) {
     queueShellCloudSave('collections', collections)
   }, [collections, shellCloudReady])
 
+  function applyShellAppearancePreset(preset) {
+    if (!preset) return
+    setUiTheme(preset.theme)
+    setAppearanceMode(preset.appearance)
+    setMotionLevel(preset.motion)
+    setShowAppearanceQuick(false)
+  }
+
+  function openAppearanceSettings() {
+    setShowAppearanceQuick(false)
+    setActive('settings')
+  }
+
   function resetModuleOrder() {
     setModules(normalizeModuleOrder(initialModules))
     window.localStorage.removeItem('flowdesk-module-order')
@@ -878,6 +904,41 @@ function FlowDeskShell({ authSession, onLogout }) {
             />
           )}
           <div className="topbar-actions">
+            <div className="fd39-appearance-quick">
+              <button
+                className="ghost-btn fd39-appearance-trigger"
+                type="button"
+                onClick={() => setShowAppearanceQuick((open) => !open)}
+                title="快速切換外觀方案"
+              >
+                <span>🎨</span>
+                <strong>{shellAppearancePreset?.name || '外觀快捷'}</strong>
+              </button>
+              {showAppearanceQuick && (
+                <div className="fd39-appearance-menu">
+                  <div className="fd39-menu-head">
+                    <span>外觀快捷</span>
+                    <strong>{shellAppearancePreset?.name || '自訂組合'}</strong>
+                    <small>{activeThemeName(themeOptions, uiTheme)} · {appearanceMode === 'dark' ? '深色' : appearanceMode === 'system' ? '跟隨系統' : '淺色'} · {motionLabel(motionLevel)}</small>
+                  </div>
+                  <div className="fd39-menu-list">
+                    {appearancePresetOptions.map((preset) => (
+                      <button
+                        key={preset.id}
+                        className={shellAppearancePreset?.id === preset.id ? 'active' : ''}
+                        type="button"
+                        onClick={() => applyShellAppearancePreset(preset)}
+                      >
+                        <span>{preset.badge}</span>
+                        <strong>{preset.name}</strong>
+                        <small>{preset.description}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <button className="fd39-menu-settings" type="button" onClick={openAppearanceSettings}>進入完整外觀設定</button>
+                </div>
+              )}
+            </div>
             <label className="global-search">
               <span>⌕</span>
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋任務、採購、專案、文件..." />
@@ -5819,7 +5880,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.38 新增一鍵外觀方案、快速套用流程與自訂色對比保護，讓主題系統更適合日常、夜間與展示情境。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.39 新增右上角外觀快捷入口、方案快速套用與手機版外觀設定收斂，切換日常、夜間、展示模式更直覺。</p>
           <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
