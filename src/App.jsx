@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.29'
+const FLOWDESK_APP_VERSION = '20.3.30'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -147,15 +147,15 @@ const iconAutoStyleByTheme = {
 }
 
 const themeOptions = [
-  { id: 'blue', name: '湖水藍', description: '原本 FlowDesk 的清爽藍紫主色' },
-  { id: 'fresh', name: '清爽薄荷', description: '偏清新、明亮，適合長時間操作' },
-  { id: 'tech', name: '科技極光', description: '帶有科技感的靛藍與電光青配色' },
-  { id: 'ice', name: '冰川青', description: '淺冷色調，整體視覺更乾淨俐落' },
-  { id: 'green', name: '森綠', description: '偏穩重的綠色系主題' },
-  { id: 'purple', name: '霧感紫', description: '保留科技感但更偏紫色' },
-  { id: 'amber', name: '暖陽橘', description: '適合較明亮、活潑的工作台' },
-  { id: 'rose', name: '玫瑰粉', description: '提醒與重點感較強的主題' },
-  { id: 'slate', name: '專業石墨', description: '偏沉穩專業，但仍維持乾淨明亮' },
+  { id: 'blue', name: '預設藍', description: '穩定、乾淨的 FlowDesk 預設色，適合日常工作台。', accent: '#356bff' },
+  { id: 'fresh', name: '青綠', description: '清爽明亮，適合長時間整理採購與待追蹤事項。', accent: '#1db79d' },
+  { id: 'purple', name: '紫色', description: '較有科技感，讓重點區塊與分頁更醒目。', accent: '#7b4dff' },
+  { id: 'amber', name: '橘色', description: '暖色提醒感較強，適合偏行動與跟催的工作台。', accent: '#f2992e' },
+  { id: 'rose', name: '玫紅', description: '重點提示更明顯，適合提醒與待處理量較多時使用。', accent: '#e84c72' },
+  { id: 'slate', name: '石墨灰', description: '沉穩低干擾，適合資料密集與正式場合。', accent: '#475569' },
+  { id: 'tech', name: '深海藍', description: '深藍搭配電光青，保留 FlowDesk 的科技感。', accent: '#315dff' },
+  { id: 'green', name: '森綠', description: '穩重、舒適，適合長時間檢視專案與採購資料。', accent: '#0fa374' },
+  { id: 'ice', name: '冰川青', description: '低飽和冷色系，畫面更乾淨俐落。', accent: '#38a9d6' },
 ]
 
 const initialWorkItems = []
@@ -5601,21 +5601,31 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
         </section>
       )}
 
-      {settingsView === 'appearance' && (
-        <section className="panel wide settings-panel">
-          <PanelTitle eyebrow="外觀設定" title="UI 主題切換" />
-          <p className="settings-note">選擇後會套用到側邊欄、主要按鈕、卡片重點色與系統高亮色。若圖示風格設為「跟隨 UI 主題」，切換主題時圖示也會自動改成適合的風格。</p>
-          <div className="theme-grid packaged-theme-grid">
+            {settingsView === 'appearance' && (
+        <section className="panel wide settings-panel fd30-appearance-panel">
+          <PanelTitle eyebrow="外觀設定" title="主題色套組" />
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。若圖示風格設為「跟隨 UI 主題」，圖示也會一起調整。</p>
+          <div className="fd30-theme-toolbar">
+            <div>
+              <span>目前套用</span>
+              <strong>{activeTheme.name}</strong>
+              <small>{activeTheme.description}</small>
+            </div>
+            <button className="ghost-btn fd30-reset-theme-btn" type="button" onClick={() => setUiTheme('blue')}>回復預設藍</button>
+          </div>
+          <div className="theme-grid packaged-theme-grid fd30-theme-grid">
             {themeOptions.map((theme) => (
               <button
                 key={theme.id}
                 className={uiTheme === theme.id ? 'theme-option active' : 'theme-option'}
                 type="button"
                 onClick={() => setUiTheme(theme.id)}
+                style={{ '--theme-preview-color': theme.accent }}
               >
                 <span className={`theme-swatch ${theme.id}`} />
                 <strong>{theme.name}</strong>
                 <small>{theme.description}</small>
+                <em>立即套用</em>
               </button>
             ))}
           </div>

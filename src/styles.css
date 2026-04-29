@@ -15576,3 +15576,62 @@ button {
     justify-self: start;
   }
 }
+
+
+/* FlowDesk v20.3.30 theme suite enhancement start */
+:root {
+  --fd30-primary-rgb: 53, 107, 255;
+  --fd30-secondary-rgb: 140, 77, 255;
+  --fd30-accent-rgb: 35, 185, 157;
+  --fd30-theme-ring: rgba(var(--fd30-primary-rgb), .24);
+  --fd30-theme-glass: rgba(var(--fd30-primary-rgb), .075);
+  --fd30-theme-line: rgba(var(--fd30-primary-rgb), .2);
+  --fd30-theme-gradient: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+  --fd30-theme-gradient-soft: linear-gradient(135deg, rgba(var(--fd30-primary-rgb), .13), rgba(var(--fd30-secondary-rgb), .10));
+}
+html[data-flowdesk-theme="blue"] { --fd30-primary-rgb: 53, 107, 255; --fd30-secondary-rgb: 140, 77, 255; --fd30-accent-rgb: 35, 185, 157; }
+html[data-flowdesk-theme="fresh"] { --fd30-primary-rgb: 29, 183, 157; --fd30-secondary-rgb: 77, 201, 255; --fd30-accent-rgb: 126, 217, 87; }
+html[data-flowdesk-theme="purple"] { --fd30-primary-rgb: 123, 77, 255; --fd30-secondary-rgb: 177, 76, 255; --fd30-accent-rgb: 53, 107, 255; }
+html[data-flowdesk-theme="amber"] { --fd30-primary-rgb: 242, 153, 46; --fd30-secondary-rgb: 255, 107, 74; --fd30-accent-rgb: 53, 107, 255; }
+html[data-flowdesk-theme="rose"] { --fd30-primary-rgb: 232, 76, 114; --fd30-secondary-rgb: 140, 77, 255; --fd30-accent-rgb: 255, 138, 101; }
+html[data-flowdesk-theme="green"] { --fd30-primary-rgb: 15, 163, 116; --fd30-secondary-rgb: 29, 155, 143; --fd30-accent-rgb: 44, 204, 180; }
+html[data-flowdesk-theme="ice"] { --fd30-primary-rgb: 56, 169, 214; --fd30-secondary-rgb: 102, 199, 194; --fd30-accent-rgb: 122, 140, 255; }
+html[data-flowdesk-theme="tech"] { --fd30-primary-rgb: 49, 93, 255; --fd30-secondary-rgb: 0, 194, 255; --fd30-accent-rgb: 29, 233, 182; }
+html[data-flowdesk-theme="slate"] { --fd30-primary-rgb: 71, 85, 105; --fd30-secondary-rgb: 14, 116, 144; --fd30-accent-rgb: 99, 102, 241; }
+.fd30-appearance-panel { position: relative; overflow: hidden; border-color: var(--fd30-theme-line) !important; background: radial-gradient(circle at top right, rgba(var(--fd30-primary-rgb), .12), transparent 34%), linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,250,252,.92)) !important; }
+.fd30-theme-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; margin: 14px 0 16px; padding: 14px; border: 1px solid var(--fd30-theme-line); border-radius: 20px; background: var(--fd30-theme-gradient-soft); box-shadow: 0 16px 36px rgba(var(--fd30-primary-rgb), .08); }
+.fd30-theme-toolbar span, .fd30-theme-toolbar small { display: block; color: #64748b; font-size: 12px; font-weight: 800; }
+.fd30-theme-toolbar strong { display: block; margin: 2px 0; color: var(--theme-primary-strong); font-size: 18px; font-weight: 950; }
+.fd30-reset-theme-btn { white-space: nowrap; border-color: var(--fd30-theme-line) !important; color: var(--theme-primary-strong) !important; background: rgba(255,255,255,.82) !important; }
+.fd30-theme-grid { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important; gap: 12px !important; }
+.theme-option { position: relative; min-height: 138px; align-items: flex-start !important; text-align: left !important; overflow: hidden; border-color: rgba(148, 163, 184, .18) !important; background: radial-gradient(circle at top right, rgba(var(--fd30-primary-rgb), .07), transparent 34%), rgba(255,255,255,.9) !important; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease; }
+.theme-option:hover { transform: translateY(-2px); border-color: var(--fd30-theme-line) !important; box-shadow: 0 18px 42px rgba(var(--fd30-primary-rgb), .13) !important; }
+.theme-option.active { border-color: rgba(var(--fd30-primary-rgb), .48) !important; background: linear-gradient(180deg, rgba(255,255,255,.97), rgba(255,255,255,.88)), var(--fd30-theme-gradient-soft) !important; box-shadow: 0 22px 48px rgba(var(--fd30-primary-rgb), .18) !important; }
+.theme-option.active::after { content: '目前套用'; position: absolute; top: 12px; right: 12px; padding: 5px 9px; border-radius: 999px; color: var(--theme-primary-strong); background: rgba(var(--fd30-primary-rgb), .1); border: 1px solid rgba(var(--fd30-primary-rgb), .18); font-size: 11px; font-weight: 950; }
+.theme-option strong { color: #1e293b; }
+.theme-option small { color: #64748b; line-height: 1.45; }
+.theme-option em { margin-top: auto; display: inline-flex; align-items: center; min-height: 24px; padding: 4px 9px; border-radius: 999px; background: rgba(var(--fd30-primary-rgb), .08); color: var(--theme-primary-strong); border: 1px solid rgba(var(--fd30-primary-rgb), .16); font-size: 11px; font-style: normal; font-weight: 950; }
+.theme-swatch { width: 44px !important; height: 44px !important; border-radius: 16px !important; background: var(--fd30-theme-gradient) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.48), 0 12px 26px rgba(var(--fd30-primary-rgb), .22) !important; }
+.theme-swatch.blue { background: linear-gradient(135deg, #356bff, #8c4dff) !important; }
+.theme-swatch.fresh { background: linear-gradient(135deg, #1db79d, #4dc9ff) !important; }
+.theme-swatch.purple { background: linear-gradient(135deg, #7b4dff, #b14cff) !important; }
+.theme-swatch.amber { background: linear-gradient(135deg, #f2992e, #ff6b4a) !important; }
+.theme-swatch.rose { background: linear-gradient(135deg, #e84c72, #8c4dff) !important; }
+.theme-swatch.slate { background: linear-gradient(135deg, #475569, #0e7490) !important; }
+.theme-swatch.tech { background: linear-gradient(135deg, #315dff, #00c2ff) !important; }
+.theme-swatch.green { background: linear-gradient(135deg, #0fa374, #1d9b8f) !important; }
+.theme-swatch.ice { background: linear-gradient(135deg, #38a9d6, #66c7c2) !important; }
+.primary-btn, .solid-btn, .main-cta, .add-btn, .new-btn, .fd203-primary-btn, .fd203-mini-link:not(.soft), .backup-action-grid button:not(.ghost-btn), .settings-hero .ghost-btn:hover, button[data-primary="true"] { background: var(--fd30-theme-gradient) !important; border-color: rgba(var(--fd30-primary-rgb), .22) !important; color: #fff !important; box-shadow: 0 14px 32px rgba(var(--fd30-primary-rgb), .22) !important; }
+.ghost-btn, .fd203-mini-link.soft, .fd203-subtask-toggle, .view-switch button, .segmented button, .tab-button, .tabs button { transition: border-color .18s ease, color .18s ease, background .18s ease, box-shadow .18s ease; }
+.view-switch button.active, .segmented button.active, .tab-button.active, .tabs button.active, .fd203-tab.active, .fd203-view-toggle button.active { color: var(--theme-primary-strong) !important; border-color: rgba(var(--fd30-primary-rgb), .32) !important; background: rgba(var(--fd30-primary-rgb), .1) !important; box-shadow: inset 0 0 0 1px rgba(var(--fd30-primary-rgb), .08) !important; }
+.version-pill, .nav-chip.active, .filter-chip.active, .fd203-priority-chip, .fd203-gantt-status-chip.active, .fd203-gantt-status-chip.pending { border-color: rgba(var(--fd30-primary-rgb), .22) !important; background: rgba(var(--fd30-primary-rgb), .09) !important; color: var(--theme-primary-strong) !important; }
+.progress-fill, .progress-bar > span, .metric-progress span, .fd203-progress-fill, .fd203-progress-bar > span, .purchase-progress-fill { background: var(--fd30-theme-gradient) !important; box-shadow: 0 8px 18px rgba(var(--fd30-primary-rgb), .18) !important; }
+.fd203-gantt-bar.project, .fd203-gantt-bar.task, .fd203-gantt-bar.subtask { background: linear-gradient(90deg, var(--theme-primary), var(--theme-secondary)) !important; border-color: rgba(255,255,255,.38) !important; box-shadow: 0 12px 26px rgba(var(--fd30-primary-rgb), .22) !important; }
+.fd203-gantt-bar.subtask { background: linear-gradient(90deg, rgba(var(--fd30-primary-rgb), .82), rgba(var(--fd30-secondary-rgb), .72)) !important; }
+.fd203-gantt-bar.project span, .fd203-gantt-bar.task span, .fd203-gantt-bar.subtask span { color: #fff !important; text-shadow: 0 1px 6px rgba(15,23,42,.28); }
+.fd203-project-card.active, .fd203-project-card.is-active, .fd203-project-card:hover, .settings-category-card:hover, .collection-card:hover, .purchase-card:hover { border-color: rgba(var(--fd30-primary-rgb), .24) !important; box-shadow: 0 18px 42px rgba(var(--fd30-primary-rgb), .1) !important; }
+.fd203-project-card.active, .fd203-project-card.is-active { background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(var(--fd30-primary-rgb), .055)) !important; }
+input:focus, select:focus, textarea:focus, button:focus-visible, [tabindex]:focus-visible { outline: 3px solid rgba(var(--fd30-primary-rgb), .18) !important; outline-offset: 2px; border-color: rgba(var(--fd30-primary-rgb), .38) !important; }
+.surface-toolbar, .settings-hero, .fd203-pane-head, .fd203-workspace-head { border-color: rgba(var(--fd30-primary-rgb), .12) !important; }
+@media (max-width: 760px) { .fd30-theme-toolbar { grid-template-columns: 1fr; } .fd30-reset-theme-btn { width: 100%; justify-content: center; } .theme-option { min-height: 128px; } }
+/* FlowDesk v20.3.30 theme suite enhancement end */
