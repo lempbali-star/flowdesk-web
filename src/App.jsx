@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.14'
+const FLOWDESK_APP_VERSION = '20.3.15'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2772,6 +2772,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function normalizeTask(task = {}, project, index = 0) {
     const start = task.start || project.startDate
     const end = task.end || project.endDate
+    const progress = clampPercent(task.progress)
+    const done = task.done === undefined ? progress >= 100 : Boolean(task.done)
     return {
       ...task,
       id: task.id || `${project.id || 'project'}-task-${index + 1}`,
@@ -2779,7 +2781,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       owner: task.owner || project.owner || 'Kyle',
       start: minIsoDate(start, end),
       end: maxIsoDate(end, start),
-      progress: clampPercent(task.progress),
+      progress,
+      done,
       tone: task.tone || 'blue',
       subtasks: Array.isArray(task.subtasks) ? task.subtasks.map((subtask, subIndex) => normalizeSubtask(subtask, project, task, index, subIndex)) : [],
     }
@@ -2790,6 +2793,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const taskEnd = task.end || project.endDate
     const start = clampIsoDate(subtask.start || taskStart, taskStart, taskEnd)
     const end = clampIsoDate(subtask.end || taskEnd, start, taskEnd)
+    const progress = clampPercent(subtask.progress)
+    const done = subtask.done === undefined ? progress >= 100 : Boolean(subtask.done)
     return {
       ...subtask,
       id: subtask.id || `${project.id || 'project'}-task-${taskIndex + 1}-sub-${subIndex + 1}`,
@@ -2797,7 +2802,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       owner: subtask.owner || task.owner || project.owner || 'Kyle',
       start,
       end,
-      progress: clampPercent(subtask.progress),
+      progress,
+      done,
       tone: subtask.tone || 'cyan',
     }
   }
@@ -2857,7 +2863,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       tone: 'blue',
       next: '補上專案目標、時程與負責人。',
       related: [],
-      tasks: [{ id: taskId, name: '專案啟動', owner: 'Kyle', start: today, end: nextMonth, progress: 0, tone: 'blue', subtasks: [] }],
+      tasks: [{ id: taskId, name: '專案啟動', owner: 'Kyle', start: today, end: nextMonth, progress: 0, done: false, tone: 'blue', subtasks: [] }],
       milestones: [{ id: stableId('milestone'), name: '啟動確認', date: today, done: false }],
       meetings: [],
       decisions: [],
@@ -2911,6 +2917,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         start: taskStart,
         end: maxIsoDate(taskEnd, taskStart),
         progress: 0,
+        done: false,
         tone: 'blue',
         subtasks: [],
       },
@@ -2969,6 +2976,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           start: subtaskStart,
           end: maxIsoDate(subtaskEnd, subtaskStart),
           progress: 0,
+          done: false,
           tone: 'cyan',
         },
       ]
@@ -3513,12 +3521,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function renderGanttBar({ project, task, taskIndex = null, subtask, subtaskIndex = null, scope, start, end, displayStart, displayEnd, progress, label, className = '', tone = '', indent = false }) {
     const activePreview = ganttDragPreview?.projectId === project.id && ganttDragPreview?.scope === scope && ganttDragPreview?.taskIndex === taskIndex && ganttDragPreview?.subtaskIndex === subtaskIndex ? ganttDragPreview : null
     const activeEditor = ganttProgressEditor?.scope === scope && ganttProgressEditor?.projectId === project.id && ganttProgressEditor?.taskIndex === taskIndex && ganttProgressEditor?.subtaskIndex === subtaskIndex
-    const title = `${label}｜${dateRangeLabel(start, end)}｜進度 ${progress}%`
+    const done = scope === 'task' ? Boolean(task?.done) : scope === 'subtask' ? Boolean(subtask?.done) : false
+    const title = `${label}｜${done ? '已完成' : '未完成'}｜${dateRangeLabel(start, end)}｜進度 ${progress}%`
     const startHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'start', event, subtaskIndex)
     const endHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'end', event, subtaskIndex)
     const moveHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'move', event, subtaskIndex)
     return (
-      <span className={`fd203-gantt-bar ${className} ${tone}`.trim()} style={ganttStyle(start, end, displayStart, displayEnd)} onPointerDown={moveHandler} title={title}>
+      <span className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(start, end, displayStart, displayEnd)} onPointerDown={moveHandler} title={title}>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
         {renderGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, label)}
         <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label={`調整${label}開始日`} onPointerDown={startHandler} />
@@ -3593,8 +3602,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const subtaskCount = (task.subtasks || []).length
             const subtasksOpen = isGanttTaskSubtasksOpen(project, task, index)
             return (
-              <div key={taskKey} className={`fd203-gantt-task-group ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'}`}>
-                <div className={`fd203-gantt-grid fd203-gantt-row task ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'}`} style={{ gridTemplateColumns: gridColumns }}>
+              <div key={taskKey} className={`fd203-gantt-task-group ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'} ${task.done ? 'is-complete' : 'is-incomplete'}`}>
+                <div className={`fd203-gantt-grid fd203-gantt-row task ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'} ${task.done ? 'is-complete' : 'is-incomplete'}`} style={{ gridTemplateColumns: gridColumns }}>
                   <div className="fd203-gantt-label" title={dateRangeLabel(taskStart, taskEnd)}>
                     <div className="fd203-gantt-task-title-line">
                       {subtaskCount ? (
@@ -3610,9 +3619,18 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       ) : (
                         <span className="fd203-subtask-chevron empty">•</span>
                       )}
+                      <label className={`fd203-gantt-done-check ${task.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={task.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(task.done)}
+                          onChange={(event) => updateProjectTask(project.id, index, { done: event.target.checked, progress: event.target.checked ? 100 : progress }, event.target.checked ? '任務標記完成。' : '任務改為未完成。')}
+                          aria-label="任務完成狀態"
+                        />
+                        <span>{task.done ? '已完成' : '未完成'}</span>
+                      </label>
                       <ChineseTextField commitOnBlur className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
                     </div>
-                    <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
+                    <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {task.done ? '已完成' : '未完成'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
                     <div className="fd203-gantt-row-actions">
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
                       {subtaskCount ? (
@@ -3655,10 +3673,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   const subProgress = clampPercent(subtask.progress)
                   const subtaskKey = getGanttSubtaskKey(project, task, subtask, index, subIndex)
                   return (
-                    <div className="fd203-gantt-grid fd203-gantt-row subtask" key={subtaskKey} style={{ gridTemplateColumns: gridColumns }}>
+                    <div className={`fd203-gantt-grid fd203-gantt-row subtask ${subtask.done ? 'is-complete' : 'is-incomplete'}`} key={subtaskKey} style={{ gridTemplateColumns: gridColumns }}>
                       <div className="fd203-gantt-label subtask" title={dateRangeLabel(subStart, subEnd)}>
-                        <ChineseTextField commitOnBlur className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
-                        <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {subProgress}% · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
+                        <div className="fd203-gantt-subtask-title-line">
+                          <label className={`fd203-gantt-done-check subtask ${subtask.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={subtask.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(subtask.done)}
+                              onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { done: event.target.checked, progress: event.target.checked ? 100 : subProgress }, event.target.checked ? '子任務標記完成。' : '子任務改為未完成。')}
+                              aria-label="子任務完成狀態"
+                            />
+                            <span>{subtask.done ? '已完成' : '未完成'}</span>
+                          </label>
+                          <ChineseTextField commitOnBlur className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
+                        </div>
+                        <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {subtask.done ? '已完成' : '未完成'} · {subProgress}% · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
                         <div className="fd203-gantt-row-actions">
                           <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectSubtask(project.id, index, subIndex)}>刪除子任務</button>
                         </div>
@@ -3771,7 +3800,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="project-detail-card-actions">
                       <button type="button" onClick={() => createWorkItemFromProjectTask(project, task)}>建立工作</button>
                       <button type="button" onClick={() => addProjectSubtask(project.id, index)}>新增子任務</button>
-                      <button type="button" onClick={() => updateProjectTask(project.id, index, { progress: 100 }, '任務視為完成。')}>視為完成</button>
+                      <button type="button" onClick={() => updateProjectTask(project.id, index, { done: true, progress: 100 }, '任務視為完成。')}>視為完成</button>
                       <button type="button" onClick={() => removeProjectTask(project.id, index)}>刪除</button>
                     </div>
                     <div className="fd203-subtask-list">

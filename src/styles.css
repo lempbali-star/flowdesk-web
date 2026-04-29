@@ -14571,3 +14571,102 @@ button {
     text-overflow: ellipsis;
   }
 }
+
+
+/* FlowDesk v20.3.15 - Gantt completion checkbox */
+.fd203-gantt-task-title-line {
+  grid-template-columns: 28px auto minmax(0, 1fr) !important;
+}
+
+.fd203-gantt-subtask-title-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.fd203-gantt-done-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.fd203-gantt-done-check:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.26);
+  color: #1d4ed8;
+}
+
+.fd203-gantt-done-check input {
+  width: 14px !important;
+  height: 14px;
+  accent-color: #16a34a;
+  cursor: pointer;
+}
+
+.fd203-gantt-done-check.checked {
+  border-color: rgba(22, 163, 74, 0.32);
+  background: rgba(220, 252, 231, 0.86);
+  color: #15803d;
+}
+
+.fd203-gantt-done-check.subtask {
+  min-height: 26px;
+  padding: 3px 7px;
+  font-size: 10px;
+}
+
+.fd203-gantt-row.is-complete .fd203-gantt-label {
+  background: linear-gradient(90deg, rgba(220, 252, 231, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.fd203-gantt-row.is-complete .fd203-gantt-name-input {
+  text-decoration: line-through;
+  color: #15803d;
+  border-color: rgba(22, 163, 74, 0.28);
+  background: rgba(240, 253, 244, 0.92);
+}
+
+.fd203-gantt-bar.task.done {
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  box-shadow: 0 10px 20px rgba(22, 163, 74, 0.22) !important;
+}
+
+.fd203-gantt-bar.subtask.done {
+  background: linear-gradient(90deg, #0f766e, #22c55e) !important;
+  box-shadow: 0 10px 20px rgba(15, 118, 110, 0.2) !important;
+}
+
+.fd203-gantt-row.is-complete .fd203-gantt-track.soft,
+.fd203-gantt-row.is-complete .fd203-gantt-track.subtask {
+  background-image:
+    repeating-linear-gradient(90deg, rgba(22, 163, 74, 0.16) 0, rgba(22, 163, 74, 0.16) 1px, transparent 1px, transparent calc(var(--fd203-week-width, 140px) / 7)),
+    repeating-linear-gradient(90deg, rgba(22, 163, 74, 0.24) 0, rgba(22, 163, 74, 0.24) 2px, transparent 2px, transparent var(--fd203-week-width, 140px)),
+    linear-gradient(180deg, rgba(240, 253, 244, 0.92), rgba(236, 253, 245, 0.78)) !important;
+}
+
+@media (max-width: 900px) {
+  .fd203-gantt-task-title-line,
+  .fd203-gantt-subtask-title-line {
+    grid-template-columns: 1fr !important;
+    gap: 6px;
+  }
+
+  .fd203-gantt-done-check {
+    width: max-content;
+  }
+}
