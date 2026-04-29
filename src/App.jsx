@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.20'
+const FLOWDESK_APP_VERSION = '20.3.21'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3576,20 +3576,39 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
     const openItems = flatItems.filter((item) => !item.done)
     const itemRank = (item) => (item.type === '任務' ? 0 : 1)
+    const sortByWorkPriority = (a, b) => (
+      (itemRank(a) - itemRank(b)) ||
+      String(a.start).localeCompare(String(b.start)) ||
+      String(a.end).localeCompare(String(b.end)) ||
+      String(a.label).localeCompare(String(b.label))
+    )
     const currentItems = openItems
       .filter((item) => item.start <= today && item.end >= today)
-      .sort((a, b) => (itemRank(a) - itemRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)))
+      .sort((a, b) => (itemRank(a) - itemRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)) || String(a.label).localeCompare(String(b.label)))
     const activeItems = openItems
       .filter((item) => item.progress > 0 && item.progress < 100 && item.start <= today)
-      .sort((a, b) => (itemRank(a) - itemRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)))
-    const upcoming = openItems
+      .sort((a, b) => (itemRank(a) - itemRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)) || String(a.label).localeCompare(String(b.label)))
+    const upcomingItems = openItems
+      .filter((item) => item.start > today)
+      .sort(sortByWorkPriority)
+    const fallbackItems = openItems
       .filter((item) => item.start >= today)
-      .sort((a, b) => String(a.start).localeCompare(String(b.start)) || (itemRank(a) - itemRank(b)))[0]
-    const runningItem = currentItems[0] || activeItems[0] || upcoming || openItems[0]
+      .sort(sortByWorkPriority)
+    const runningItem = currentItems[0] || activeItems[0] || fallbackItems[0] || openItems[0]
+    const nextItem = upcomingItems.find((item) => !runningItem || item.label !== runningItem.label) || null
+    const manualNext = String(project.next || '').trim()
+    const activeTexts = [...currentItems, ...activeItems]
+      .map((item) => `${item.name} ${item.label}`.trim())
+      .filter(Boolean)
+    const manualLooksActive = manualNext && activeTexts.some((text) => text.includes(manualNext) || manualNext.includes(text.split(' / ').pop()))
 
     return {
       running: runningItem ? `${runningItem.type}：${runningItem.label}` : '尚未設定正在進行',
-      next: String(project.next || '').trim() || '尚未設定下一步',
+      next: nextItem
+        ? `${nextItem.type}：${nextItem.label}`
+        : manualNext && !manualLooksActive
+          ? manualNext
+          : '尚未設定下一步',
     }
   }
 
@@ -3621,7 +3640,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <strong>{project.name || '未命名專案'}</strong>
             <Badge value={project.phase || '未分階段'} />
           </div>
-          <div className="fd203-project-list-info compact-v20">
+          <div className="fd203-project-list-info compact-v21">
             <div className="running"><span>正在進行</span><strong>{listInfo.running}</strong></div>
             <div className="next"><span>下一步</span><strong>{listInfo.next}</strong></div>
           </div>

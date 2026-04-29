@@ -14981,3 +14981,69 @@ button {
     width: max-content;
   }
 }
+
+
+/* FlowDesk v20.3.21 project list summary logic + card summary polish */
+.fd203-project-list-info.compact-v21 {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 8px;
+  padding: 9px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(59, 130, 246, 0.11), transparent 34%),
+    linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(239, 246, 255, 0.82));
+  border: 1px solid rgba(191, 219, 254, 0.82);
+  min-height: 92px;
+}
+
+.fd203-project-list-info.compact-v21 div {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fd203-project-list-info.compact-v21 span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 23px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.11);
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.fd203-project-list-info.compact-v21 .next span {
+  background: rgba(20, 184, 166, 0.13);
+  color: #0f766e;
+}
+
+.fd203-project-list-info.compact-v21 strong {
+  min-height: 23px;
+  color: #0f172a;
+  font-size: 12.5px;
+  line-height: 1.45;
+  font-weight: 850;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+@media (max-width: 760px) {
+  .fd203-project-list-info.compact-v21 div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .fd203-project-list-info.compact-v21 span {
+    width: max-content;
+  }
+}
