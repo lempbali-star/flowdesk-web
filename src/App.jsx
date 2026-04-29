@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.17'
+const FLOWDESK_APP_VERSION = '20.3.18'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3367,8 +3367,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const safeProject = normalizeProject(project)
     const track = event.currentTarget.closest('.fd203-gantt-track')
     const trackWidth = Math.max(track?.getBoundingClientRect?.().width || 1, 1)
-    const displayStart = addDaysToDateValue(safeProject.startDate, -14)
-    const displayEnd = addDaysToDateValue(safeProject.endDate, 14)
+    const dragTimelineRange = getProjectGanttRange(safeProject)
+    const displayStart = dragTimelineRange.start
+    const displayEnd = dragTimelineRange.end
     setGanttDragRange({ projectId: safeProject.id, start: displayStart, end: displayEnd })
     const rangeDays = Math.max(1, daysBetween(displayStart, displayEnd))
     const pixelsPerDay = Math.max(2, trackWidth / rangeDays)
@@ -3654,8 +3655,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const { embedded = false, compact = false } = options
     if (!project?.id) return <div className="flow-empty-card">請先從專案列表開啟專案。</div>
     const frozenRange = ganttDragRange?.projectId === project.id ? ganttDragRange : null
-    const displayStart = frozenRange?.start || addDaysToDateValue(project.startDate, -14)
-    const displayEnd = frozenRange?.end || addDaysToDateValue(project.endDate, 14)
+    const timelineRange = getProjectGanttRange(project)
+    const displayStart = frozenRange?.start || timelineRange.start
+    const displayEnd = frozenRange?.end || timelineRange.end
     const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
     const weekCellWidth = compact ? 124 : 140
     const labelColumnWidth = compact ? 224 : 248
@@ -3669,7 +3671,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div>
             <p className="eyebrow">PROJECT GANTT</p>
             <h3>{project.name}</h3>
-            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 每週顯示，中間保留每日刻度；滑過色條可看起訖日期，拖曳中間可整段平移{showToday ? ` · 今日：${formatMonthDayWeekday(todayValue)}` : ''}</small>
+            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 甘特圖依實際起迄顯示，最後一週會包含結束日；中間保留每日刻度{showToday ? ` · 今日：${formatMonthDayWeekday(todayValue)}` : ''}</small>
           </div>
           <div className="fd203-gantt-actions">
             {!compact && (
@@ -4136,6 +4138,33 @@ function buildGanttTicks(start, end) {
   }
   if (!ticks.length || ticks[ticks.length - 1] !== end) ticks.push(end)
   return ticks
+}
+
+
+function getProjectGanttRange(project = {}) {
+  const dates = []
+  const pushDate = (value) => {
+    if (!value) return
+    const parsed = parseDate(value)
+    if (!Number.isNaN(parsed.getTime())) dates.push(parsed.toISOString().slice(0, 10))
+  }
+  pushDate(project.startDate)
+  pushDate(project.endDate)
+  ;(project.tasks || []).forEach((task) => {
+    pushDate(task.start || project.startDate)
+    pushDate(task.end || project.endDate)
+    ;(task.subtasks || []).forEach((subtask) => {
+      pushDate(subtask.start || task.start || project.startDate)
+      pushDate(subtask.end || task.end || project.endDate)
+    })
+  })
+  ;(project.milestones || []).forEach((milestone) => pushDate(milestone.date))
+  if (!dates.length) {
+    const today = new Date().toISOString().slice(0, 10)
+    return { start: today, end: today }
+  }
+  dates.sort()
+  return { start: dates[0], end: dates[dates.length - 1] }
 }
 
 function buildGanttWeekTicks(start, end) {
