@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.22'
+const FLOWDESK_APP_VERSION = '20.3.23'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2744,6 +2744,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const saved = Number(window.localStorage.getItem('flowdesk-project-page-size-v20316') || 10)
     return [10, 20, 30, 40, 50].includes(saved) ? saved : 10
   })
+  const [projectPageInput, setProjectPageInput] = useState(() => {
+    if (typeof window === 'undefined') return '1'
+    return String(Math.max(1, Number(window.localStorage.getItem('flowdesk-project-page-v20316') || 1)))
+  })
   const [draggingProjectId, setDraggingProjectId] = useState(null)
   const [dropProjectId, setDropProjectId] = useState(null)
   const [manualRecordText, setManualRecordText] = useState('')
@@ -3390,6 +3394,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setProjectPage((current) => Math.min(current, projectPageTotal))
   }, [projectPageTotal])
 
+  useEffect(() => {
+    setProjectPageInput(String(safeProjectPage))
+  }, [safeProjectPage])
+
+  function commitProjectPageInput(value = projectPageInput) {
+    const nextPage = Math.max(1, Math.min(projectPageTotal, Number(value) || 1))
+    setProjectPage(nextPage)
+    setProjectPageInput(String(nextPage))
+  }
+
   function estimateProjectProgress(project) {
     const tasks = project?.tasks || []
     if (!tasks.length) return Number(project?.progress || 0)
@@ -3714,6 +3728,56 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     }
   }
 
+
+  function getProjectStatusMeta(project = {}) {
+    const today = todayDate()
+    const safeProject = normalizeProject(project)
+    const progress = clampPercent(safeProject.progress)
+    const listInfo = getProjectListInfo(safeProject)
+    const taskItems = (safeProject.tasks || []).flatMap((task) => [
+      { ...task, type: '任務', parentName: '' },
+      ...((task.subtasks || []).map((subtask) => ({ ...subtask, type: '子任務', parentName: task.name || '未命名任務' }))),
+    ])
+    const openItems = taskItems.filter((item) => !(Boolean(item.done) || clampPercent(item.progress) >= 100))
+    const overdueItems = openItems.filter((item) => (item.end || safeProject.endDate) < today)
+    const startedZeroItems = openItems.filter((item) => (item.start || safeProject.startDate) <= today && clampPercent(item.progress) <= 0)
+    const remainingDays = daysBetween(today, safeProject.endDate || today)
+    const notices = []
+    if (progress >= 100 || safeProject.phase === '已完成') notices.push({ label: '已完成', tone: 'done' })
+    else {
+      if ((safeProject.endDate || today) < today) notices.push({ label: '專案逾期', tone: 'danger' })
+      else if (remainingDays <= 3) notices.push({ label: `${remainingDays} 天內到期`, tone: 'danger' })
+      else if (remainingDays <= 7) notices.push({ label: `${remainingDays} 天後到期`, tone: 'warning' })
+      if (overdueItems.length) notices.push({ label: `${overdueItems.length} 任務逾期`, tone: 'danger' })
+      if (String(safeProject.health || '').includes('卡') || String(safeProject.health || '').includes('風險')) notices.push({ label: safeProject.health, tone: 'danger' })
+      if (String(safeProject.health || '').includes('待')) notices.push({ label: safeProject.health, tone: 'warning' })
+      if (listInfo.running === '尚未設定正在進行') notices.push({ label: '無進行中', tone: 'muted' })
+      if (listInfo.next === '尚未設定下一步') notices.push({ label: '無下一步', tone: 'muted' })
+      if (startedZeroItems.length) notices.push({ label: `${startedZeroItems.length} 項未啟動`, tone: 'warning' })
+    }
+    const fallback = progress >= 100 ? '專案已完成' : '正常推進'
+    return {
+      notices: notices.slice(0, 4),
+      summary: notices.length ? notices.slice(0, 3).map((item) => item.label).join(' / ') : fallback,
+      overdueItems,
+      remainingDays,
+    }
+  }
+
+  function buildProjectAttentionSummary(rows = filteredProjects) {
+    const today = todayDate()
+    const openRows = rows.map(normalizeProject).filter((project) => clampPercent(project.progress) < 100 && project.phase !== '已完成' && project.phase !== '已取消')
+    const overdue = openRows.filter((project) => (project.endDate || today) < today)
+    const dueSoon = openRows.filter((project) => (project.endDate || today) >= today && daysBetween(today, project.endDate || today) <= 7)
+    const highPriority = openRows.filter((project) => getProjectPriorityMeta(project).score >= 62)
+    const noNext = openRows.filter((project) => getProjectListInfo(project).next === '尚未設定下一步')
+    const noRunning = openRows.filter((project) => getProjectListInfo(project).running === '尚未設定正在進行')
+    const overdueTasks = openRows.reduce((sum, project) => sum + getProjectStatusMeta(project).overdueItems.length, 0)
+    return { overdue, dueSoon, highPriority, noNext, noRunning, overdueTasks }
+  }
+
+  const attentionSummary = buildProjectAttentionSummary(filteredProjects)
+
   function renderProjectCard(project) {
     const isActive = selectedProject?.id === project.id && projectModalOpen
     const estimated = estimateProjectProgress(project)
@@ -3744,6 +3808,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <span className="fd203-project-title-badges"><Badge value={project.phase || '未分階段'} /><Badge value={project.health} /></span>
           </div>
           <div className="fd203-project-priority-reason"><span>優先依據</span><strong>{priorityMeta.reason}</strong></div>
+          <div className="fd203-status-chip-row">{getProjectStatusMeta(project).notices.length ? getProjectStatusMeta(project).notices.map((notice) => <span key={notice.label} className={`fd203-status-chip ${notice.tone}`}>{notice.label}</span>) : <span className="fd203-status-chip done">正常推進</span>}</div>
           <div className="fd203-project-list-info compact-v21">
             <div className="running"><span>正在進行</span><strong>{listInfo.running}</strong></div>
             <div className="next"><span>下一步</span><strong>{listInfo.next}</strong></div>
@@ -3802,7 +3867,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <span><strong>{project.owner || '未指定'}</strong><small title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small></span>
           <span className="fd203-row-progress"><div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div><small>{project.progress}% / 估 {estimated}%</small></span>
           <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</small></span>
-          <span className="fd203-row-badges"><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.phase} /><Badge value={project.health} /></span>
+          <span className="fd203-row-badges"><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.phase} /><Badge value={project.health} />{getProjectStatusMeta(project).notices.slice(0, 2).map((notice) => <span key={notice.label} className={`fd203-status-chip ${notice.tone}`}>{notice.label}</span>)}</span>
         </article>
         {projectListExpandAllGantt ? <div className="fd203-inline-gantt-shell fd203-inline-gantt-shell-row">{renderGantt(project, { embedded: true, compact: true })}</div> : null}
       </div>
@@ -4019,6 +4084,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           </div>
         </div>
 
+        <div className="fd203-modal-summary-bar">
+          <span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span>
+          <span>健康度：{project.health || '待確認'}</span>
+          <span>進度：{project.progress}%</span>
+          <span>逾期任務：{getProjectStatusMeta(project).overdueItems.length}</span>
+          <span>下一步：{getProjectListInfo(project).next}</span>
+        </div>
+
         <div className="project-segmented-tabs fd203-tabs">
           <button type="button" className={detailTab === 'overview' ? 'active' : ''} onClick={() => setDetailTab('overview')}>總覽</button>
           <button type="button" className={detailTab === 'gantt' ? 'active' : ''} onClick={() => setDetailTab('gantt')}>甘特圖</button>
@@ -4189,6 +4262,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <article><span>同步狀態</span><strong>{flowdeskCloud ? (projectsCloudReady ? '雲端模式' : '同步中') : '本機備援'}</strong></article>
       </section>
 
+      <section className="fd203-attention-panel">
+        <div>
+          <p className="eyebrow">TODAY FOCUS</p>
+          <h3>今日需要注意</h3>
+          <span>依目前篩選結果判斷逾期、即將到期、優先與資料缺口。</span>
+        </div>
+        <div className="fd203-attention-grid">
+          <article className={attentionSummary.overdue.length ? 'danger' : ''}><span>逾期專案</span><strong>{attentionSummary.overdue.length}</strong><small>{attentionSummary.overdue.length ? attentionSummary.overdue.slice(0, 2).map((item) => item.name).join('、') : '目前沒有逾期專案'}</small></article>
+          <article className={attentionSummary.dueSoon.length ? 'warning' : ''}><span>7 天內到期</span><strong>{attentionSummary.dueSoon.length}</strong><small>{attentionSummary.dueSoon.length ? attentionSummary.dueSoon.slice(0, 2).map((item) => item.name).join('、') : '短期到期壓力正常'}</small></article>
+          <article className={attentionSummary.highPriority.length ? 'danger' : ''}><span>高優先</span><strong>{attentionSummary.highPriority.length}</strong><small>{attentionSummary.highPriority.length ? '建議優先查看' : '目前沒有高優先警示'}</small></article>
+          <article className={attentionSummary.noNext.length ? 'warning' : ''}><span>未設定下一步</span><strong>{attentionSummary.noNext.length}</strong><small>{attentionSummary.noRunning.length} 個沒有進行中項目</small></article>
+          <article className={attentionSummary.overdueTasks ? 'danger' : ''}><span>任務逾期</span><strong>{attentionSummary.overdueTasks}</strong><small>{attentionSummary.overdueTasks ? '請至甘特圖確認' : '任務期程正常'}</small></article>
+        </div>
+      </section>
+
       <section className="fd203-filter-bar">
         <ChineseTextField value={projectKeyword} onCommit={setProjectKeyword} placeholder="搜尋專案、任務、子任務、里程碑..." />
         <select value={projectPhaseFilter} onChange={(event) => setProjectPhaseFilter(event.target.value)}>{projectPhaseOptions.map((phase) => <option key={phase} value={phase}>{phase === '全部' ? '全部階段' : phase}</option>)}</select>
@@ -4239,6 +4327,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <span>{projectPageStart + 1} - {Math.min(projectPageStart + paginatedProjects.length, filteredProjects.length)}</span>
               </div>
               <div className="project-pagination-actions">
+                <label className="fd203-page-jump"><span>跳至</span><input type="number" min="1" max={projectPageTotal} value={projectPageInput} onChange={(event) => setProjectPageInput(event.target.value)} onBlur={() => commitProjectPageInput()} onKeyDown={(event) => { if (event.key === 'Enter') commitProjectPageInput(event.currentTarget.value) }} aria-label="指定頁碼" /><small>/ {projectPageTotal}</small></label>
                 <button type="button" onClick={() => setProjectPage(1)} disabled={safeProjectPage <= 1}>首頁</button>
                 <button type="button" onClick={() => setProjectPage((page) => Math.max(1, page - 1))} disabled={safeProjectPage <= 1}>上一頁</button>
                 <button type="button" onClick={() => setProjectPage((page) => Math.min(projectPageTotal, page + 1))} disabled={safeProjectPage >= projectPageTotal}>下一頁</button>
