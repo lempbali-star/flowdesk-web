@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.30'
+const FLOWDESK_APP_VERSION = '20.3.31'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -144,18 +144,28 @@ const iconAutoStyleByTheme = {
   amber: 'card',
   rose: 'card',
   slate: 'minimal',
+  aurora: 'tech',
+  neon: 'tech',
+  cyber: 'tech',
+  sunset: 'card',
+  midnight: 'minimal',
 }
 
 const themeOptions = [
-  { id: 'blue', name: '預設藍', description: '穩定、乾淨的 FlowDesk 預設色，適合日常工作台。', accent: '#356bff' },
-  { id: 'fresh', name: '青綠', description: '清爽明亮，適合長時間整理採購與待追蹤事項。', accent: '#1db79d' },
-  { id: 'purple', name: '紫色', description: '較有科技感，讓重點區塊與分頁更醒目。', accent: '#7b4dff' },
-  { id: 'amber', name: '橘色', description: '暖色提醒感較強，適合偏行動與跟催的工作台。', accent: '#f2992e' },
-  { id: 'rose', name: '玫紅', description: '重點提示更明顯，適合提醒與待處理量較多時使用。', accent: '#e84c72' },
-  { id: 'slate', name: '石墨灰', description: '沉穩低干擾，適合資料密集與正式場合。', accent: '#475569' },
-  { id: 'tech', name: '深海藍', description: '深藍搭配電光青，保留 FlowDesk 的科技感。', accent: '#315dff' },
-  { id: 'green', name: '森綠', description: '穩重、舒適，適合長時間檢視專案與採購資料。', accent: '#0fa374' },
-  { id: 'ice', name: '冰川青', description: '低飽和冷色系，畫面更乾淨俐落。', accent: '#38a9d6' },
+  { id: 'blue', name: '預設藍', description: '穩定、乾淨的 FlowDesk 預設色，適合日常工作台。', accent: '#356bff', secondary: '#8c4dff', vibe: '經典穩定' },
+  { id: 'fresh', name: '青綠', description: '清爽明亮，適合長時間整理採購與待追蹤事項。', accent: '#1db79d', secondary: '#4dc9ff', vibe: '清爽效率' },
+  { id: 'purple', name: '紫色', description: '較有科技感，讓重點區塊與分頁更醒目。', accent: '#7b4dff', secondary: '#b14cff', vibe: '科技醒目' },
+  { id: 'amber', name: '橘色', description: '暖色提醒感較強，適合偏行動與跟催的工作台。', accent: '#f2992e', secondary: '#ff6b4a', vibe: '行動提醒' },
+  { id: 'rose', name: '玫紅', description: '重點提示更明顯，適合提醒與待處理量較多時使用。', accent: '#e84c72', secondary: '#8c4dff', vibe: '亮眼重點' },
+  { id: 'slate', name: '石墨灰', description: '沉穩低干擾，適合資料密集與正式場合。', accent: '#475569', secondary: '#0e7490', vibe: '沉穩低調' },
+  { id: 'tech', name: '深海藍', description: '深藍搭配電光青，保留 FlowDesk 的科技感。', accent: '#315dff', secondary: '#00c2ff', vibe: '深海科技' },
+  { id: 'green', name: '森綠', description: '穩重、舒適，適合長時間檢視專案與採購資料。', accent: '#0fa374', secondary: '#1d9b8f', vibe: '穩定舒適' },
+  { id: 'ice', name: '冰川青', description: '低飽和冷色系，畫面更乾淨俐落。', accent: '#38a9d6', secondary: '#66c7c2', vibe: '乾淨俐落' },
+  { id: 'aurora', name: '極光', description: '藍紫搭配極光綠，主畫面與甘特圖會更有層次感。', accent: '#00d4ff', secondary: '#7c3aed', vibe: '炫彩推薦' },
+  { id: 'neon', name: '霓虹', description: '高彩度霓虹感，適合想讓按鈕、分頁與重點卡片更跳。', accent: '#00e5ff', secondary: '#ff2bd6', vibe: '高亮視覺' },
+  { id: 'cyber', name: '賽博紫', description: '紫色主調加電光青，讓系統偏向科技儀表板風格。', accent: '#8b5cf6', secondary: '#06b6d4', vibe: '科技炫光' },
+  { id: 'sunset', name: '暮光橘', description: '橘紅漸層更有行動感，適合提醒、跟催與專案推進。', accent: '#fb923c', secondary: '#ef4444', vibe: '暖色推進' },
+  { id: 'midnight', name: '午夜藍', description: '深藍搭配冷光藍，保留正式感但更有視覺張力。', accent: '#1e3a8a', secondary: '#38bdf8', vibe: '深色質感' },
 ]
 
 const initialWorkItems = []
@@ -5602,27 +5612,36 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, iconStyleMode, setIco
       )}
 
             {settingsView === 'appearance' && (
-        <section className="panel wide settings-panel fd30-appearance-panel">
-          <PanelTitle eyebrow="外觀設定" title="主題色套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。若圖示風格設為「跟隨 UI 主題」，圖示也會一起調整。</p>
-          <div className="fd30-theme-toolbar">
+        <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
+          <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.31 另外加強了炫彩主題、預覽卡片、柔光陰影與甘特圖光澤效果。</p>
+          <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
               <strong>{activeTheme.name}</strong>
               <small>{activeTheme.description}</small>
             </div>
+            <div className="fd31-theme-toolbar-preview" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </div>
             <button className="ghost-btn fd30-reset-theme-btn" type="button" onClick={() => setUiTheme('blue')}>回復預設藍</button>
           </div>
-          <div className="theme-grid packaged-theme-grid fd30-theme-grid">
+          <div className="theme-grid packaged-theme-grid fd30-theme-grid fd31-theme-grid">
             {themeOptions.map((theme) => (
               <button
                 key={theme.id}
-                className={uiTheme === theme.id ? 'theme-option active' : 'theme-option'}
+                className={uiTheme === theme.id ? 'theme-option active fd31-theme-option' : 'theme-option fd31-theme-option'}
                 type="button"
                 onClick={() => setUiTheme(theme.id)}
-                style={{ '--theme-preview-color': theme.accent }}
+                style={{ '--theme-preview-color': theme.accent, '--theme-preview-secondary': theme.secondary || theme.accent }}
               >
-                <span className={`theme-swatch ${theme.id}`} />
+                <span className={`theme-swatch ${theme.id}`}>
+                  <i />
+                  <b />
+                </span>
+                <span className="fd31-theme-vibe">{theme.vibe || '主題套用'}</span>
                 <strong>{theme.name}</strong>
                 <small>{theme.description}</small>
                 <em>立即套用</em>
