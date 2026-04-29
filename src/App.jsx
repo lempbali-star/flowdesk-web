@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.16'
+const FLOWDESK_APP_VERSION = '20.3.17'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3497,9 +3497,52 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     window.addEventListener('pointerup', stopMove, { once: true })
   }
 
+  function getProjectListInfo(project = {}) {
+    const today = todayDate()
+    const flatItems = (project.tasks || []).flatMap((task, taskIndex) => {
+      const taskLabel = task.name || `任務 ${taskIndex + 1}`
+      const taskItem = {
+        type: '任務',
+        name: taskLabel,
+        label: taskLabel,
+        start: task.start || project.startDate,
+        end: task.end || project.endDate,
+        progress: clampPercent(task.progress),
+        done: Boolean(task.done) || clampPercent(task.progress) >= 100,
+      }
+      const subItems = (task.subtasks || []).map((subtask, subIndex) => {
+        const subLabel = subtask.name || `子任務 ${subIndex + 1}`
+        return {
+          type: '子任務',
+          name: subLabel,
+          label: `${taskLabel} / ${subLabel}`,
+          start: subtask.start || task.start || project.startDate,
+          end: subtask.end || task.end || project.endDate,
+          progress: clampPercent(subtask.progress),
+          done: Boolean(subtask.done) || clampPercent(subtask.progress) >= 100,
+        }
+      })
+      return [taskItem, ...subItems]
+    })
+
+    const openItems = flatItems.filter((item) => !item.done)
+    const inProgress = openItems.find((item) => item.progress > 0 && item.progress < 100)
+    const inDateRange = openItems.find((item) => item.start <= today && item.end >= today)
+    const upcoming = openItems
+      .filter((item) => item.start >= today)
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)))[0]
+    const runningItem = inProgress || inDateRange || upcoming || openItems[0]
+
+    return {
+      running: runningItem ? `${runningItem.type}：${runningItem.label}` : '尚未設定正在進行',
+      next: String(project.next || '').trim() || '尚未設定下一步',
+    }
+  }
+
   function renderProjectCard(project) {
     const isActive = selectedProject?.id === project.id && projectModalOpen
     const estimated = estimateProjectProgress(project)
+    const listInfo = getProjectListInfo(project)
     return (
       <div key={project.id} className="fd203-project-entry">
         <article
@@ -3524,7 +3567,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <strong>{project.name || '未命名專案'}</strong>
             <Badge value={project.phase || '未分階段'} />
           </div>
-          <p>{project.next || '尚未設定下一步'}</p>
+          <div className="fd203-project-list-info">
+            <div><span>正在進行</span><strong>{listInfo.running}</strong></div>
+            <div><span>下一步</span><strong>{listInfo.next}</strong></div>
+          </div>
           <div className="fd203-project-card-kpis">
             <span><b>{project.tasks?.length || 0}</b><small>任務</small></span>
             <span><b>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0}</b><small>子任務</small></span>
@@ -3552,6 +3598,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function renderProjectListRow(project) {
     const isActive = selectedProject?.id === project.id && projectModalOpen
     const estimated = estimateProjectProgress(project)
+    const listInfo = getProjectListInfo(project)
     return (
       <div key={project.id} className="fd203-project-entry fd203-project-entry-row">
         <article
@@ -3568,7 +3615,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
           title="點擊開啟專案彈窗；拖曳調整順序"
         >
-          <span className="fd203-row-main"><small>☰ {project.id}</small><strong>{project.name || '未命名專案'}</strong><em>{project.next || '尚未設定下一步'}</em></span>
+          <span className="fd203-row-main">
+            <small>☰ {project.id}</small>
+            <strong>{project.name || '未命名專案'}</strong>
+            <em><b>正在進行</b>{listInfo.running}</em>
+            <em><b>下一步</b>{listInfo.next}</em>
+          </span>
           <span><strong>{project.owner || '未指定'}</strong><small title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small></span>
           <span className="fd203-row-progress"><div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div><small>{project.progress}% / 估 {estimated}%</small></span>
           <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</small></span>
@@ -3991,7 +4043,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             </div>
           ) : (
             <div className="fd203-project-table">
-              <div className="fd203-project-table-head"><span>專案</span><span>負責 / 期間</span><span>進度</span><span>數量</span><span>狀態</span></div>
+              <div className="fd203-project-table-head"><span>專案 / 正在進行 / 下一步</span><span>負責 / 期間</span><span>進度</span><span>數量</span><span>狀態</span></div>
               {paginatedProjects.map(renderProjectListRow)}
             </div>
           )}

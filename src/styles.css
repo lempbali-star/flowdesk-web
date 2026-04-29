@@ -13218,7 +13218,7 @@ button {
 .fd203-project-table-head,
 .fd203-project-row {
   display: grid;
-  grid-template-columns: minmax(170px, 1.25fr) minmax(130px, .8fr) minmax(110px, .7fr) minmax(90px, .55fr) minmax(110px, .7fr);
+  grid-template-columns: minmax(240px, 1.55fr) minmax(130px, .75fr) minmax(110px, .65fr) minmax(90px, .5fr) minmax(110px, .65fr);
   gap: 10px;
   align-items: center;
 }
@@ -14801,5 +14801,79 @@ button {
 
   .fd203-gantt-done-check {
     width: max-content;
+  }
+}
+
+
+/* FlowDesk v20.3.17 project list running / next action visibility */
+.fd203-project-list-info {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(239, 246, 255, 0.72));
+}
+
+.fd203-project-list-info div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fd203-project-list-info span {
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.fd203-project-list-info strong {
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.fd203-row-main em {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 5px 7px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.fd203-row-main em b {
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.fd203-row-main em:nth-of-type(2) b {
+  color: #0f766e;
+}
+
+.fd203-row-main em {
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+@media (max-width: 760px) {
+  .fd203-project-list-info strong {
+    -webkit-line-clamp: 2;
+  }
+
+  .fd203-row-main em {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 }
