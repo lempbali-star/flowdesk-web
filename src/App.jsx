@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.43'
-const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
+const FLOWDESK_APP_VERSION = '20.3.44'
+const DEFAULT_SYSTEM_NAME = 'FlowDesk'
+const FLOWDESK_VERSION_LABEL = `${DEFAULT_SYSTEM_NAME} v${FLOWDESK_APP_VERSION}`
+
+function normalizeSystemName(value) {
+  const next = String(value ?? '').trim()
+  return next || DEFAULT_SYSTEM_NAME
+}
+
+function buildSystemVersionLabel(name) {
+  return `${normalizeSystemName(name)} v${FLOWDESK_APP_VERSION}`
+}
+
+function buildSystemMark(name) {
+  const next = normalizeSystemName(name)
+  return (next.slice(0, 1) || 'F').toUpperCase()
+}
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
 const PROJECT_PRIORITY_OPTIONS = ['緊急', '高', '中', '低']
@@ -462,6 +477,10 @@ function FlowDeskShell({ authSession, onLogout }) {
     return initialModules.some((item) => item.id === saved) ? saved : 'home'
   })
   const [query, setQuery] = useState('')
+  const [systemName, setSystemName] = useState(() => {
+    if (typeof window === 'undefined') return DEFAULT_SYSTEM_NAME
+    return window.localStorage.getItem('flowdesk-system-name') || DEFAULT_SYSTEM_NAME
+  })
   const [view, setView] = useState('看板')
   const [selected, setSelected] = useState(null)
   const [showLauncher, setShowLauncher] = useState(false)
@@ -515,6 +534,9 @@ function FlowDeskShell({ authSession, onLogout }) {
 
   const resolvedIconStyle = iconStyleMode === 'auto' ? (iconAutoStyleByTheme[uiTheme] || 'soft') : iconStyleMode
   const shellAppearancePreset = appearancePresetOptions.find((preset) => preset.theme === uiTheme && preset.appearance === appearanceMode && preset.motion === motionLevel)
+  const displaySystemName = normalizeSystemName(systemName)
+  const systemVersionLabel = buildSystemVersionLabel(displaySystemName)
+  const systemMark = buildSystemMark(displaySystemName)
 
   const [moduleIcons, setModuleIcons] = useState(() => {
     if (typeof window === 'undefined') return defaultModuleIcons
@@ -770,6 +792,16 @@ function FlowDeskShell({ authSession, onLogout }) {
   }, [uiTheme])
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('flowdesk-system-name', displaySystemName)
+    }
+    if (typeof document !== 'undefined') {
+      document.title = `${displaySystemName}｜${pageTitle(active, modules)}`
+    }
+  }, [displaySystemName, active, modules])
+
+
+  useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.dataset.flowdeskAppearance = appearanceMode
       document.documentElement.dataset.flowdeskMotion = motionLevel
@@ -869,10 +901,10 @@ function FlowDeskShell({ authSession, onLogout }) {
     <div className={`product-shell ${sidebarOpen ? 'sidebar-open' : ''} ${active === 'board' ? 'has-context' : ''}`}>
       <aside className="workspace-sidebar" aria-label="側邊選單" onMouseEnter={() => setSidebarOpen(true)} onMouseLeave={() => setSidebarOpen(false)}>
         <div className="workspace-card">
-          <div className="brand-mark">F</div>
+          <div className="brand-mark">{systemMark}</div>
           <div className="sidebar-copy">
-            <strong>FlowDesk</strong>
-            <small>{FLOWDESK_VERSION_LABEL}</small>
+            <strong>{displaySystemName}</strong>
+            <small>{systemVersionLabel}</small>
           </div>
         </div>
 
@@ -915,7 +947,7 @@ function FlowDeskShell({ authSession, onLogout }) {
             <p className="eyebrow">今日工作狀態</p>
             <h1>{pageTitle(active, modules)}</h1>
             <div className="topbar-status-row">
-              <span className="version-pill">{FLOWDESK_VERSION_LABEL}</span>
+              <span className="version-pill">{systemVersionLabel}</span>
               <span className={flowdeskCloud ? 'sync-state-pill online' : 'sync-state-pill local'}>{flowdeskCloud ? '雲端同步中' : '本機備援模式'}</span>
             </div>
             <div className="module-purpose-line">
@@ -997,7 +1029,7 @@ function FlowDeskShell({ authSession, onLogout }) {
             setActive('board')
           }
         }} />}
-        {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} customTheme={customTheme} setCustomTheme={setCustomTheme} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
+        {active === 'settings' && <SettingsPage systemName={systemName} setSystemName={setSystemName} displaySystemName={displaySystemName} systemVersionLabel={systemVersionLabel} themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} customTheme={customTheme} setCustomTheme={setCustomTheme} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
       </main>
 
       {active === 'board' && (
@@ -1107,7 +1139,7 @@ function LoginScreen({ mode, configMissing }) {
     <div className="flowdesk-login-page">
       <form className="flowdesk-login-card" onSubmit={handleSubmit}>
         <div className="flowdesk-login-brand">
-          <div className="brand-mark">F</div>
+          <div className="brand-mark">{systemMark}</div>
           <div>
             <strong>FlowDesk</strong>
             <span>登入</span>
@@ -5520,7 +5552,7 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   )
 }
 
-function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, customTheme, setCustomTheme, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
+function SettingsPage({ systemName, setSystemName, displaySystemName, systemVersionLabel, themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, customTheme, setCustomTheme, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
   const [settingsView, setSettingsView] = useState('home')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
@@ -5578,7 +5610,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `FlowDesk備份_${todayDate()}.json`
+    link.download = `${normalizeSystemName(systemName)}備份_${todayDate()}.json`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -5605,7 +5637,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
       }
 
       downloadBackupFile({
-        app: 'FlowDesk',
+        app: normalizeSystemName(systemName),
         version: FLOWDESK_APP_VERSION,
         exportedAt: new Date().toISOString(),
         cloudEnabled: Boolean(flowdeskCloud),
@@ -5654,7 +5686,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
       }
     }
     downloadBackupFile({
-      app: 'FlowDesk',
+      app: normalizeSystemName(systemName),
       version: `${FLOWDESK_APP_VERSION}-before-restore`,
       exportedAt: new Date().toISOString(),
       reason: 'restore safety backup',
@@ -5861,7 +5893,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
     { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與資料整理', icon: '🔔' },
     { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原、清空與同步檢查', icon: '💾' },
     { id: 'focus', title: '功能定位', eyebrow: 'FLOWDESK', summary: '收斂重複功能、釐清各模組用途與交接規則', icon: '🧭' },
-    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: FLOWDESK_VERSION_LABEL, icon: '⚙️' },
+    { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: systemVersionLabel, icon: '⚙️' },
   ]
   const v20Checklist = [
     ['功能收斂', '工作事項、採購、專案、提醒中心用途重新劃分，避免互相重複'],
@@ -5907,7 +5939,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.43 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.44 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -6211,7 +6243,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
           <div className="backup-sync-strip">
             <article><span>同步狀態</span><strong>{syncStatusText}</strong></article>
             <article><span>最後同步</span><strong>{lastSyncText}</strong></article>
-            <article><span>備份版本</span><strong>{FLOWDESK_VERSION_LABEL}</strong></article>
+            <article><span>備份版本</span><strong>{systemVersionLabel}</strong></article>
           </div>
           <div className="backup-action-grid">
             <article>
@@ -6268,9 +6300,27 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
 
       {settingsView === 'system' && (
         <section className="panel settings-panel settings-detail-panel">
-          <PanelTitle eyebrow="系統資訊" title={FLOWDESK_VERSION_LABEL} />
+          <PanelTitle eyebrow="系統資訊" title={systemVersionLabel} />
+          <div className="fd44-system-name-card">
+            <div>
+              <span>系統名稱</span>
+              <strong>{displaySystemName}</strong>
+              <small>可自訂左上角系統名稱、瀏覽器分頁標題與備份檔名稱。</small>
+            </div>
+            <div className="fd44-system-name-controls">
+              <input
+                value={systemName}
+                onChange={(event) => setSystemName(event.target.value)}
+                onBlur={() => setSystemName(normalizeSystemName(systemName))}
+                placeholder={DEFAULT_SYSTEM_NAME}
+                maxLength={32}
+              />
+              <button className="ghost-btn" type="button" onClick={() => setSystemName(DEFAULT_SYSTEM_NAME)}>恢復預設</button>
+            </div>
+          </div>
           <div className="settings-info-list">
-            <div><span>版本狀態</span><strong>{FLOWDESK_VERSION_LABEL} 功能收斂版</strong></div>
+            <div><span>系統名稱</span><strong>{displaySystemName}</strong></div>
+            <div><span>版本狀態</span><strong>{systemVersionLabel} 系統名稱設定版</strong></div>
             <div><span>雲端同步</span><strong>{flowdeskCloud ? '已啟用' : '本機模式'}</strong></div>
             <div><span>Supabase 設定</span><strong>{hasSupabaseConfig ? '已設定' : '未設定'}</strong></div>
             <div><span>最後同步時間</span><strong>{lastSyncText}</strong></div>
