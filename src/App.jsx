@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.24'
+const FLOWDESK_APP_VERSION = '20.3.25'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3119,7 +3119,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           return { ...task, dependsOnTaskId: '' }
         }
         const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
-        if ((task.start || project.startDate) >= nextStart) return task
+        // 前置任務異動後，後續任務要「緊接」前置完成日後一天，
+        // 不只是在早於前置時才往後推，避免 A 往前/往後調整時 B 停在舊日期。
+        if ((task.start || project.startDate) === nextStart) return task
         changed = true
         passChanged = true
         return shiftTaskWithSubtasks(task, nextStart)
@@ -4122,7 +4124,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       </label>
                     </div>
                     <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
-                    {dependencyMeta.hasDependency ? <div className={`fd203-task-dependency-note ${dependencyMeta.waiting ? 'waiting' : 'ready'}`}>{dependencyMeta.waiting ? '等待前置' : '前置完成'}：{dependencyMeta.predecessorName}，最早 {formatMonthDay(dependencyMeta.startAfter)}</div> : null}
+                    {dependencyMeta.hasDependency ? <div className={`fd203-task-dependency-note ${dependencyMeta.waiting ? 'waiting' : 'ready'}`}>{dependencyMeta.waiting ? '等待前置' : '前置完成'}：{dependencyMeta.predecessorName}，排定 {formatMonthDay(dependencyMeta.startAfter)}</div> : null}
                     <div className="fd203-gantt-row-actions compact-v16">
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>＋子任務</button>
                       {subtaskCount ? <button type="button" className="fd203-mini-link soft" onClick={() => autoEstimateProjectTask(project.id, index)}>自動%</button> : null}
@@ -4294,7 +4296,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 return (
                   <div key={task.id || index} className="project-detail-card fd203-detail-card">
                     <div className="project-detail-card-head"><strong>{task.name || '未命名任務'}</strong><span title={dateRangeLabel(taskStart, taskEnd)}>{clampPercent(task.progress)}%</span></div>
-                    {getTaskDependencyMeta(project, task, index).hasDependency ? <div className={`fd203-task-dependency-note detail ${getTaskDependencyMeta(project, task, index).waiting ? 'waiting' : 'ready'}`}>{getTaskDependencyMeta(project, task, index).waiting ? '等待前置任務' : '前置任務已完成'}：{getTaskDependencyMeta(project, task, index).predecessorName}，最早開始 {formatMonthDayWeekday(getTaskDependencyMeta(project, task, index).startAfter)}</div> : null}
+                    {getTaskDependencyMeta(project, task, index).hasDependency ? <div className={`fd203-task-dependency-note detail ${getTaskDependencyMeta(project, task, index).waiting ? 'waiting' : 'ready'}`}>{getTaskDependencyMeta(project, task, index).waiting ? '等待前置任務' : '前置任務已完成'}：{getTaskDependencyMeta(project, task, index).predecessorName}，自動排定 {formatMonthDayWeekday(getTaskDependencyMeta(project, task, index).startAfter)}</div> : null}
                     <div className="project-detail-form-grid">
                       <label>任務名稱<ChineseTextField commitOnBlur value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="任務名稱" /></label>
                       <label>負責人<ChineseTextField commitOnBlur value={task.owner || ''} onCommit={(value) => updateProjectTask(project.id, index, { owner: value })} aria-label="負責人" /></label>
@@ -4303,7 +4305,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       <label>前置任務<select value={task.dependsOnTaskId || ''} onChange={(event) => {
                         const predecessorName = project.tasks.find((item) => item.id === event.target.value)?.name || ''
                         updateProjectTask(project.id, index, { dependsOnTaskId: event.target.value }, event.target.value ? `設定前置任務為「${predecessorName}」。` : '清除前置任務。')
-                      }} aria-label="前置任務"><option value="">無前置任務</option>{getAvailablePredecessorTasks(project, index).map((item) => <option key={item.id} value={item.id}>{item.name || '未命名任務'}</option>)}</select><small>前置完成後，自動排到隔天</small></label>
+                      }} aria-label="前置任務"><option value="">無前置任務</option>{getAvailablePredecessorTasks(project, index).map((item) => <option key={item.id} value={item.id}>{item.name || '未命名任務'}</option>)}</select><small>前置日期變更時，會自動緊接前置完成日後一天</small></label>
                       <label>完成日<input type="date" value={task.completedAt || ''} disabled={!task.done} onChange={(event) => updateProjectTask(project.id, index, { completedAt: event.target.value || todayDate(), done: true, progress: 100 }, '更新任務完成日。')} aria-label="完成日" /><small>{task.done ? '可調整實際完成日' : '任務完成後啟用'}</small></label>
                       <label>進度<input type="range" min="0" max="100" value={clampPercent(task.progress)} onChange={(event) => updateProjectTask(project.id, index, { progress: clampPercent(event.target.value) })} aria-label="進度" /><small>{task.manualProgress ? '手動%' : '自動%'}</small></label>
                     </div>
