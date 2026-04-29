@@ -494,7 +494,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
   .launcher-grid { grid-template-columns: 1fr; }
 }
 
-/* v11 蝝?葉敹??∟頃撘瑕? */
+/* v11 紀錄中心與採購強化 */
 .records-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; }
 .purchase-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
 .purchase-table { overflow: auto; border: 1px solid #e9eef6; border-radius: 22px; background: #fff; }
@@ -610,7 +610,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
 .purchase-home-list small { color: #7d8aa0; margin-top: 4px; }
 .purchase-stage-line { display: grid; grid-template-columns: repeat(6, minmax(90px, 1fr)); gap: 8px; margin-bottom: 14px; overflow-x: auto; }
 .purchase-stage-line span { position: relative; display: grid; place-items: center; min-width: 90px; padding: 9px 10px; border-radius: 999px; color: #3150a5; background: #eef3ff; font-size: 12px; font-weight: 900; white-space: nowrap; }
-.purchase-stage-line span:not(:last-child)::after { content: '??; position: absolute; right: -8px; color: #9aa8bf; }
+.purchase-stage-line span:not(:last-child)::after { content: '›'; position: absolute; right: -8px; color: #9aa8bf; }
 .base-main .records-header { padding: 16px; border-radius: 22px; background: linear-gradient(145deg, #ffffff, var(--theme-soft-card)); border: 1px solid #edf1f7; }
 .module[draggable="true"] { cursor: grab; }
 .module[draggable="true"]:active { cursor: grabbing; }
@@ -699,7 +699,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
 @media (max-width: 980px) { .purchase-home-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 @media (max-width: 620px) { .purchase-home-grid { grid-template-columns: 1fr; } }
 
-/* v12 ?∟頃瘚??芾? */
+/* v12 採購流程自訂 */
 .record-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .stage-settings-panel { margin-bottom: 16px; padding: 16px; border: 1px solid var(--theme-shadow); border-radius: 24px; background: linear-gradient(145deg, #ffffff, var(--theme-soft-card)); box-shadow: 0 14px 34px rgba(44,65,110,.07); }
 .stage-settings-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 14px; }
@@ -811,7 +811,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
   .record-actions .ghost-btn, .record-actions .primary-btn { flex: 1; }
 }
 
-/* v13 ?∟頃鞈???摰??*/
+/* v13 採購資料操作完整化 */
 .v13-purchase-metrics .metric strong { font-size: 24px; }
 .purchase-filter-bar { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 0 0 14px; padding: 12px; border: 1px solid #e8eef8; border-radius: 20px; background: rgba(255,255,255,.76); }
 .purchase-filter-bar label { display: grid; gap: 6px; color: #66738b; font-size: 12px; font-weight: 900; }
@@ -926,7 +926,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
   .tax-preview { grid-template-columns: 1fr; }
 }
 
-/* v15 蝝?葉敹?/ ?∟頃??閬死?芸? */
+/* v15 紀錄中心 / 採購操作視覺優化 */
 .records-header {
   position: relative;
   overflow: hidden;
@@ -1363,7 +1363,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
   }
 }
 
-/* v16 ?∟頃憭???/ 敶??脣? / ?? */
+/* v16 採購多品項 / 彈窗捲動 / 回到頂部 */
 .v16-modal {
   width: min(1040px, calc(100vw - 28px));
   max-height: calc(100dvh - 32px);
@@ -1782,7 +1782,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
   .purchase-filter-bar input { min-width: 0; width: 100%; }
 }
 
-/* v19.1 ?∟頃瘚?憿?????貉身摰?*/
+/* v19.1 採購流程顏色與分頁筆數設定 */
 .stage-editor { grid-template-columns: 32px minmax(150px, 1fr) minmax(250px, 320px) 72px 72px 76px; }
 .stage-color-picker {
   display: inline-flex;
@@ -1957,7 +1957,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
 
 
 
-/* v19.2.7 ?內閮剖? */
+/* v19.2.7 圖示設定 */
 .icon-settings-panel {
   max-width: none;
 }
@@ -2036,7 +2036,7 @@ h3 { margin-bottom: 8px; font-size: 16px; }
 }
 
 
-/* v19.2.8 Icon 憸冽?芸??? */
+/* v19.2.8 Icon 風格自動切換 */
 html[data-flowdesk-icon-style="soft"] {
   --fd-icon-bg: linear-gradient(180deg, #ffffff, var(--theme-soft-card));
   --fd-icon-border: rgba(130,145,180,.14);
@@ -2163,7 +2163,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   --fd-icon-filter: saturate(1.18);
 }
 
-/* v19.3 ??銝剖? */
+/* v19.3 提醒中心 */
 .reminders-layout { display: grid; gap: 18px; }
 .reminders-hero { align-items: center; }
 .reminder-metric-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -2224,7 +2224,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   .reminder-card-actions { grid-template-columns: 1fr; }
 }
 
-/* v19.4 Collections 鞈???蝞∠? */
+/* v19.4 Collections 資料集合管理 */
 .collection-settings-panel { max-width: 980px; }
 .collection-add-row {
   display: grid;
@@ -2295,7 +2295,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   .collection-editor .stage-remove { grid-column: 2; }
 }
 
-/* v19.5 Collections 閬??芸? */
+/* v19.5 Collections 視圖優化 */
 .collection-record-actions {
   flex-wrap: wrap;
   align-items: center;
@@ -2484,7 +2484,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   .collection-editor { grid-template-columns: 42px 1fr; }
 }
 
-/* v19.5.1 Collections 撠耨 */
+/* v19.5.1 Collections 小修 */
 
 .collection-preview-note {
   display: flex;
@@ -2555,7 +2555,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
 }
 .stage-check { min-width: max-content; }
 
-/* v19.5.6 蝝?葉敹?憿?蝘餉???蝎曄陛 */
+/* v19.5.6 紀錄中心分類上移與集合精簡 */
 .app-topbar-with-collections {
   display: grid;
   grid-template-columns: minmax(180px, auto) minmax(260px, 1fr) auto;
@@ -2633,7 +2633,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   }
 }
 
-/* v19.5.6 ?∟頃銝餅?蝔移蝪∴?皜?∠???蝝圈?踴?蝔??嗆? */
+/* v19.5.6 採購主流程精簡：清單卡片、明細面板、流程列收斂 */
 .more-actions-menu {
   position: relative;
   z-index: 5;
@@ -2885,7 +2885,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   }
 }
 
-/* v19.5.7 ?∟頃?銝?雿??渡?嚗?蜓???憭?雿??其?韏?*/
+/* v19.5.7 採購頁右上操作區整理：避免主按鈕與更多操作擠在一起 */
 .base-layout-topbar-tabs .records-header {
   overflow: visible;
 }
@@ -2928,7 +2928,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   white-space: nowrap;
 }
 .collection-record-actions .more-actions-menu summary::after {
-  content: '??;
+  content: '⌄';
   font-size: 13px;
   line-height: 1;
   opacity: .72;
@@ -2959,7 +2959,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   }
 }
 
-/* v19.6 FlowDesk ?芣?憸冽嚗遙?蕭頩方?撠?蝞∠? */
+/* v19.6 FlowDesk 自有風格：任務追蹤與專案管理 */
 .flow-toolbar {
   display: flex;
   justify-content: space-between;
@@ -3150,7 +3150,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   .flow-toolbar-actions button { flex: 1; }
 }
 
-/* v19.6.1 ?唳芋蝯???隞餃?餈質馱 / 撠?蝞∠? / ???*/
+/* v19.6.1 新模組收斂優化：任務追蹤 / 專案管理 / 甘特圖 */
 .flowdesk-module-shell {
   display: grid;
   gap: 14px;
@@ -3508,7 +3508,7 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   }
 }
 
-/* v19.6.2 靽格迤嚗??孵?瘥?獢蝡??遘 + ?撌乩?瘚?*/
+/* v19.6.2 修正：甘特圖每個專案獨立時間軸 + 關聯工作流 */
 .gantt-panel-v3 {
   overflow: visible;
 }
@@ -3663,13 +3663,13 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
   white-space: nowrap;
 }
 .gantt-project-card-compact.collapsed .gantt-click-hint::before {
-  content: '??;
+  content: '›';
   margin-right: 6px;
   font-size: 15px;
   line-height: 1;
 }
 .gantt-project-card-compact.expanded .gantt-click-hint::before {
-  content: '??;
+  content: '⌄';
   margin-right: 6px;
   font-size: 15px;
   line-height: 1;
@@ -3694,8 +3694,8 @@ html[data-flowdesk-icon-style="minimal"] .icon-option {
 .gantt-card-meta-compact { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 320px; }
 .gantt-mini-count { display: inline-flex; align-items: center; border-radius: 999px; background: rgba(248,250,252,.95); color: #64748b; font-size: 12px; font-weight: 900; padding: 7px 10px; }
 .gantt-click-hint { display: inline-flex; align-items: center; border-radius: 999px; background: rgba(224,242,254,.72); color: #0369a1; font-size: 12px; font-weight: 900; padding: 7px 11px; white-space: nowrap; }
-.gantt-project-card-compact.collapsed .gantt-click-hint::before { content: '??; margin-right: 6px; font-size: 15px; line-height: 1; }
-.gantt-project-card-compact.expanded .gantt-click-hint::before { content: '??; margin-right: 6px; font-size: 15px; line-height: 1; }
+.gantt-project-card-compact.collapsed .gantt-click-hint::before { content: '›'; margin-right: 6px; font-size: 15px; line-height: 1; }
+.gantt-project-card-compact.expanded .gantt-click-hint::before { content: '⌄'; margin-right: 6px; font-size: 15px; line-height: 1; }
 .gantt-project-card-compact.pinned .gantt-click-hint { background: rgba(220,252,231,.82); color: #15803d; }
 .gantt-project-card-compact.previewing:not(.pinned) .gantt-click-hint { background: rgba(254,249,195,.86); color: #a16207; }
 .gantt-compact-summary { margin-top: 8px; padding: 9px 11px; border-radius: 15px; background: rgba(248,250,252,.95); color: #64748b; font-size: 12px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -6912,7 +6912,7 @@ button {
    It targets the current project page visual structure directly.
 */
 @media (max-width: 1600px) {
-  /* 撠?蝞∠???靽?璅??絞閮?獢??殷??梯?敺??敦 / ??批捆 */
+  /* 專案管理頁：保留標題、統計、專案清單，隱藏後續明細 / 甘特內容 */
   .project-workspace > section:nth-of-type(n+4),
   .project-responsive > section:nth-of-type(n+4),
   .project-reflow > section:nth-of-type(n+4),
@@ -6924,7 +6924,7 @@ button {
     display: none !important;
   }
 
-  /* ?亥????敦?? div / aside嚗?亙????寡??敦? */
+  /* 若舊版把明細做成 div / aside，直接壓掉甘特與明細區 */
   .project-workspace .gantt-panel-v2,
   .project-workspace .gantt-panel-v3,
   .project-workspace .project-detail-panel,
@@ -6940,7 +6940,7 @@ button {
     display: none !important;
   }
 
-  /* ?芰?銝?獢??桀捆?剁?銝??? layout ???椰?單?銝??琿? */
+  /* 只留下專案清單容器，不讓舊版 layout 再排成左右或上下長頁 */
   .project-workspace .project-layout-v2,
   .project-workspace .project-layout-v3 {
     display: block !important;
@@ -6968,7 +6968,7 @@ button {
     background: rgba(248,250,252,.88) !important;
   }
 
-  /* 撠??∠???寞?皜 / ?∠?蝬脫嚗???銝?敦 */
+  /* 專案卡片區改成清單 / 卡片網格，不再往下接明細 */
   .project-workspace .project-list-card,
   .project-workspace .project-list-card-v2 {
     min-height: auto !important;
@@ -7629,7 +7629,7 @@ button {
 /* FLOWDESK_PROJECT_COMPACT_CLEAN_RESET_START */
 /* Project compact list clean reset: remove blank panel and force horizontal readable rows */
 @media (max-width: 1600px) {
-  /* 銝餌?Ｗ??獢??殷????/ ?敦?典??Ｗ??韏?*/
+  /* 主畫面只留專案清單；甘特圖 / 明細在小螢幕先收起 */
   .project-workspace > section:nth-of-type(n+4),
   .project-responsive > section:nth-of-type(n+4),
   .project-reflow > section:nth-of-type(n+4),
@@ -7663,7 +7663,7 @@ button {
     min-width: 0 !important;
   }
 
-  /* 撠?皜摰孵嚗?甈遛??銝?靽?撌血蝛箇 */
+  /* 專案清單容器：一欄滿版，不再保留左側空白 */
   .project-workspace .project-list-panel,
   .project-workspace .project-list-panel-v2 {
     counter-reset: flow-project-row;
@@ -7683,7 +7683,7 @@ button {
     box-shadow: 0 18px 42px rgba(44,65,110,.07) !important;
   }
 
-  /* ?撌血??獢??柴嚗??璅???*/
+  /* 原本左側的「專案清單」卡，改成薄標題列 */
   .project-workspace .project-list-head {
     grid-column: 1 !important;
     grid-row: auto !important;
@@ -7725,10 +7725,10 @@ button {
     font-weight: 850 !important;
   }
 
-  /* 銵券 */
+  /* 表頭 */
   .project-workspace .project-list-panel::before,
   .project-workspace .project-list-panel-v2::before {
-    content: '撠??迂 / ???   ?交?    ?脣漲';
+    content: '專案名稱 / 狀態    日期    進度';
     display: grid !important;
     grid-template-columns: minmax(360px, 1fr) 220px 230px !important;
     gap: 14px !important;
@@ -7743,7 +7743,7 @@ button {
     white-space: pre !important;
   }
 
-  /* 撠???*/
+  /* 專案列 */
   .project-workspace .project-list-panel-v2 > .project-list-card,
   .project-workspace .project-list-panel-v2 > .project-list-card-v2,
   .project-workspace .project-list-panel > .project-list-card,
@@ -7804,7 +7804,7 @@ button {
     box-shadow: 0 14px 32px rgba(44,65,110,.06) !important;
   }
 
-  /* 撘瑕???摮敺拇帖???踹??湔 */
+  /* 強制所有文字恢復橫向，避免直書 */
   .project-workspace .project-list-card,
   .project-workspace .project-list-card-v2,
   .project-workspace .project-list-card *,
@@ -7816,7 +7816,7 @@ button {
     overflow-wrap: anywhere !important;
   }
 
-  /* 撌血鞈??嚗?憿?+ ???+ ?挾鞎痊 */
+  /* 左側資訊區：標題 + 狀態 + 階段負責 */
   .project-workspace .project-card-title,
   .project-workspace .project-list-card-v2 .project-card-title {
     grid-area: info !important;
@@ -7857,7 +7857,7 @@ button {
     font-weight: 850 !important;
   }
 
-  /* ?交?? */
+  /* 日期區 */
   .project-workspace .project-card-dates {
     grid-area: dates !important;
     display: flex !important;
@@ -7881,7 +7881,7 @@ button {
     font-weight: 850 !important;
   }
 
-  /* ?脣漲? */
+  /* 進度區 */
   .project-workspace .task-progress-row {
     grid-area: progress !important;
     display: grid !important;
@@ -7964,7 +7964,7 @@ button {
   }
 }
 
-/* 敶?璅??鋆?嚗???DOM bridge 雿輻 */
+/* 彈窗樣式補回，保留 DOM bridge 使用 */
 .project-final-modal-backdrop-dom {
   position: fixed !important;
   inset: 0 !important;
@@ -8077,7 +8077,7 @@ button {
 /* FLOWDESK_PROJECT_COMPACT_CLEAN_RESET_END */
 
 /* FLOWDESK_PROJECT_COMPACT_FULL_WIDTH_FIX_START */
-/* 撠?蝞∠?撠撟?撘瑕?格?皛輻?皜嚗?? grid ????啣??*/
+/* 專案管理小螢幕：強制單欄滿版清單，避免舊 grid 把卡片擠到右側 */
 @media (max-width: 1600px) {
   .project-workspace .project-list-panel,
   .project-workspace .project-list-panel-v2 {
@@ -8131,7 +8131,7 @@ button {
   .project-workspace .project-list-panel-v2::before {
     grid-column: 1 / -1 !important;
     grid-row: auto !important;
-    content: '撠??迂 / ???   ?交?    ?脣漲' !important;
+    content: '專案名稱 / 狀態    日期    進度' !important;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) 220px 230px !important;
     gap: 14px !important;
@@ -8345,7 +8345,7 @@ button {
 
 
 /* FLOWDESK_PROJECT_VIEW_MODAL_INTEGRATED_START */
-/* 撠?蝞∠?嚗?????+ ?芸葆敶??游?璅?? */
+/* 專案管理：視圖切換 + 自帶彈窗整合樣式 */
 @media (max-width: 1600px) {
   .flow-project-view-switcher-active .project-list-panel,
   .flow-project-view-switcher-active .project-list-panel-v2 {
@@ -8635,7 +8635,7 @@ button {
 
 
 /* FLOWDESK_PROJECT_DESKTOP_RESTORE_GUARD_START */
-/* 靽桀儔靽嚗?獢恣??銝??箇撌乩??閬??辣 */
+/* 修復保險：專案管理頁不應出現工作看板視圖元件 */
 .project-workspace .flow-desk-view-shell,
 .project-responsive .flow-desk-view-shell,
 .project-reflow .flow-desk-view-shell,
@@ -8646,7 +8646,7 @@ button {
   display: none !important;
 }
 
-/* 憭扯撟?獢恣?敺拙??祆?璈?撅嚗?鋡怠??Ｗ?閬?閬? */
+/* 大螢幕專案管理恢復原本桌機布局，不被小螢幕視圖覆蓋 */
 @media (min-width: 1601px) {
   .project-workspace.flow-project-view-switcher-active .project-list-panel,
   .project-workspace.flow-project-view-switcher-active .project-list-panel-v2,
@@ -8682,7 +8682,7 @@ button {
 
 
 /* FLOWDESK_LEFT_NAV_PANEL_SYNC_FINAL_START */
-/* 撌血????嗅??芰??內嚗????湧?選?銝餌?Ｗ?甇?*/
+/* 左側功能列：收合只留圖示，展開完整面板，主畫面同步 */
 @media (min-width: 761px) {
   :root {
     --flow-left-nav-width: 92px;
@@ -8755,7 +8755,7 @@ button {
     content: none !important;
   }
 
-  /* 銝餌?Ｚ??椰?游??賢?撖砍漲?郊 */
+  /* 主畫面跟著左側功能列寬度同步 */
   body:not(.flow-left-nav-expanded) .product-shell,
   body:not(.flow-left-nav-expanded) .product-shell.sidebar-open,
   body:not(.flow-left-nav-expanded) .product-shell.has-context,
@@ -8780,7 +8780,7 @@ button {
     transition: padding-left .18s ease !important;
   }
 
-  /* ?嗅????芰?瘥?桀椰?游?蝷綽??迂摰?嗡嗾瘛剁?銝??脣 */
+  /* 收合時：只留每個選單左側圖示，名稱完全收乾淨，不半露出 */
   body:not(.flow-left-nav-expanded) .flow-left-nav-panel a,
   body:not(.flow-left-nav-expanded) .flow-left-nav-panel button,
   body:not(.flow-left-nav-expanded) .workspace-sidebar a,
@@ -8827,7 +8827,7 @@ button {
     overflow: hidden !important;
   }
 
-  /* ?嗅???梯?蝚?2 ?誑敺???蝭暺捆?剁?靽?蝚砌???蝷?*/
+  /* 收合時只隱藏第 2 個以後的文字節點容器，保留第一個圖示 */
   body:not(.flow-left-nav-expanded) .flow-left-nav-panel a > :not(:first-child),
   body:not(.flow-left-nav-expanded) .flow-left-nav-panel button > :not(:first-child),
   body:not(.flow-left-nav-expanded) .workspace-sidebar a > :not(:first-child),
@@ -8907,7 +8907,7 @@ button {
 
 @media (max-width: 760px) {
   body.flow-left-nav-expanded {
-    /* ????憟撌血撅? */
+    /* 手機版不套用左側展開 */
   }
 
   .flow-left-nav-hover-zone {
@@ -8928,7 +8928,7 @@ button {
 /* FLOWDESK_LEFT_NAV_PANEL_SYNC_FINAL_END */
 
 /* FLOWDESK_LEFT_NAV_NATURAL_COLLAPSE_START */
-/* 撌血????嗅???芰??銝??祇? display:none */
+/* 左側功能列：收合動畫自然化，不再瞬間 display:none */
 @media (min-width: 761px) {
   :root {
     --flow-left-nav-ease: cubic-bezier(.22, .61, .36, 1);
@@ -8983,7 +8983,7 @@ button {
       gap .2s var(--flow-left-nav-ease) !important;
   }
 
-  /* 閬??? display:none嚗???迂?寧瘛∪?祝摨行韏?*/
+  /* 覆蓋前版 display:none：收合時名稱改用淡出與寬度收起 */
   body:not(.flow-left-nav-expanded) .flow-left-nav-panel a > :not(:first-child),
   body:not(.flow-left-nav-expanded) .flow-left-nav-panel button > :not(:first-child),
   body:not(.flow-left-nav-expanded) .workspace-sidebar a > :not(:first-child),
@@ -9046,7 +9046,7 @@ button {
     pointer-events: auto !important;
   }
 
-  /* 撅???蝔望?銝暺?橘??嗅???瘛∪?葬甈??絲靘?頛? */
+  /* 展開時名稱晚一點出現，收合時先淡出再縮欄，看起來比較順 */
   body.flow-left-nav-expanded .flow-left-nav-panel,
   body.flow-left-nav-expanded .workspace-sidebar,
   body.flow-left-nav-expanded .app-sidebar,
@@ -9074,7 +9074,7 @@ button {
 
 
 /* FLOWDESK_LEFT_NAV_SCROLLBAR_FORCE_HIDE_START */
-/* 撌血???撘瑕?梯??祇??撅文捆?冽頠賂?雿??皛曉? */
+/* 左側功能列：強制隱藏本體與內層容器捲軸，但保留可滾動 */
 @media (max-width: 1600px) {
   .flow-left-nav-force-hide-scroll,
   .flow-left-nav-force-hide-scroll *,
@@ -9167,7 +9167,7 @@ button {
     border: 0 !important;
   }
 
-  /* 撣貉??芾? ScrollArea / scrollbar ?辣銋???芷?摰撌血?? */
+  /* 常見自訂 ScrollArea / scrollbar 元件也隱藏，只限定在左側功能列內 */
   .flow-left-nav-force-hide-scroll [data-radix-scroll-area-scrollbar],
   .flow-left-nav-force-hide-scroll [data-radix-scroll-area-thumb],
   .flow-left-nav-force-hide-scroll .simplebar-track,
@@ -9212,9 +9212,9 @@ button {
 
 
 /* FLOWDESK_WORKBOARD_NATIVE_RESPONSIVE_START */
-/* 撌乩????撠撟??湛?銝憓??????芣????JSX ?恍 */
+/* 工作看板原生小螢幕重整：不新增外掛視圖，只整理原本 JSX 畫面 */
 
-/* ?箇?嚗極雿??踹捆?冽遛???獢??喳蝛箇 */
+/* 基礎：工作看板容器滿版、避免小桌機右側空白 */
 .flow-workboard-native,
 .workboard-page,
 .work-board-page,
@@ -9243,7 +9243,7 @@ button {
 }
 
 @media (max-width: 1600px) {
-  /* 撌乩??銝餃摰嫣?閬◤?箏??憭批祝摨血雿?*/
+  /* 工作看板主內容不要被固定最大寬度卡住 */
   .flow-workboard-native,
   .workboard-page,
   .work-board-page,
@@ -9259,7 +9259,7 @@ button {
     min-width: 0 !important;
   }
 
-  /* 撠?璈?撣貉?撌血撣??寞??舐葬?橘?銝?霈甈??恍?? */
+  /* 小桌機：常見左右布局改成可縮放，不再讓右欄把畫面撐爆 */
   .flow-workboard-native [class*='layout'],
   .flow-workboard-native [class*='Layout'],
   .flow-workboard-native [class*='grid'],
@@ -9296,7 +9296,7 @@ button {
     min-width: 0 !important;
   }
 
-  /* ? / ?∠?摰孵嚗?‵皛選?銝?銝剖撌血 */
+  /* 看板 / 卡片容器：自動填滿，不集中在左側 */
   .flow-workboard-native [class*='kanban'],
   .flow-workboard-native [class*='Kanban'],
   .flow-workboard-native [class*='board'],
@@ -9334,7 +9334,7 @@ button {
     min-width: 0 !important;
   }
 
-  /* ?亙??祆?甈?嚗?甈??芸?憛急遛?舐撖砍漲 */
+  /* 若原本是看板欄位，讓欄位自動填滿可用寬度 */
   .flow-workboard-native [class*='kanban'],
   .flow-workboard-native [class*='Kanban'],
   .workboard-page [class*='kanban'],
@@ -9357,7 +9357,7 @@ button {
     align-items: start !important;
   }
 
-  /* 撌乩???∠? / row嚗?◤憯?蝒? */
+  /* 工作項目卡片 / row：避免被壓成窄欄 */
   .flow-workboard-native [class*='card'],
   .flow-workboard-native [class*='Card'],
   .flow-workboard-native [class*='row'],
@@ -9410,7 +9410,7 @@ button {
     min-width: 0 !important;
   }
 
-  /* 銵冽摰孵嚗璈怠??脣?雿?憯? */
+  /* 表格容器：可橫向捲動但不壓版 */
   .flow-workboard-native table,
   .workboard-page table,
   .work-board-page table,
@@ -9434,7 +9434,7 @@ button {
 }
 
 @media (max-width: 1180px) {
-  /* 撠?璈?撌血甈??格?嚗?湧?閬賭?閬′憛?喲? */
+  /* 小桌機：左右欄轉單欄，右側預覽不要硬塞在右邊 */
   .flow-workboard-native [class*='layout'],
   .flow-workboard-native [class*='Layout'],
   .workboard-page [class*='layout'],
@@ -9525,7 +9525,7 @@ button {
 /* FLOWDESK_WORKBOARD_NATIVE_RESPONSIVE_END */
 
 /* FLOWDESK_WORKBOARD_SMALL_DESKTOP_STYLE_START */
-/* 撌乩??撠?璈?皛輻?????閬?靽格迤 */
+/* 工作看板小桌機：滿版與目前選取摘要條修正 */
 @media (max-width: 1600px) {
   .flow-workboard-small-desktop-root {
     width: 100% !important;
@@ -9542,7 +9542,7 @@ button {
     box-sizing: border-box !important;
   }
 
-  /* 銝?桀??詨???璇?銝? fixed / sticky 憯?璅? */
+  /* 上方目前選取摘要條：不要 fixed / sticky 壓住標題 */
   .flow-workboard-current-strip {
     position: static !important;
     top: auto !important;
@@ -9555,14 +9555,14 @@ button {
     z-index: 1 !important;
   }
 
-  /* 憒????sticky 憿?????嚗?銝韏瑕??迤撣豢? */
+  /* 如果原本有 sticky 類型的目前選取列，也一起壓回正常流 */
   .flow-workboard-small-desktop-root [class*='sticky'],
   .flow-workboard-small-desktop-root [class*='Sticky'] {
     position: static !important;
     top: auto !important;
   }
 
-  /* 撌乩??銝餌??ｇ?撠?璈撠?皛踹?典祝摨佗?銝??芯?撌血? */
+  /* 工作看板主版面：小桌機至少吃滿可用寬度，不要只佔左半 */
   .flow-workboard-small-desktop-root [class*='layout'],
   .flow-workboard-small-desktop-root [class*='Layout'],
   .flow-workboard-small-desktop-root [class*='grid'],
@@ -9576,7 +9576,7 @@ button {
     min-width: 0 !important;
   }
 
-  /* ?璅∪?甈?憛急遛嚗??渡征??*/
+  /* 看板模式欄位填滿：避免右側空白 */
   .flow-workboard-small-desktop-root [class*='kanban'],
   .flow-workboard-small-desktop-root [class*='Kanban'] {
     display: grid !important;
@@ -9585,7 +9585,7 @@ button {
     align-items: start !important;
   }
 
-  /* 甈????閬◤?箏??憭批祝摨?*/
+  /* 欄位與卡片不要被固定最大寬度 */
   .flow-workboard-small-desktop-root [class*='column'],
   .flow-workboard-small-desktop-root [class*='Column'],
   .flow-workboard-small-desktop-root [class*='lane'],
@@ -9598,7 +9598,7 @@ button {
     min-width: 0 !important;
   }
 
-  /* 銵冽璅∪?皛輻? */
+  /* 表格模式滿版 */
   .flow-workboard-small-desktop-root table,
   .flow-workboard-small-desktop-root [class*='table'],
   .flow-workboard-small-desktop-root [class*='Table'] {
@@ -9638,7 +9638,7 @@ button {
 /* FLOWDESK_WORKBOARD_SMALL_DESKTOP_STYLE_END */
 
 /* FLOWDESK_WORKBOARD_OUTER_WIDTH_STYLE_START */
-/* 撌乩??嚗?撅日??Ｗ祝摨行?皛選?靽格迤?喳憭抒?蝛箇 */
+/* 工作看板：外層頁面寬度拉滿，修正右側大片空白 */
 @media (max-width: 1600px) {
   .flow-workboard-outer-main,
   .flow-workboard-outer-page,
@@ -9651,7 +9651,7 @@ button {
     box-sizing: border-box !important;
   }
 
-  /* 閫??撣貉?蝵桐葉摰孵? */
+  /* 解掉常見置中容器限制 */
   .flow-workboard-outer-main > *,
   .flow-workboard-outer-page > *,
   .flow-workboard-outer-stretch > * {
@@ -9660,7 +9660,7 @@ button {
     box-sizing: border-box !important;
   }
 
-  /* 憒?憭惜雿輻 grid / flex嚗Ⅱ靽摰寞?雿??臬摰祝摨?*/
+  /* 如果外層使用 grid / flex，確保內容欄位不是固定寬度 */
   .flow-workboard-outer-main,
   .flow-workboard-outer-page,
   .flow-workboard-outer-stretch {
@@ -9672,7 +9672,7 @@ button {
     display: block !important;
   }
 
-  /* 霈極雿??蹂蜓閬摰寡撠?皛輯?蝒?典祝摨佗????撌血蝒????券?頝?*/
+  /* 讓工作看板主要內容至少佔滿視窗可用寬度，扣掉左側窄欄與安全間距 */
   .flow-workboard-outer-page {
     width: calc(100vw - 130px) !important;
     max-width: calc(100vw - 130px) !important;
@@ -9683,14 +9683,14 @@ button {
     max-width: calc(100vw - 260px) !important;
   }
 
-  /* 撌乩??璅???/ tab ??/ ??憛頝?皛輻? */
+  /* 工作看板標題卡 / tab 卡 / 看板區塊都跟著滿版 */
   .flow-workboard-outer-page section,
   .flow-workboard-outer-page article,
   .flow-workboard-outer-page div {
     max-width: none !important;
   }
 
-  /* ?甈?憛急遛嚗??葉?典椰??*/
+  /* 看板欄位填滿，不集中在左側 */
   .flow-workboard-outer-page [class*='kanban'],
   .flow-workboard-outer-page [class*='Kanban'],
   .flow-workboard-outer-page [class*='board'],
@@ -9710,7 +9710,7 @@ button {
     align-items: start !important;
   }
 
-  /* ?桀??詨???璇?閬?雿?憿?*/
+  /* 目前選取摘要條不要壓住標題 */
   .flow-workboard-current-strip {
     position: static !important;
     top: auto !important;
@@ -9916,7 +9916,7 @@ button {
   }
 }
 
-/* v19.6.8 撌乩???舐楊頛航?撘?*/
+/* v19.6.8 工作看板可編輯補強 */
 .editable-context-panel {
   display: flex;
   flex-direction: column;
@@ -10098,7 +10098,7 @@ button {
 }
 
 
-/* v19.7.3 ?詨???鋆撥 */
+/* v19.7.3 核心操作補強 */
 .detail-block-headline {
   display: flex;
   align-items: center;
@@ -10192,7 +10192,7 @@ button {
 }
 
 
-/* v19.7.4 ?∟頃蝞∠?撖行鋆撥嚗???∟頃璅∠? */
+/* v19.7.4 採購管理實戰補強：只針對採購模組 */
 .purchase-v1974-status-row {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
@@ -10338,7 +10338,7 @@ button {
 }
 
 
-/* v19.7.5 鞈??遢銝剖? */
+/* v19.7.5 資料備份中心 */
 .data-backup-panel {
   display: grid;
   gap: 18px;
@@ -10423,7 +10423,7 @@ button {
 }
 
 
-/* FlowDesk v19.8.0 憭抒??游?嚗敹?雿?銵刻?蝭拚 */
+/* FlowDesk v19.8.0 大版整合：核心操作儀表與篩選 */
 .board-page-v198 .board-control-center {
   display: grid;
   gap: 14px;
@@ -10588,7 +10588,7 @@ button {
   }
 }
 
-/* v19.8.1 ?梯”??憭抒? */
+/* v19.8.1 報表分析大版 */
 .insight-ops-layout {
   gap: 18px;
 }
@@ -10809,7 +10809,7 @@ button {
   }
 }
 
-/* v19.8.2 擐??脩垢?唳???*/
+/* v19.8.2 首頁雲端戰情板 */
 .home-cloud-dashboard { align-items: start; }
 .home-command-center { background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(239,246,255,.92)); border: 1px solid rgba(53,107,255,.12); box-shadow: 0 18px 45px rgba(38,63,120,.10); }
 .home-hero-metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -10842,7 +10842,7 @@ button {
 @media (max-width: 980px) { .home-hero-metrics-grid, .home-project-summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 @media (max-width: 620px) { .home-cloud-kpis, .home-hero-metrics-grid, .home-project-summary { grid-template-columns: 1fr; } .home-priority-row { grid-template-columns: 1fr; } .home-project-list button { align-items: flex-start; flex-direction: column; } }
 
-/* v19.8.3 擐?????銵冽捱蝑?閬?*/
+/* v19.8.3 首頁營運指揮與報表決策摘要 */
 .home-executive-briefing {
   border: 1px solid rgba(53, 107, 255, .14);
   background: linear-gradient(145deg, rgba(255,255,255,.98), rgba(240,246,255,.94));
@@ -11224,7 +11224,7 @@ button {
 }
 
 
-/* v19.9.2 撠”鋆?嚗鞈潭風蝔??遘 / ??? / ?郊???*/
+/* v19.9.2 對表補齊：採購歷程時間軸 / 提醒關聯 / 同步狀態 */
 .purchase-history-timeline {
   margin-top: 14px;
   padding: 14px;
@@ -11362,7 +11362,7 @@ button {
 }
 
 
-/* FlowDesk v20.0.3 ?∟頃?嗅偏嚗??桅???喳?敦?郊?內 */
+/* FlowDesk v20.0.3 採購收尾：清單選取與右側明細同步提示 */
 .purchase-selection-status {
   display: flex;
   align-items: center;
@@ -11424,9 +11424,9 @@ button {
 }
 
 
-/* FlowDesk v20.0.4嚗?斤Ⅱ隤??∟頃蝺刻摩?脣?靽格迤 */
+/* FlowDesk v20.0.4：刪除確認與採購編輯儲存修正 */
 
-/* FlowDesk v20.1.0 ??嗆???*/
+/* FlowDesk v20.1.0 功能收斂版 */
 .module-purpose-line {
   margin-top: 8px;
   display: inline-flex;
@@ -12502,7 +12502,7 @@ button {
 }
 
 .project-board-card-v2016.gantt-open .project-inline-gantt::before {
-  content: '?游????Ｘ';
+  content: '整列時程面板';
   display: inline-flex;
   margin: 0 0 8px;
   padding: 4px 10px;
@@ -12556,7 +12556,7 @@ button {
 }
 
 
-/* v20.1.8 撠???摰?閬賢?嚗?????? hover ?? */
+/* v20.1.8 專案甘特圖固定預覽區：避免卡片展開出界與 hover 閃爍 */
 .project-gantt-focus-panel {
   margin: 18px 0 20px;
   border: 1px solid rgba(124, 151, 255, 0.22);
@@ -14511,7 +14511,7 @@ button {
 }
 
 .fd203-gantt-row.subtask .fd203-gantt-label.subtask::before {
-  content: '??;
+  content: '↳';
   position: absolute;
   left: 14px;
   top: 18px;
@@ -15578,7 +15578,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.31 theme suite enhancement start */
+/* FlowDesk v20.3.30 theme suite enhancement start */
 :root {
   --fd30-primary-rgb: 53, 107, 255;
   --fd30-secondary-rgb: 140, 77, 255;
@@ -15607,7 +15607,7 @@ html[data-flowdesk-theme="slate"] { --fd30-primary-rgb: 71, 85, 105; --fd30-seco
 .theme-option { position: relative; min-height: 138px; align-items: flex-start !important; text-align: left !important; overflow: hidden; border-color: rgba(148, 163, 184, .18) !important; background: radial-gradient(circle at top right, rgba(var(--fd30-primary-rgb), .07), transparent 34%), rgba(255,255,255,.9) !important; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease; }
 .theme-option:hover { transform: translateY(-2px); border-color: var(--fd30-theme-line) !important; box-shadow: 0 18px 42px rgba(var(--fd30-primary-rgb), .13) !important; }
 .theme-option.active { border-color: rgba(var(--fd30-primary-rgb), .48) !important; background: linear-gradient(180deg, rgba(255,255,255,.97), rgba(255,255,255,.88)), var(--fd30-theme-gradient-soft) !important; box-shadow: 0 22px 48px rgba(var(--fd30-primary-rgb), .18) !important; }
-.theme-option.active::after { content: '?桀?憟'; position: absolute; top: 12px; right: 12px; padding: 5px 9px; border-radius: 999px; color: var(--theme-primary-strong); background: rgba(var(--fd30-primary-rgb), .1); border: 1px solid rgba(var(--fd30-primary-rgb), .18); font-size: 11px; font-weight: 950; }
+.theme-option.active::after { content: '目前套用'; position: absolute; top: 12px; right: 12px; padding: 5px 9px; border-radius: 999px; color: var(--theme-primary-strong); background: rgba(var(--fd30-primary-rgb), .1); border: 1px solid rgba(var(--fd30-primary-rgb), .18); font-size: 11px; font-weight: 950; }
 .theme-option strong { color: #1e293b; }
 .theme-option small { color: #64748b; line-height: 1.45; }
 .theme-option em { margin-top: auto; display: inline-flex; align-items: center; min-height: 24px; padding: 4px 9px; border-radius: 999px; background: rgba(var(--fd30-primary-rgb), .08); color: var(--theme-primary-strong); border: 1px solid rgba(var(--fd30-primary-rgb), .16); font-size: 11px; font-style: normal; font-weight: 950; }
@@ -15634,5 +15634,4 @@ html[data-flowdesk-theme="slate"] { --fd30-primary-rgb: 71, 85, 105; --fd30-seco
 input:focus, select:focus, textarea:focus, button:focus-visible, [tabindex]:focus-visible { outline: 3px solid rgba(var(--fd30-primary-rgb), .18) !important; outline-offset: 2px; border-color: rgba(var(--fd30-primary-rgb), .38) !important; }
 .surface-toolbar, .settings-hero, .fd203-pane-head, .fd203-workspace-head { border-color: rgba(var(--fd30-primary-rgb), .12) !important; }
 @media (max-width: 760px) { .fd30-theme-toolbar { grid-template-columns: 1fr; } .fd30-reset-theme-btn { width: 100%; justify-content: center; } .theme-option { min-height: 128px; } }
-/* FlowDesk v20.3.31 theme suite enhancement end */
-
+/* FlowDesk v20.3.30 theme suite enhancement end */
