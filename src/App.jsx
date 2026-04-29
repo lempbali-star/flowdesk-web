@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.8'
+const FLOWDESK_APP_VERSION = '20.3.10'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 
 function ChineseTextField({ value = '', onCommit, multiline = false, commitOnBlur = false, ...props }) {
@@ -2893,9 +2893,22 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function addProjectTask(projectId) {
     const project = normalizeProject(projects.find((item) => item.id === projectId))
     if (!project?.id) return
-    const tasks = [...project.tasks, { id: stableId('task'), name: '新增任務', owner: project.owner || 'Kyle', start: project.startDate, end: project.endDate, progress: 0, tone: 'blue', subtasks: [] }]
+    const taskStart = project.startDate
+    const taskEnd = minIsoDate(addDaysToDateValue(taskStart, 6), project.endDate)
+    const tasks = [
+      ...project.tasks,
+      {
+        id: stableId('task'),
+        name: `新增任務 ${project.tasks.length + 1}`,
+        owner: project.owner || 'Kyle',
+        start: taskStart,
+        end: maxIsoDate(taskEnd, taskStart),
+        progress: 0,
+        tone: 'blue',
+        subtasks: [],
+      },
+    ]
     updateProject(projectId, { tasks }, '新增專案任務。')
-    setDetailTab('tasks')
   }
 
   function removeProjectTask(projectId, taskIndex) {
@@ -2935,14 +2948,27 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     if (!project?.id) return
     const tasks = project.tasks.map((task, index) => {
       if (index !== taskIndex) return task
+      const taskStart = task.start || project.startDate
+      const taskEnd = task.end || project.endDate
+      const subtaskStart = taskStart
+      const subtaskEnd = minIsoDate(addDaysToDateValue(subtaskStart, 2), taskEnd)
+      const nextSubtaskCount = (task.subtasks || []).length + 1
       const subtasks = [
         ...(task.subtasks || []),
-        { id: stableId('subtask'), name: '新增子任務', owner: task.owner || project.owner || 'Kyle', start: task.start || project.startDate, end: task.end || project.endDate, progress: 0, tone: 'cyan' },
+        {
+          id: stableId('subtask'),
+          name: `新增子任務 ${nextSubtaskCount}`,
+          owner: task.owner || project.owner || 'Kyle',
+          start: subtaskStart,
+          end: maxIsoDate(subtaskEnd, subtaskStart),
+          progress: 0,
+          tone: 'cyan',
+        },
       ]
       return { ...task, subtasks }
     })
+    setGanttShowSubtasks(true)
     updateProject(projectId, { tasks }, '新增子任務。')
-    setDetailTab('tasks')
   }
 
   function removeProjectSubtask(projectId, taskIndex, subtaskIndex) {
@@ -3397,6 +3423,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <Badge value={project.phase || '未分階段'} />
           </div>
           <p>{project.next || '尚未設定下一步'}</p>
+          <div className="fd203-project-card-kpis">
+            <span><b>{project.tasks?.length || 0}</b><small>任務</small></span>
+            <span><b>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0}</b><small>子任務</small></span>
+            <span><b>{project.milestones?.filter((item) => item.done).length || 0}/{project.milestones?.length || 0}</b><small>里程碑</small></span>
+          </div>
           <div className="fd203-project-card-meta">
             <span>{project.owner || '未指定'}</span>
             <span title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
@@ -3407,9 +3438,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <small>估 {estimated}%</small>
           </div>
           <div className="fd203-project-card-foot">
-            <span>{project.tasks?.length || 0} 任務</span>
-            <span>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</span>
-            <span>{projectListExpandAllGantt ? '下方已展開甘特圖' : '點擊開啟'}</span>
+            <span className="fd203-card-date-pill" title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
+            <span className="fd203-card-open-pill">{projectListExpandAllGantt ? '甘特圖已展開' : '開啟專案'}</span>
           </div>
         </article>
         {projectListExpandAllGantt ? <div className="fd203-inline-gantt-shell">{renderGantt(project, { embedded: true, compact: true })}</div> : null}
@@ -3789,7 +3819,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
 
           {projectViewMode === 'cards' ? (
-            <div className="fd203-project-card-list">
+            <div className={projectListExpandAllGantt ? 'fd203-project-card-list expanded-gantt' : 'fd203-project-card-list'}>
               {paginatedProjects.map(renderProjectCard)}
             </div>
           ) : (

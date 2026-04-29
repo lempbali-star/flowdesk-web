@@ -13085,10 +13085,16 @@ button {
 
 .fd203-project-card-list {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+  gap: 14px;
   max-height: calc(100vh - 360px);
   overflow: auto;
-  padding-right: 2px;
+  padding: 2px 4px 6px 2px;
+}
+
+.fd203-project-card-list.expanded-gantt {
+  grid-template-columns: 1fr;
 }
 
 .fd203-project-card {
@@ -13159,6 +13165,34 @@ button {
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
+}
+
+
+.fd203-project-card-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fd203-project-card-kpis span {
+  display: grid;
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: 16px;
+  background: rgba(241, 245, 249, 0.78);
+  border: 1px solid rgba(226, 232, 240, 0.86);
+}
+
+.fd203-project-card-kpis b {
+  color: #0f172a;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.fd203-project-card-kpis small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .fd203-project-card-meta,
@@ -14157,4 +14191,25 @@ button {
   .fd203-gantt-actions label {
     width: 100%;
   }
+}
+
+
+.fd203-card-date-pill {
+  flex: 1 1 auto;
+  text-align: left;
+}
+
+.fd203-card-open-pill {
+  color: #1d4ed8 !important;
+  background: rgba(37, 99, 235, 0.10) !important;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  font-weight: 900;
+}
+
+.fd203-project-card-list:not(.expanded-gantt) .fd203-project-entry {
+  min-width: 0;
+}
+
+.fd203-project-card-list:not(.expanded-gantt) .fd203-inline-gantt-shell {
+  grid-column: 1 / -1;
 }
