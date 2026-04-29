@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.23'
+const FLOWDESK_APP_VERSION = '20.3.24'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2933,15 +2933,18 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const end = task.end || project.endDate
     const progress = clampPercent(task.progress)
     const done = progress >= 100
+    const normalizedId = task.id || `${project.id || 'project'}-task-${index + 1}`
     return {
       ...task,
-      id: task.id || `${project.id || 'project'}-task-${index + 1}`,
+      id: normalizedId,
       name: task.name || '未命名任務',
       owner: task.owner || project.owner || 'Kyle',
       start: minIsoDate(start, end),
       end: maxIsoDate(end, start),
       progress,
       done,
+      completedAt: done ? (task.completedAt || task.end || todayDate()) : '',
+      dependsOnTaskId: task.dependsOnTaskId && task.dependsOnTaskId !== normalizedId ? task.dependsOnTaskId : '',
       manualProgress: Boolean(task.manualProgress),
       tone: task.tone || 'blue',
       subtasks: Array.isArray(task.subtasks) ? task.subtasks.map((subtask, subIndex) => normalizeSubtask(subtask, project, task, index, subIndex)) : [],
@@ -2964,6 +2967,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       end,
       progress,
       done,
+      completedAt: done ? (subtask.completedAt || subtask.end || todayDate()) : '',
       tone: subtask.tone || 'cyan',
     }
   }
@@ -3053,39 +3057,156 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return Math.round(values.reduce((sum, progress) => sum + progress, 0) / Math.max(values.length, 1))
   }
 
+  function taskDurationOffset(task = {}) {
+    const start = task.start || todayDate()
+    const end = task.end || start
+    return Math.max(0, Math.round((parseDate(end) - parseDate(start)) / 86400000))
+  }
+
+  function shiftTaskWithSubtasks(task = {}, nextStart) {
+    const previousStart = task.start || nextStart
+    const durationOffset = taskDurationOffset(task)
+    const deltaDays = Math.round((parseDate(nextStart) - parseDate(previousStart)) / 86400000)
+    const nextEnd = addDaysToDateValue(nextStart, durationOffset)
+    return {
+      ...task,
+      start: nextStart,
+      end: nextEnd,
+      subtasks: (task.subtasks || []).map((subtask) => {
+        const subStart = addDaysToDateValue(subtask.start || previousStart, deltaDays)
+        const subEnd = addDaysToDateValue(subtask.end || subtask.start || previousStart, deltaDays)
+        return {
+          ...subtask,
+          start: clampIsoDate(subStart, nextStart, nextEnd),
+          end: clampIsoDate(subEnd, subStart, nextEnd),
+        }
+      }),
+    }
+  }
+
+  function getTaskDependencyFinishDate(task = {}) {
+    const progress = clampPercent(task.progress)
+    const isDone = Boolean(task.done) || progress >= 100
+    if (isDone) return task.completedAt || task.end || todayDate()
+    return task.end || todayDate()
+  }
+
+  function hasProjectTaskDependencyCycle(tasks = [], taskId, dependencyId) {
+    if (!taskId || !dependencyId) return false
+    let cursor = dependencyId
+    const visited = new Set()
+    while (cursor) {
+      if (cursor === taskId) return true
+      if (visited.has(cursor)) return true
+      visited.add(cursor)
+      const current = tasks.find((task) => task.id === cursor)
+      cursor = current?.dependsOnTaskId || ''
+    }
+    return false
+  }
+
+  function resolveProjectTaskDependencies(project = {}) {
+    let changed = false
+    let tasks = (project.tasks || []).map((task) => ({ ...task, subtasks: (task.subtasks || []).map((subtask) => ({ ...subtask })) }))
+    for (let pass = 0; pass < Math.max(tasks.length * 2, 1); pass += 1) {
+      let passChanged = false
+      tasks = tasks.map((task) => {
+        if (!task.dependsOnTaskId) return task
+        const predecessor = tasks.find((item) => item.id === task.dependsOnTaskId)
+        if (!predecessor || predecessor.id === task.id || hasProjectTaskDependencyCycle(tasks, task.id, task.dependsOnTaskId)) {
+          changed = true
+          passChanged = true
+          return { ...task, dependsOnTaskId: '' }
+        }
+        const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
+        if ((task.start || project.startDate) >= nextStart) return task
+        changed = true
+        passChanged = true
+        return shiftTaskWithSubtasks(task, nextStart)
+      })
+      if (!passChanged) break
+    }
+    const allDates = [project.startDate, project.endDate]
+    tasks.forEach((task) => {
+      allDates.push(task.start, task.end)
+      ;(task.subtasks || []).forEach((subtask) => allDates.push(subtask.start, subtask.end))
+    })
+    const safeDates = allDates.filter(Boolean).sort()
+    const nextProject = {
+      ...project,
+      startDate: safeDates[0] && safeDates[0] < project.startDate ? safeDates[0] : project.startDate,
+      endDate: safeDates[safeDates.length - 1] && safeDates[safeDates.length - 1] > project.endDate ? safeDates[safeDates.length - 1] : project.endDate,
+      tasks,
+    }
+    return { project: nextProject, changed }
+  }
+
+  function getTaskDependencyMeta(project = {}, task = {}, taskIndex = 0) {
+    if (!task?.dependsOnTaskId) return { hasDependency: false }
+    const predecessor = (project.tasks || []).find((item) => item.id === task.dependsOnTaskId)
+    if (!predecessor) return { hasDependency: false }
+    const predecessorDone = Boolean(predecessor.done) || clampPercent(predecessor.progress) >= 100
+    const startAfter = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
+    return {
+      hasDependency: true,
+      predecessor,
+      predecessorName: predecessor.name || `任務 ${taskIndex + 1}`,
+      predecessorDone,
+      waiting: !predecessorDone,
+      startAfter,
+    }
+  }
+
+  function getAvailablePredecessorTasks(project = {}, taskIndex = 0) {
+    const tasks = project.tasks || []
+    const target = tasks[taskIndex]
+    if (!target) return []
+    return tasks.filter((task, index) => index !== taskIndex && !hasProjectTaskDependencyCycle(tasks, target.id, task.id))
+  }
+
   function updateProjectTask(projectId, taskIndex, patch, recordText) {
     const project = projects.find((item) => item.id === projectId)
     if (!project) return
     const safeProject = normalizeProject(project)
+    const targetTask = safeProject.tasks[taskIndex]
+    const safePatch = { ...patch }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'dependsOnTaskId')) {
+      const nextDependencyId = safePatch.dependsOnTaskId || ''
+      safePatch.dependsOnTaskId = nextDependencyId && targetTask && !hasProjectTaskDependencyCycle(safeProject.tasks, targetTask.id, nextDependencyId) ? nextDependencyId : ''
+    }
     const tasks = safeProject.tasks.map((task, index) => {
       if (index !== taskIndex) return task
-      const start = patch.start || task.start || safeProject.startDate
-      const end = patch.end || task.end || safeProject.endDate
-      const manualProgress = Object.prototype.hasOwnProperty.call(patch, 'manualProgress')
-        ? Boolean(patch.manualProgress)
-        : Object.prototype.hasOwnProperty.call(patch, 'progress')
+      const start = safePatch.start || task.start || safeProject.startDate
+      const end = safePatch.end || task.end || safeProject.endDate
+      const manualProgress = Object.prototype.hasOwnProperty.call(safePatch, 'manualProgress')
+        ? Boolean(safePatch.manualProgress)
+        : Object.prototype.hasOwnProperty.call(safePatch, 'progress')
           ? true
           : Boolean(task.manualProgress)
       const merged = {
         ...task,
-        ...patch,
+        ...safePatch,
         manualProgress,
         start: minIsoDate(start, end),
         end: maxIsoDate(end, start),
       }
-      const nextProgress = Object.prototype.hasOwnProperty.call(patch, 'progress')
-        ? clampPercent(patch.progress)
+      const nextProgress = Object.prototype.hasOwnProperty.call(safePatch, 'progress')
+        ? clampPercent(safePatch.progress)
         : manualProgress
           ? clampPercent(task.progress)
           : estimateTaskProgress(merged)
+      const nextDone = safePatch.done !== undefined ? Boolean(safePatch.done) : nextProgress >= 100
       return normalizeTask({
         ...merged,
         progress: nextProgress,
-        done: patch.done !== undefined ? patch.done : nextProgress >= 100,
+        done: nextDone,
+        completedAt: nextDone ? (safePatch.completedAt || task.completedAt || todayDate()) : '',
       }, safeProject, index)
     })
-    const nextProject = normalizeProject({ ...safeProject, tasks })
-    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, recordText)
+    const scheduled = resolveProjectTaskDependencies({ ...safeProject, tasks })
+    const nextProject = normalizeProject(scheduled.project)
+    const nextRecord = scheduled.changed ? `${recordText ? `${recordText}；` : ''}依前置任務自動重排後續任務。` : recordText
+    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, nextRecord)
   }
 
   function autoEstimateProjectTask(projectId, taskIndex) {
@@ -3117,8 +3238,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         subtasks: [],
       },
     ]
-    const nextProject = normalizeProject({ ...project, tasks })
-    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '新增專案任務。')
+    const scheduled = resolveProjectTaskDependencies({ ...project, tasks })
+    const nextProject = normalizeProject(scheduled.project)
+    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, scheduled.changed ? '新增專案任務；依前置任務自動重排。' : '新增專案任務。')
   }
 
   function removeProjectTask(projectId, taskIndex) {
@@ -3126,9 +3248,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     if (!project) return
     const target = (project.tasks || [])[taskIndex]
     if (!confirmDestructiveAction(target?.name || '專案任務')) return
-    const tasks = (project.tasks || []).filter((_, index) => index !== taskIndex)
-    const nextProject = normalizeProject({ ...project, tasks })
-    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '刪除專案任務。')
+    const removedTaskId = target?.id
+    const tasks = (project.tasks || [])
+      .filter((_, index) => index !== taskIndex)
+      .map((task) => task.dependsOnTaskId === removedTaskId ? { ...task, dependsOnTaskId: '' } : task)
+    const scheduled = resolveProjectTaskDependencies({ ...project, tasks })
+    const nextProject = normalizeProject(scheduled.project)
+    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, '刪除專案任務，並清除相關前置任務。')
   }
 
   function updateProjectSubtask(projectId, taskIndex, subtaskIndex, patch, recordText) {
@@ -3141,12 +3267,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         if (subIndex !== subtaskIndex) return subtask
         const start = patch.start || subtask.start || task.start || safeProject.startDate
         const end = patch.end || subtask.end || task.end || safeProject.endDate
+        const nextProgress = patch.progress === undefined ? clampPercent(subtask.progress) : clampPercent(patch.progress)
+        const nextDone = patch.done !== undefined ? Boolean(patch.done) : nextProgress >= 100
         return normalizeSubtask({
           ...subtask,
           ...patch,
           start: clampIsoDate(start, task.start || safeProject.startDate, task.end || safeProject.endDate),
           end: clampIsoDate(end, start, task.end || safeProject.endDate),
-          progress: patch.progress === undefined ? clampPercent(subtask.progress) : clampPercent(patch.progress),
+          progress: nextProgress,
+          done: nextDone,
+          completedAt: nextDone ? (patch.completedAt || subtask.completedAt || todayDate()) : '',
         }, safeProject, task, index, subIndex)
       })
       const nextTask = { ...task, subtasks }
@@ -3192,8 +3322,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       const taskKey = getGanttTaskToggleKey(project, targetTask, taskIndex)
       setGanttExpandedTasks((rows) => ({ ...rows, [taskKey]: true }))
     }
-    const nextProject = normalizeProject({ ...project, tasks })
-    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '新增子任務。')
+    const scheduled = resolveProjectTaskDependencies({ ...project, tasks })
+    const nextProject = normalizeProject(scheduled.project)
+    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, '新增子任務。')
   }
 
   function removeProjectSubtask(projectId, taskIndex, subtaskIndex) {
@@ -3208,8 +3339,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       const nextProgress = estimateTaskProgress(nextTask)
       return { ...nextTask, progress: nextProgress, done: nextProgress >= 100 }
     })
-    const nextProject = normalizeProject({ ...project, tasks })
-    updateProject(projectId, { tasks, progress: estimateProjectProgress(nextProject) }, '刪除子任務。')
+    const scheduled = resolveProjectTaskDependencies({ ...project, tasks })
+    const nextProject = normalizeProject(scheduled.project)
+    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, '刪除子任務。')
   }
 
   function getGanttTaskKey(project, task, index) {
@@ -3958,6 +4090,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const progress = clampPercent(task.progress)
             const taskKey = getGanttTaskKey(project, task, index)
             const subtaskCount = (task.subtasks || []).length
+            const dependencyMeta = getTaskDependencyMeta(project, task, index)
             const subtasksOpen = isGanttTaskSubtasksOpen(project, task, index)
             return (
               <div key={taskKey} className={`fd203-gantt-task-group ${subtaskCount ? 'has-subtasks' : 'no-subtasks'} ${subtasksOpen ? 'subtasks-open' : 'subtasks-collapsed'} ${task.done ? 'is-complete' : 'is-incomplete'}`}>
@@ -3989,6 +4122,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       </label>
                     </div>
                     <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
+                    {dependencyMeta.hasDependency ? <div className={`fd203-task-dependency-note ${dependencyMeta.waiting ? 'waiting' : 'ready'}`}>{dependencyMeta.waiting ? '等待前置' : '前置完成'}：{dependencyMeta.predecessorName}，最早 {formatMonthDay(dependencyMeta.startAfter)}</div> : null}
                     <div className="fd203-gantt-row-actions compact-v16">
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>＋子任務</button>
                       {subtaskCount ? <button type="button" className="fd203-mini-link soft" onClick={() => autoEstimateProjectTask(project.id, index)}>自動%</button> : null}
@@ -4160,11 +4294,17 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 return (
                   <div key={task.id || index} className="project-detail-card fd203-detail-card">
                     <div className="project-detail-card-head"><strong>{task.name || '未命名任務'}</strong><span title={dateRangeLabel(taskStart, taskEnd)}>{clampPercent(task.progress)}%</span></div>
+                    {getTaskDependencyMeta(project, task, index).hasDependency ? <div className={`fd203-task-dependency-note detail ${getTaskDependencyMeta(project, task, index).waiting ? 'waiting' : 'ready'}`}>{getTaskDependencyMeta(project, task, index).waiting ? '等待前置任務' : '前置任務已完成'}：{getTaskDependencyMeta(project, task, index).predecessorName}，最早開始 {formatMonthDayWeekday(getTaskDependencyMeta(project, task, index).startAfter)}</div> : null}
                     <div className="project-detail-form-grid">
                       <label>任務名稱<ChineseTextField commitOnBlur value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="任務名稱" /></label>
                       <label>負責人<ChineseTextField commitOnBlur value={task.owner || ''} onCommit={(value) => updateProjectTask(project.id, index, { owner: value })} aria-label="負責人" /></label>
                       <label>開始日<input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskStart} onChange={(event) => updateProjectTask(project.id, index, { start: event.target.value }, '更新任務開始日。')} aria-label="開始日" /></label>
                       <label>結束日<input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskEnd} onChange={(event) => updateProjectTask(project.id, index, { end: event.target.value }, '更新任務結束日。')} aria-label="結束日" /></label>
+                      <label>前置任務<select value={task.dependsOnTaskId || ''} onChange={(event) => {
+                        const predecessorName = project.tasks.find((item) => item.id === event.target.value)?.name || ''
+                        updateProjectTask(project.id, index, { dependsOnTaskId: event.target.value }, event.target.value ? `設定前置任務為「${predecessorName}」。` : '清除前置任務。')
+                      }} aria-label="前置任務"><option value="">無前置任務</option>{getAvailablePredecessorTasks(project, index).map((item) => <option key={item.id} value={item.id}>{item.name || '未命名任務'}</option>)}</select><small>前置完成後，自動排到隔天</small></label>
+                      <label>完成日<input type="date" value={task.completedAt || ''} disabled={!task.done} onChange={(event) => updateProjectTask(project.id, index, { completedAt: event.target.value || todayDate(), done: true, progress: 100 }, '更新任務完成日。')} aria-label="完成日" /><small>{task.done ? '可調整實際完成日' : '任務完成後啟用'}</small></label>
                       <label>進度<input type="range" min="0" max="100" value={clampPercent(task.progress)} onChange={(event) => updateProjectTask(project.id, index, { progress: clampPercent(event.target.value) })} aria-label="進度" /><small>{task.manualProgress ? '手動%' : '自動%'}</small></label>
                     </div>
                     <div className="project-detail-card-actions">
