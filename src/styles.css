@@ -14271,3 +14271,87 @@ button {
     padding: 14px 14px 18px !important;
   }
 }
+
+
+/* FlowDesk v20.3.13 project modal real size fix */
+.fd203-project-modal-backdrop {
+  padding: 12px !important;
+  place-items: center !important;
+}
+
+.fd203-project-modal {
+  width: min(1560px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  height: calc(100vh - 24px) !important;
+  max-height: calc(100vh - 24px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.fd203-project-modal .fd203-workspace-head {
+  flex: 0 0 auto !important;
+}
+
+.fd203-project-modal .fd203-tabs {
+  flex: 0 0 auto !important;
+  top: 0 !important;
+}
+
+.fd203-project-modal .fd203-overview-panel,
+.fd203-project-modal .fd203-tab-panel,
+.fd203-project-modal .fd203-gantt-panel {
+  margin: 16px 22px 22px !important;
+}
+
+.fd203-project-modal .fd203-tab-panel,
+.fd203-project-modal .fd203-gantt-panel {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+.fd203-project-modal .fd203-gantt-panel {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.fd203-project-modal .fd203-gantt-scroll {
+  flex: 1 1 auto !important;
+  min-height: 520px !important;
+  max-height: none !important;
+}
+
+@media (min-width: 1440px) {
+  .fd203-project-modal {
+    width: min(1720px, calc(100vw - 32px)) !important;
+  }
+
+  .fd203-project-modal .fd203-gantt-scroll {
+    min-height: 620px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .fd203-project-modal-backdrop {
+    padding: 8px !important;
+    align-items: end !important;
+  }
+
+  .fd203-project-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 96vh !important;
+    max-height: 96vh !important;
+    border-radius: 24px 24px 18px 18px !important;
+  }
+
+  .fd203-project-modal .fd203-overview-panel,
+  .fd203-project-modal .fd203-tab-panel,
+  .fd203-project-modal .fd203-gantt-panel {
+    margin: 12px 12px 16px !important;
+  }
+
+  .fd203-project-modal .fd203-gantt-scroll {
+    min-height: 420px !important;
+  }
+}
