@@ -15370,7 +15370,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.27 - keep today marker visible while scrolling gantt rows */
+/* FlowDesk v20.3.28 - keep a single today marker visible while scrolling gantt rows */
 .fd203-gantt-floating-today {
   position: sticky;
   top: 58px;
@@ -15441,5 +15441,46 @@ button {
   .fd203-gantt-floating-today,
   .fd203-project-modal .fd203-gantt-floating-today {
     top: 54px;
+  }
+}
+
+
+/* FlowDesk v20.3.28 - prevent duplicate today labels inside gantt rows */
+.fd203-gantt-row .fd203-gantt-today-line i,
+.fd203-gantt-row .fd203-gantt-today-line.subtle i,
+.fd203-gantt-row .fd203-gantt-today-guide i {
+  display: none !important;
+}
+
+.fd203-gantt-row .fd203-gantt-today-guide {
+  z-index: 2;
+}
+
+.fd203-gantt-floating-today {
+  top: 70px;
+  z-index: 18;
+}
+
+.fd203-project-modal .fd203-gantt-floating-today {
+  top: 70px;
+}
+
+.fd203-gantt-floating-track i {
+  top: -9px;
+}
+
+.fd203-gantt-floating-track i::after {
+  height: 20px;
+}
+
+.fd203-gantt-panel.compact .fd203-gantt-floating-today,
+.fd203-gantt-panel.compact .fd203-project-modal .fd203-gantt-floating-today {
+  top: 64px;
+}
+
+@media (max-width: 900px) {
+  .fd203-gantt-floating-today,
+  .fd203-project-modal .fd203-gantt-floating-today {
+    top: 62px;
   }
 }
