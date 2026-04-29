@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.35'
+const FLOWDESK_APP_VERSION = '20.3.36'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -152,6 +152,7 @@ const iconAutoStyleByTheme = {
   galaxy: 'tech',
   lava: 'card',
   prism: 'card',
+  custom: 'card',
 }
 
 const themeOptions = [
@@ -172,6 +173,7 @@ const themeOptions = [
   { id: 'galaxy', name: '銀河紫', description: '紫藍星霧感更重，適合想把 FlowDesk 做成科幻儀表板。', accent: '#6d5dfc', secondary: '#24d4ff', vibe: '星霧科幻' },
   { id: 'lava', name: '熔岩紅', description: '紅橘高對比，提醒、跟催與待處理會更有衝擊感。', accent: '#ff5a36', secondary: '#ffb000', vibe: '高能警示' },
   { id: 'prism', name: '稜鏡糖彩', description: '粉紫、薄荷與天藍混色，畫面會更活潑搶眼。', accent: '#ff4fd8', secondary: '#38bdf8', vibe: '糖彩炫光' },
+  { id: 'custom', name: '我的主題', description: '自行調整主色、輔助色與強調色，建立 FlowDesk 個人化外觀。', accent: '#2563eb', secondary: '#14b8a6', vibe: '自訂色彩' },
 ]
 
 const appearanceModeOptions = [
@@ -185,6 +187,27 @@ const motionLevelOptions = [
   { id: 'standard', name: '標準', description: '保留柔和轉場、卡片浮起與低調光澤。' },
   { id: 'vivid', name: '炫彩', description: '開啟完整流光、脈衝與主題氛圍效果。' },
 ]
+
+const defaultCustomTheme = {
+  primary: '#2563eb',
+  secondary: '#14b8a6',
+  accent: '#f97316',
+}
+
+function normalizeHexColor(value, fallback = '#2563eb') {
+  if (typeof value !== 'string') return fallback
+  const next = value.trim()
+  return /^#[0-9a-fA-F]{6}$/.test(next) ? next : fallback
+}
+
+function hexToRgbParts(hex, fallback = '37, 99, 235') {
+  const safe = normalizeHexColor(hex, '#2563eb').replace('#', '')
+  const r = parseInt(safe.slice(0, 2), 16)
+  const g = parseInt(safe.slice(2, 4), 16)
+  const b = parseInt(safe.slice(4, 6), 16)
+  if ([r, g, b].some((part) => Number.isNaN(part))) return fallback
+  return `${r}, ${g}, ${b}`
+}
 
 const initialWorkItems = []
 
@@ -333,6 +356,19 @@ function FlowDeskShell({ authSession, onLogout }) {
   const [motionLevel, setMotionLevel] = useState(() => {
     if (typeof window === 'undefined') return 'standard'
     return window.localStorage.getItem('flowdesk-motion-level') || 'standard'
+  })
+  const [customTheme, setCustomTheme] = useState(() => {
+    if (typeof window === 'undefined') return defaultCustomTheme
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('flowdesk-custom-theme') || '{}')
+      return {
+        primary: normalizeHexColor(saved.primary, defaultCustomTheme.primary),
+        secondary: normalizeHexColor(saved.secondary, defaultCustomTheme.secondary),
+        accent: normalizeHexColor(saved.accent, defaultCustomTheme.accent),
+      }
+    } catch {
+      return defaultCustomTheme
+    }
   })
   const [iconStyleMode, setIconStyleMode] = useState(() => {
     if (typeof window === 'undefined') return 'auto'
@@ -622,6 +658,22 @@ function FlowDeskShell({ authSession, onLogout }) {
   }, [appearanceMode, motionLevel])
 
   useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement
+      root.style.setProperty('--fd36-custom-primary', customTheme.primary)
+      root.style.setProperty('--fd36-custom-secondary', customTheme.secondary)
+      root.style.setProperty('--fd36-custom-accent', customTheme.accent)
+      root.style.setProperty('--fd36-custom-primary-rgb', hexToRgbParts(customTheme.primary))
+      root.style.setProperty('--fd36-custom-secondary-rgb', hexToRgbParts(customTheme.secondary, '20, 184, 166'))
+      root.style.setProperty('--fd36-custom-accent-rgb', hexToRgbParts(customTheme.accent, '249, 115, 22'))
+      root.dataset.flowdeskCustomTheme = 'ready'
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('flowdesk-custom-theme', JSON.stringify(customTheme))
+    }
+  }, [customTheme])
+
+  useEffect(() => {
     if (typeof document === 'undefined') return
     document.documentElement.dataset.flowdeskIconStyle = resolvedIconStyle
     document.documentElement.dataset.flowdeskIconMode = iconStyleMode
@@ -776,7 +828,7 @@ function FlowDeskShell({ authSession, onLogout }) {
             setActive('board')
           }
         }} />}
-        {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
+        {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} customTheme={customTheme} setCustomTheme={setCustomTheme} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
       </main>
 
       {active === 'board' && (
@@ -5297,7 +5349,7 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   )
 }
 
-function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
+function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, customTheme, setCustomTheme, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
   const [settingsView, setSettingsView] = useState('home')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
@@ -5532,6 +5584,23 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
     window.localStorage.removeItem('flowdesk-icon-style-mode')
   }
 
+  function updateCustomThemeColor(key, value) {
+    setCustomTheme((current) => ({
+      ...current,
+      [key]: normalizeHexColor(value, defaultCustomTheme[key] || '#2563eb'),
+    }))
+  }
+
+  function applyCustomTheme() {
+    setUiTheme('custom')
+  }
+
+  function resetCustomTheme() {
+    setCustomTheme(defaultCustomTheme)
+    setUiTheme('custom')
+    if (typeof window !== 'undefined') window.localStorage.removeItem('flowdesk-custom-theme')
+  }
+
   function addCollection() {
     const name = newCollectionName.trim()
     if (!name) return
@@ -5653,7 +5722,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.35 加入主題即時預覽、首頁主題氛圍與甘特圖狀態視覺強化，讓外觀設定不只好看，也更好判斷工作狀態。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.36 新增自訂主題色，可調整主色、輔助色與強調色，並立即套用到按鈕、卡片、預覽面板與甘特圖。</p>
           <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
@@ -5747,6 +5816,36 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
                 <strong>今日重點</strong>
                 <small>主題色會套用到首頁、模組入口與重要卡片。</small>
               </div>
+            </div>
+          </div>
+          <div className="fd36-custom-theme-builder">
+            <div className="fd36-builder-head">
+              <div>
+                <span>自訂主題色</span>
+                <strong>建立我的 FlowDesk 色彩</strong>
+                <small>調整三個核心色後，可立即套用成「我的主題」。</small>
+              </div>
+              <div className="fd36-builder-actions">
+                <button className="ghost-btn" type="button" onClick={resetCustomTheme}>恢復預設自訂色</button>
+                <button className="primary-btn" type="button" onClick={applyCustomTheme}>套用我的主題</button>
+              </div>
+            </div>
+            <div className="fd36-color-grid">
+              <label className="fd36-color-field">
+                <span>主色</span>
+                <input type="color" value={customTheme.primary} onChange={(event) => updateCustomThemeColor('primary', event.target.value)} />
+                <b>{customTheme.primary}</b>
+              </label>
+              <label className="fd36-color-field">
+                <span>輔助色</span>
+                <input type="color" value={customTheme.secondary} onChange={(event) => updateCustomThemeColor('secondary', event.target.value)} />
+                <b>{customTheme.secondary}</b>
+              </label>
+              <label className="fd36-color-field">
+                <span>強調色</span>
+                <input type="color" value={customTheme.accent} onChange={(event) => updateCustomThemeColor('accent', event.target.value)} />
+                <b>{customTheme.accent}</b>
+              </label>
             </div>
           </div>
           <div className="theme-grid packaged-theme-grid fd30-theme-grid fd31-theme-grid">
