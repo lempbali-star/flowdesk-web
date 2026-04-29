@@ -16138,7 +16138,7 @@ button[data-primary="true"]:hover::after {
 }
 
 
-/* v20.3.39 theme motion enhancement */
+/* v20.3.41 theme motion enhancement */
 :root {
   --fd33-motion-fast: .18s;
   --fd33-motion-normal: .32s;
@@ -16428,7 +16428,7 @@ textarea:focus {
 }
 
 
-/* v20.3.39 appearance mode and motion level controls */
+/* v20.3.41 appearance mode and motion level controls */
 html[data-flowdesk-appearance="dark"] body {
   color: #dbeafe;
   background:
@@ -16649,7 +16649,7 @@ html[data-flowdesk-motion="standard"] .theme-swatch::before {
 }
 
 
-/* v20.3.39 theme preview, home atmosphere, and gantt status visuals */
+/* v20.3.41 theme preview, home atmosphere, and gantt status visuals */
 .fd35-theme-preview-panel {
   position: relative;
   overflow: hidden;
@@ -16974,7 +16974,7 @@ html[data-flowdesk-appearance="dark"] .fd35-preview-tags b {
 }
 
 
-/* v20.3.39 custom theme color builder */
+/* v20.3.41 custom theme color builder */
 html[data-flowdesk-theme="custom"] {
   --theme-primary: var(--fd36-custom-primary, #2563eb);
   --theme-primary-strong: var(--fd36-custom-primary, #2563eb);
@@ -17135,7 +17135,7 @@ html[data-flowdesk-appearance="dark"] .fd36-color-field span {
 }
 
 
-/* v20.3.39 holographic aurora visual system */
+/* v20.3.41 holographic aurora visual system */
 html[data-flowdesk-theme="hologlass"] {
   --theme-primary: #7dd3fc;
   --theme-primary-strong: #0369a1;
@@ -17480,7 +17480,7 @@ html[data-flowdesk-motion="holo"] .home-page::after {
 }
 
 
-/* v20.3.39 appearance presets and contrast protection */
+/* v20.3.41 appearance presets and contrast protection */
 .fd38-preset-panel {
   position: relative;
   overflow: hidden;
@@ -17685,7 +17685,7 @@ html[data-flowdesk-motion="holo"] .fd38-preset-card.active {
 }
 
 
-/* v20.3.39 appearance quick switcher and compact settings polish */
+/* v20.3.41 appearance quick switcher and compact settings polish */
 .fd39-appearance-quick {
   position: relative;
   z-index: 40;
@@ -18007,5 +18007,281 @@ html[data-flowdesk-appearance="dark"] .fd39-menu-settings {
 
   .fd39-menu-list button span {
     width: max-content;
+  }
+}
+
+
+/* v20.3.41 appearance settings consolidation and motion safety */
+.fd40-appearance-nav {
+  position: sticky;
+  top: 10px;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 14px;
+  padding: 9px;
+  border: 1px solid rgba(var(--fd31-primary-rgb), .14);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-secondary-rgb), .10), transparent 34%),
+    rgba(255,255,255,.78);
+  box-shadow: 0 12px 30px rgba(var(--fd31-primary-rgb), .07);
+  backdrop-filter: blur(12px) saturate(1.06);
+}
+.fd40-appearance-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgba(var(--fd31-primary-rgb), .12);
+  border-radius: 999px;
+  color: var(--theme-primary-strong);
+  background: rgba(var(--fd31-primary-rgb), .07);
+  font-size: 12px;
+  font-weight: 950;
+  text-decoration: none;
+}
+.fd40-appearance-nav a:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--fd31-primary-rgb), .24);
+  background: rgba(var(--fd31-primary-rgb), .11);
+  box-shadow: 0 10px 22px rgba(var(--fd31-primary-rgb), .10);
+}
+.fd40-motion-advice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid rgba(var(--fd31-accent-rgb), .20);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(var(--fd31-accent-rgb), .13), transparent 34%),
+    rgba(255,255,255,.82);
+  box-shadow: 0 14px 34px rgba(var(--fd31-primary-rgb), .07);
+}
+.fd40-motion-advice span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .08em;
+}
+.fd40-motion-advice strong {
+  display: block;
+  margin-top: 4px;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 950;
+}
+.fd40-motion-advice small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  line-height: 1.45;
+}
+.fd40-motion-advice .ghost-btn { white-space: nowrap; }
+#fd40-presets, #fd40-mode, #fd40-preview, #fd40-custom, #fd40-themes { scroll-margin-top: 94px; }
+.fd30-appearance-panel > .fd38-preset-panel,
+.fd30-appearance-panel > .fd34-appearance-controls,
+.fd30-appearance-panel > .fd35-theme-preview-panel,
+.fd30-appearance-panel > .fd36-custom-theme-builder,
+.fd30-appearance-panel > .fd31-theme-grid { margin-top: 14px; }
+html[data-flowdesk-appearance="dark"] .fd40-appearance-nav,
+html[data-flowdesk-appearance="dark"] .fd40-motion-advice {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-secondary-rgb), .13), transparent 34%),
+    rgba(15,23,42,.74);
+  border-color: rgba(148, 163, 184, .18);
+}
+html[data-flowdesk-appearance="dark"] .fd40-appearance-nav a {
+  color: #dbeafe;
+  background: rgba(var(--fd31-primary-rgb), .16);
+  border-color: rgba(var(--fd31-primary-rgb), .22);
+}
+html[data-flowdesk-appearance="dark"] .fd40-motion-advice span,
+html[data-flowdesk-appearance="dark"] .fd40-motion-advice small { color: #b6c7dd !important; }
+html[data-flowdesk-appearance="dark"] .fd40-motion-advice strong { color: #f8fafc !important; }
+html[data-flowdesk-motion="off"] .fd40-appearance-nav,
+html[data-flowdesk-motion="off"] .fd40-motion-advice,
+html[data-flowdesk-motion="off"] .fd39-appearance-menu { backdrop-filter: none !important; }
+html[data-flowdesk-motion="standard"] body::after,
+html[data-flowdesk-motion="off"] body::after { opacity: .18 !important; }
+@media (max-width: 760px) {
+  .fd40-appearance-nav {
+    position: relative;
+    top: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fd40-appearance-nav a { justify-content: center; }
+  .fd40-motion-advice {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .fd40-motion-advice .ghost-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .fd30-appearance-panel {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+@media (max-width: 460px) {
+  .fd40-appearance-nav { grid-template-columns: 1fr; }
+}
+
+
+/* v20.3.41 functional boundary consolidation */
+.fd41-boundary-note {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(var(--fd31-primary-rgb), .16);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-primary-rgb), .10), transparent 34%),
+    rgba(255,255,255,.82);
+  box-shadow: 0 12px 30px rgba(var(--fd31-primary-rgb), .07);
+}
+
+.fd41-boundary-note.compact {
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 10px 14px;
+}
+
+.fd41-boundary-note span,
+.fd41-boundary-card span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .08em;
+}
+
+.fd41-boundary-note strong {
+  display: block;
+  margin-top: 4px;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.fd41-boundary-note p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+.fd41-boundary-note p b {
+  color: #172033;
+}
+
+.fd41-boundary-note small {
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.fd41-boundary-map {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 16px;
+}
+
+.fd41-boundary-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 190px;
+  padding: 13px;
+  border: 1px solid rgba(var(--fd31-primary-rgb), .14);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-secondary-rgb), .10), transparent 34%),
+    rgba(255,255,255,.82);
+  box-shadow: 0 12px 30px rgba(var(--fd31-primary-rgb), .07);
+}
+
+.fd41-boundary-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -22% -40% auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(var(--fd31-primary-rgb), .12), transparent 66%);
+  pointer-events: none;
+}
+
+.fd41-boundary-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #172033;
+  line-height: 1.45;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.fd41-boundary-card p {
+  margin: 9px 0 0;
+  color: #64748b;
+  line-height: 1.45;
+  font-size: 12px;
+}
+
+.fd41-boundary-card small {
+  display: block;
+  margin-top: 9px;
+  color: var(--theme-primary-strong);
+  line-height: 1.45;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+html[data-flowdesk-appearance="dark"] .fd41-boundary-note,
+html[data-flowdesk-appearance="dark"] .fd41-boundary-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(var(--fd31-primary-rgb), .12), transparent 34%),
+    rgba(15,23,42,.74);
+  border-color: rgba(148, 163, 184, .18);
+}
+
+html[data-flowdesk-appearance="dark"] .fd41-boundary-note strong,
+html[data-flowdesk-appearance="dark"] .fd41-boundary-note p b,
+html[data-flowdesk-appearance="dark"] .fd41-boundary-card strong {
+  color: #f8fafc !important;
+}
+
+html[data-flowdesk-appearance="dark"] .fd41-boundary-note span,
+html[data-flowdesk-appearance="dark"] .fd41-boundary-note p,
+html[data-flowdesk-appearance="dark"] .fd41-boundary-note small,
+html[data-flowdesk-appearance="dark"] .fd41-boundary-card span,
+html[data-flowdesk-appearance="dark"] .fd41-boundary-card p {
+  color: #b6c7dd !important;
+}
+
+html[data-flowdesk-appearance="dark"] .fd41-boundary-card small {
+  color: #dbeafe !important;
+}
+
+@media (max-width: 1180px) {
+  .fd41-boundary-map {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fd41-boundary-note.compact {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .fd41-boundary-map {
+    grid-template-columns: 1fr;
   }
 }

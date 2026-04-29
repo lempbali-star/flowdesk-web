@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.39'
+const FLOWDESK_APP_VERSION = '20.3.41'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -98,6 +98,44 @@ const modulePurposeMap = {
   reminders: { role: '提醒中心只負責時間提醒。', scope: '逾期、今日、明日、本週、延後與關聯開啟。', avoid: '不變成第二個任務管理。' },
   settings: { role: '系統設定只處理外觀、備份與模組設定。', scope: '同步狀態、備份還原、主題、圖示、資料清理。', avoid: '不放日常工作內容。' },
 }
+
+const flowdeskModuleBoundaries = [
+  {
+    id: 'board',
+    title: '工作看板',
+    keep: '日常待辦、短期跟進、今天要推進的小工作。',
+    avoid: '不要放完整採購流程、專案里程碑、純時間提醒。',
+    handoff: '需要時間提醒 → 提醒中心；需要正式專案 → 專案管理；需要採購資料 → 採購與紀錄。',
+  },
+  {
+    id: 'reminders',
+    title: '提醒中心',
+    keep: '今日、明日、本週、逾期、延後與到期通知。',
+    avoid: '不要變成第二套任務管理，也不要維護採購或專案主資料。',
+    handoff: '提醒本體回到來源模組處理，例如採購、專案或工作看板。',
+  },
+  {
+    id: 'desk',
+    title: '跟進紀錄',
+    keep: '處理脈絡、溝通回覆、異常原因、後續追蹤紀錄。',
+    avoid: '不要變成第二個工作看板，也不要塞大量待辦清單。',
+    handoff: '需要今天執行 → 工作看板；需要到期提醒 → 提醒中心。',
+  },
+  {
+    id: 'base',
+    title: '採購與紀錄',
+    keep: '採購主檔、品項、金額、廠商、付款、到貨、驗收與歷程。',
+    avoid: '不要把每個採購步驟都拆成獨立工作看板任務。',
+    handoff: '需要追人可建立跟進紀錄；需要時間提醒可進提醒中心。',
+  },
+  {
+    id: 'roadmap',
+    title: '專案管理',
+    keep: '有起訖、階段、里程碑、甘特圖、風險與前置相依的長期工作。',
+    avoid: '不要把零散小事、單純提醒或一次性待辦塞進專案。',
+    handoff: '短期小事 → 工作看板；時間提醒 → 提醒中心。',
+  },
+]
 
 const flowdeskFocusRules = [
   { title: '工作看板', detail: '放日常待辦、追蹤事項、今天要推進的小工作。' },
@@ -2414,6 +2452,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <aside className="purchase-side-panel">
                 <section className="purchase-detail-card compact-detail-card">
                   <PanelTitle eyebrow="採購明細" title={stableSelectedPurchase ? purchaseTitle(stableSelectedPurchase) : '請選擇採購項目'} action={stableSelectedPurchase?.id} />
+          <ModuleBoundaryNote moduleId="base" compact />
                   {stableSelectedPurchase ? <PurchaseDetail row={stableSelectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(stableSelectedPurchase)} history={purchaseHistory.filter((entry) => entry.purchaseId === stableSelectedPurchase.id)} onEdit={() => setEditingPurchase(stableSelectedPurchase)} onAdvance={() => advancePurchase(stableSelectedPurchase)} onComplete={() => completePurchase(stableSelectedPurchase)} onDuplicate={() => duplicatePurchase(stableSelectedPurchase)} onCreateTask={() => createPurchaseWorkItem(stableSelectedPurchase)} onCreateReminder={(kind) => createPurchaseReminder(stableSelectedPurchase, kind)} onUpdateMeta={(patch, message) => updatePurchaseMeta(stableSelectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
                 </section>
                 <section className="purchase-history-card compact-history-card">
@@ -5432,6 +5471,7 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
       {showForm && (
         <section className="panel wide reminder-form-panel">
           <PanelTitle eyebrow="新增提醒" title="建立追蹤事項" />
+          <ModuleBoundaryNote moduleId="reminders" compact />
           <div className="reminder-form-grid">
             <label>標題<input value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} placeholder="例如：追蹤廠商報價回覆" /></label>
             <label>類型<select value={draft.type} onChange={(event) => updateDraft('type', event.target.value)}>{reminderTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
@@ -5833,7 +5873,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
     { id: 'icons', title: '圖示設定', eyebrow: 'ICONS', summary: `目前風格：${iconStyleMode === 'auto' ? '跟隨 UI 主題' : activeIconStyle.name}`, icon: '✨' },
     { id: 'reminders', title: '提醒設定', eyebrow: 'REMINDERS', summary: '提醒類型、狀態與資料整理', icon: '🔔' },
     { id: 'data', title: '資料備份', eyebrow: 'BACKUP', summary: '匯出、還原、清空與同步檢查', icon: '💾' },
-    { id: 'focus', title: '功能定位', eyebrow: 'FLOWDESK', summary: '收斂重複功能與模組用途', icon: '🧭' },
+    { id: 'focus', title: '功能定位', eyebrow: 'FLOWDESK', summary: '收斂重複功能、釐清各模組用途與交接規則', icon: '🧭' },
     { id: 'system', title: '系統資訊', eyebrow: 'VERSION', summary: FLOWDESK_VERSION_LABEL, icon: '⚙️' },
   ]
   const v20Checklist = [
@@ -5880,7 +5920,14 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.39 新增右上角外觀快捷入口、方案快速套用與手機版外觀設定收斂，切換日常、夜間、展示模式更直覺。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.41 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <div className="fd40-appearance-nav">
+            <a href="#fd40-presets">推薦方案</a>
+            <a href="#fd40-mode">外觀 / 動效</a>
+            <a href="#fd40-preview">主題預覽</a>
+            <a href="#fd40-custom">我的主題</a>
+            <a href="#fd40-themes">主題色</a>
+          </div>
           <div className="fd30-theme-toolbar fd31-theme-toolbar">
             <div>
               <span>目前套用</span>
@@ -5894,7 +5941,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             </div>
             <button className="ghost-btn fd30-reset-theme-btn" type="button" onClick={() => setUiTheme('blue')}>回復預設藍</button>
           </div>
-          <div className="fd38-preset-panel">
+          <div className="fd38-preset-panel" id="fd40-presets">
             <div className="fd38-preset-head">
               <div>
                 <span>一鍵外觀方案</span>
@@ -5918,7 +5965,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               ))}
             </div>
           </div>
-          <div className="fd34-appearance-controls">
+          <div className="fd34-appearance-controls" id="fd40-mode">
             <div className="fd34-control-card">
               <div>
                 <span>外觀模式</span>
@@ -5958,7 +6005,15 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               </div>
             </div>
           </div>
-          <div className="fd35-theme-preview-panel">
+          <div className="fd40-motion-advice">
+            <div>
+              <span>動效安全建議</span>
+              <strong>{motionLevel === 'holo' ? '全息極光適合展示，日常可改用標準' : motionLevel === 'off' ? '已關閉動效，適合低干擾操作' : '目前動效設定適合日常使用'}</strong>
+              <small>手機與低效能裝置會自動降低大型背景特效；需要投影或長時間操作時，可切到低干擾方案。</small>
+            </div>
+            <button className="ghost-btn" type="button" onClick={() => setMotionLevel('standard')}>切回標準動效</button>
+          </div>
+          <div className="fd35-theme-preview-panel" id="fd40-preview">
             <div className="fd35-preview-header">
               <div>
                 <span>主題預覽</span>
@@ -6000,7 +6055,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               </div>
             </div>
           </div>
-          <div className="fd36-custom-theme-builder">
+          <div className="fd36-custom-theme-builder" id="fd40-custom">
             <div className="fd36-builder-head">
               <div>
                 <span>自訂主題色</span>
@@ -6031,7 +6086,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               </label>
             </div>
           </div>
-          <div className="theme-grid packaged-theme-grid fd30-theme-grid fd31-theme-grid">
+          <div className="theme-grid packaged-theme-grid fd30-theme-grid fd31-theme-grid" id="fd40-themes">
             {themeOptions.map((theme) => (
               <button
                 key={theme.id}
@@ -6210,6 +6265,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
       {settingsView === 'focus' && (
         <section className="panel wide settings-panel settings-detail-panel focus-definition-panel">
           <PanelTitle eyebrow="功能定位" title="FlowDesk v20.1.0 收斂原則" />
+          <FlowDeskBoundaryMap />
           <p className="settings-note">這版先把容易重複的入口重新定位：提醒只提醒、看板只做待辦、採購保留主流程、專案保留長期計畫。</p>
           <div className="focus-definition-grid">
             {Object.entries(modulePurposeMap).filter(([key]) => ['board', 'base', 'roadmap', 'reminders', 'desk', 'insight'].includes(key)).map(([key, item]) => (
@@ -6894,6 +6950,37 @@ function ModuleScopeBar({ active }) {
 
 function Metric({ label, value, tone }) {
   return <article className={`metric ${tone}`}><span>{label}</span><strong>{value}</strong></article>
+}
+
+function ModuleBoundaryNote({ moduleId, compact = false }) {
+  const boundary = flowdeskModuleBoundaries.find((item) => item.id === moduleId)
+  if (!boundary) return null
+  return (
+    <div className={compact ? 'fd41-boundary-note compact' : 'fd41-boundary-note'}>
+      <div>
+        <span>功能定位</span>
+        <strong>{boundary.title}</strong>
+      </div>
+      <p><b>適合：</b>{boundary.keep}</p>
+      <p><b>避免：</b>{boundary.avoid}</p>
+      {!compact && <small>{boundary.handoff}</small>}
+    </div>
+  )
+}
+
+function FlowDeskBoundaryMap() {
+  return (
+    <div className="fd41-boundary-map">
+      {flowdeskModuleBoundaries.map((item) => (
+        <article className="fd41-boundary-card" key={item.id}>
+          <span>{item.title}</span>
+          <strong>{item.keep}</strong>
+          <p>{item.avoid}</p>
+          <small>{item.handoff}</small>
+        </article>
+      ))}
+    </div>
+  )
 }
 
 function PanelTitle({ eyebrow, title, action }) {
