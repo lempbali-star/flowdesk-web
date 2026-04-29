@@ -15368,3 +15368,78 @@ button {
 .fd203-gantt-row.subtask .fd203-gantt-track {
   box-sizing: border-box;
 }
+
+
+/* FlowDesk v20.3.27 - keep today marker visible while scrolling gantt rows */
+.fd203-gantt-floating-today {
+  position: sticky;
+  top: 58px;
+  z-index: 6;
+  height: 0;
+  min-width: max-content;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.fd203-gantt-floating-today > span:first-child {
+  display: block;
+}
+
+.fd203-gantt-floating-track {
+  position: relative;
+  height: 0;
+  margin: 0 12px;
+  overflow: visible;
+}
+
+.fd203-gantt-floating-track i {
+  position: absolute;
+  top: -13px;
+  left: 0;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.96);
+  color: #fff;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.24);
+}
+
+.fd203-gantt-floating-track i::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 2px;
+  height: 16px;
+  transform: translateX(-50%);
+  background: rgba(239, 68, 68, 0.84);
+  border-radius: 999px;
+}
+
+.fd203-project-modal .fd203-gantt-floating-today {
+  top: 58px;
+}
+
+.fd203-gantt-panel.compact .fd203-gantt-floating-today {
+  top: 54px;
+}
+
+.fd203-gantt-panel.compact .fd203-gantt-floating-track i {
+  font-size: 9px;
+  padding: 3px 7px;
+}
+
+@media (max-width: 900px) {
+  .fd203-gantt-floating-today,
+  .fd203-project-modal .fd203-gantt-floating-today {
+    top: 54px;
+  }
+}
