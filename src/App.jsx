@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.49'
+const FLOWDESK_APP_VERSION = '20.3.50'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3032,6 +3032,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   })
   const [draggingProjectId, setDraggingProjectId] = useState(null)
   const [dropProjectId, setDropProjectId] = useState(null)
+  const draggingProjectIdRef = useRef(null)
+  const projectDragMovedRef = useRef(false)
   const [manualRecordText, setManualRecordText] = useState('')
   const [ganttDragRange, setGanttDragRange] = useState(null)
   const [ganttDragPreview, setGanttDragPreview] = useState(null)
@@ -3784,22 +3786,55 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function getProjectDragProps(projectId) {
     return {
       draggable: true,
-      onDragStart: () => setDraggingProjectId(projectId),
+      onDragStart: (event) => {
+        draggingProjectIdRef.current = projectId
+        projectDragMovedRef.current = false
+        setDraggingProjectId(projectId)
+        setDropProjectId(null)
+        setProjectSortMode('手動排序')
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move'
+          event.dataTransfer.setData('text/plain', projectId)
+        }
+      },
       onDragEnd: () => {
+        draggingProjectIdRef.current = null
+        window.setTimeout(() => {
+          projectDragMovedRef.current = false
+        }, 0)
         setDraggingProjectId(null)
         setDropProjectId(null)
       },
       onDragOver: (event) => {
         event.preventDefault()
-        if (draggingProjectId && draggingProjectId !== projectId) setDropProjectId(projectId)
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+        const dragId = draggingProjectIdRef.current || draggingProjectId
+        if (dragId && dragId !== projectId) {
+          projectDragMovedRef.current = true
+          setDropProjectId(projectId)
+        }
       },
       onDrop: (event) => {
         event.preventDefault()
-        reorderProjects(draggingProjectId, projectId)
+        const dragId = draggingProjectIdRef.current || event.dataTransfer?.getData('text/plain') || draggingProjectId
+        if (dragId && dragId !== projectId) {
+          projectDragMovedRef.current = true
+          reorderProjects(dragId, projectId)
+          setProjectSortMode('手動排序')
+        }
+        draggingProjectIdRef.current = null
         setDraggingProjectId(null)
         setDropProjectId(null)
       },
     }
+  }
+
+  function handleProjectClick(projectId) {
+    if (projectDragMovedRef.current) {
+      projectDragMovedRef.current = false
+      return
+    }
+    openProject(projectId)
   }
 
   function handleProjectKeyDown(projectId, event) {
@@ -4256,9 +4291,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             draggingProjectId === project.id ? 'dragging' : '',
             dropProjectId === project.id ? 'drop-target' : '',
           ].filter(Boolean).join(' ')}
-          onClick={() => openProject(project.id)}
+          onClick={() => handleProjectClick(project.id)}
           onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
-          title="點擊開啟專案彈窗；拖曳調整順序"
+          title="拖曳可調整順序；拖曳時會自動切到手動排序"
         >
           <div className="fd203-project-card-head">
             <span className="record-id">☰ {project.id}</span>
@@ -4315,9 +4350,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             draggingProjectId === project.id ? 'dragging' : '',
             dropProjectId === project.id ? 'drop-target' : '',
           ].filter(Boolean).join(' ')}
-          onClick={() => openProject(project.id)}
+          onClick={() => handleProjectClick(project.id)}
           onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
-          title="點擊開啟專案彈窗；拖曳調整順序"
+          title="拖曳可調整順序；拖曳時會自動切到手動排序"
         >
           <span className="fd203-row-main">
             <small>☰ {project.id}</small>
@@ -5920,7 +5955,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.49 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.50 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
