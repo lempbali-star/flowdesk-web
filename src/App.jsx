@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.88'
+const FLOWDESK_APP_VERSION = '20.3.89'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5697,7 +5697,25 @@ function InsightPage({ metrics, records, tickets }) {
     { label: '提醒逾期', value: reminderSummary.overdue, note: `${reminderSummary.open} 筆未結提醒` },
   ]
   const vendorRanking = buildVendorRanking(scopedPurchases).slice(0, 6)
+  const fullVendorRanking = buildVendorRanking(scopedPurchases)
   const purchaseStatusRows = buildCountRows(scopedPurchases, (row) => row.status || '未設定').slice(0, 6)
+  const purchaseOpenRows = scopedPurchases.filter((row) => !isPurchaseClosedForReport(row))
+  const purchasePendingPayment = scopedPurchases.filter((row) => (row.paymentStatus || '未付款') !== '已付款' && !isPurchaseClosedForReport(row)).length
+  const purchasePendingArrival = scopedPurchases.filter((row) => (row.arrivalStatus || '未到貨') !== '已到貨' && !isPurchaseClosedForReport(row)).length
+  const purchasePendingAcceptance = scopedPurchases.filter((row) => (row.acceptanceStatus || '未驗收') !== '已驗收' && !isPurchaseClosedForReport(row)).length
+  const purchaseUnfiled = scopedPurchases.filter((row) => purchaseArchiveStatusV72(row) !== '已歸檔').length
+  const purchasePriorityOpen = scopedPurchases.filter((row) => ['緊急', '高'].includes(normalizePurchasePriority(row.priority)) && !isPurchaseClosedForReport(row)).length
+  const purchaseItemRanking = buildPurchaseItemRanking(scopedPurchases).slice(0, 8)
+  const purchaseCategoryRanking = buildPurchaseCategoryRanking(scopedPurchases).slice(0, 8)
+  const departmentRanking = buildDepartmentPurchaseRanking(scopedPurchases).slice(0, 6)
+  const purchaseTrendRows = buildPurchaseMonthlyTrend(reportData.purchases).slice(0, 6)
+  const purchaseSummaryCards = [
+    { label: '本期採購金額', value: formatMoney(purchaseTotal), note: `${scopedPurchases.length} 筆採購` },
+    { label: '進行中採購', value: purchaseOpenRows.length, note: `待付款 ${purchasePendingPayment} / 待到貨 ${purchasePendingArrival}` },
+    { label: '待驗收', value: purchasePendingAcceptance, note: '仍需確認驗收狀態' },
+    { label: '未歸檔', value: purchaseUnfiled, note: '尚未完成雲端資料夾歸檔' },
+    { label: '高優先 / 緊急', value: purchasePriorityOpen, note: '需優先追蹤' },
+  ]
   const taskStatusRows = buildCountRows(scopedTasks, (row) => row.lane || row.status || '未設定').slice(0, 6)
   const upcomingReminders = [...reportData.reminders]
     .filter((row) => row.status !== '已完成')
@@ -5752,6 +5770,26 @@ function InsightPage({ metrics, records, tickets }) {
     downloadFlowdeskText(`flowdesk_completed_cases_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
   }
 
+  function exportPurchaseVendorStats() {
+    const rows = fullVendorRanking.map((row) => ({ 廠商: row.vendor, 採購筆數: row.count, 含稅金額: row.amount }))
+    downloadFlowdeskText(`flowdesk_purchase_vendor_stats_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
+  }
+
+  function exportPurchaseDepartmentStats() {
+    const rows = departmentRanking.map((row) => ({ 使用單位: row.department, 採購筆數: row.count, 含稅金額: row.amount, 品項數: row.itemCount }))
+    downloadFlowdeskText(`flowdesk_purchase_department_stats_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
+  }
+
+  function exportPurchaseItemStats() {
+    const rows = purchaseItemRanking.map((row) => ({ 品項: row.name, 分類: row.category, 採購次數: row.count, 數量: row.quantity, 含稅金額: row.amount }))
+    downloadFlowdeskText(`flowdesk_purchase_item_stats_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
+  }
+
+  function exportPurchaseCategoryStats() {
+    const rows = purchaseCategoryRanking.map((row) => ({ 分類: row.category, 品項數: row.itemCount, 採購次數: row.count, 含稅金額: row.amount }))
+    downloadFlowdeskText(`flowdesk_purchase_category_stats_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
+  }
+
   return (
     <div className="insight-layout insight-ops-layout">
       <section className="flow-toolbar flowdesk-toolbar-v2 report-command-bar">
@@ -5787,6 +5825,98 @@ function InsightPage({ metrics, records, tickets }) {
               <small>{card.note}</small>
             </article>
           ))}
+        </div>
+      </section>
+
+
+      <section className="panel wide fd20389-purchase-analytics">
+        <div className="fd20389-purchase-head">
+          <div>
+            <p className="eyebrow">PURCHASE INSIGHT</p>
+            <h3>採購統計與分析</h3>
+            <span>用目前篩選期間統計採購金額、單位、廠商與品項，方便快速回答「買了什麼、誰買、跟誰買、花多少」。</span>
+          </div>
+          <div className="fd20389-purchase-actions">
+            <button type="button" className="ghost-btn" onClick={exportPurchaseItemStats}>匯出品項</button>
+            <button type="button" className="ghost-btn" onClick={exportPurchaseDepartmentStats}>匯出單位</button>
+            <button type="button" className="ghost-btn" onClick={exportPurchaseVendorStats}>匯出廠商</button>
+          </div>
+        </div>
+
+        <div className="fd20389-purchase-kpis">
+          {purchaseSummaryCards.map((card) => (
+            <article key={card.label}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <small>{card.note}</small>
+            </article>
+          ))}
+        </div>
+
+        <div className="fd20389-purchase-grid">
+          <article className="fd20389-stat-card">
+            <div className="fd20389-card-head">
+              <div><p className="eyebrow">ITEMS</p><h4>採購品項排行</h4></div>
+              <button type="button" onClick={exportPurchaseItemStats}>CSV</button>
+            </div>
+            <div className="fd20389-rank-list">
+              {purchaseItemRanking.length ? purchaseItemRanking.map((row, index) => (
+                <article key={`${row.name}-${index}`}>
+                  <b>{index + 1}</b>
+                  <div><strong>{row.name}</strong><small>{row.category} · {row.count} 次 · 數量 {row.quantity}</small></div>
+                  <span>{formatMoney(row.amount)}</span>
+                </article>
+              )) : <p>目前篩選期間沒有採購品項資料。</p>}
+            </div>
+          </article>
+
+          <article className="fd20389-stat-card">
+            <div className="fd20389-card-head">
+              <div><p className="eyebrow">CATEGORY</p><h4>品項分類摘要</h4></div>
+              <button type="button" onClick={exportPurchaseCategoryStats}>CSV</button>
+            </div>
+            <div className="fd20389-rank-list category">
+              {purchaseCategoryRanking.length ? purchaseCategoryRanking.map((row) => (
+                <article key={row.category}>
+                  <b>{row.itemCount}</b>
+                  <div><strong>{row.category}</strong><small>{row.count} 次採購</small></div>
+                  <span>{formatMoney(row.amount)}</span>
+                </article>
+              )) : <p>目前沒有可分類的品項。</p>}
+            </div>
+          </article>
+
+          <article className="fd20389-stat-card">
+            <div className="fd20389-card-head">
+              <div><p className="eyebrow">DEPARTMENT</p><h4>使用單位排行</h4></div>
+              <button type="button" onClick={exportPurchaseDepartmentStats}>CSV</button>
+            </div>
+            <div className="fd20389-rank-list">
+              {departmentRanking.length ? departmentRanking.map((row, index) => (
+                <article key={row.department}>
+                  <b>{index + 1}</b>
+                  <div><strong>{row.department}</strong><small>{row.count} 筆 · {row.itemCount} 項</small></div>
+                  <span>{formatMoney(row.amount)}</span>
+                </article>
+              )) : <p>尚無使用單位統計。</p>}
+            </div>
+          </article>
+
+          <article className="fd20389-stat-card">
+            <div className="fd20389-card-head">
+              <div><p className="eyebrow">TREND</p><h4>近期月度採購</h4></div>
+              <span className="fd20389-mini-note">近 6 個月份</span>
+            </div>
+            <div className="fd20389-trend-list">
+              {purchaseTrendRows.length ? purchaseTrendRows.map((row) => (
+                <article key={row.month}>
+                  <div><strong>{row.month}</strong><small>{row.count} 筆</small></div>
+                  <div className="fd20389-trend-bar"><span style={{ width: `${row.percent}%` }} /></div>
+                  <b>{formatMoney(row.amount)}</b>
+                </article>
+              )) : <p>尚無月份趨勢資料。</p>}
+            </div>
+          </article>
         </div>
       </section>
 
@@ -5935,6 +6065,97 @@ function isReportInScope(value, scope) {
   return date >= start && date <= today
 }
 
+
+function getPurchaseReportDate(row = {}) {
+  return row.requestDate || row.orderDate || row.arrivalDate || row.acceptanceDate || row.paymentDueDate || todayDate()
+}
+
+function isPurchaseClosedForReport(row = {}) {
+  const status = String(row.status || '')
+  return isClosedCaseStatus(status) || status.includes('已取消') || status.includes('取消')
+}
+
+function getPurchaseLineTaxedAmount(row = {}, item = {}) {
+  const raw = Number(item.quantity || 0) * Number(item.unitPrice || 0)
+  const rate = Number(row.taxRate ?? 5) / 100
+  if ((row.taxMode || '未稅') === '含稅') return Math.round(raw)
+  return Math.round(raw * (1 + rate))
+}
+
+function normalizePurchaseStatLabel(value, fallback) {
+  const text = String(value || '').trim()
+  return text || fallback
+}
+
+function guessPurchaseItemCategory(name = '') {
+  const text = String(name || '').toLowerCase()
+  if (/筆電|notebook|laptop|macbook|thinkpad|elitebook|latitude|電腦|主機|pc|desktop/.test(text)) return '電腦 / 筆電'
+  if (/螢幕|monitor|display|顯示器/.test(text)) return '螢幕 / 顯示設備'
+  if (/ap|wifi|wi-fi|router|路由|分享器|交換器|switch|防火牆|firewall|網路|網通/.test(text)) return '網路設備'
+  if (/nas|硬碟|ssd|hdd|儲存|storage|備份|backup|ups/.test(text)) return '儲存 / 備份'
+  if (/授權|license|licence|m365|office|adobe|軟體|software|veeam|sonarqube|防毒/.test(text)) return '軟體 / 授權'
+  if (/鍵盤|滑鼠|轉接|dock|hub|線材|耳機|視訊|webcam|麥克風|周邊/.test(text)) return '周邊配件'
+  if (/印表|printer|碳粉|耗材|label|標籤/.test(text)) return '印表 / 耗材'
+  if (/電話|phone|webex|會議|音響|聲霸|soundbar/.test(text)) return '通訊 / 會議'
+  return '其他採購'
+}
+
+function buildPurchaseItemRanking(purchases = []) {
+  const map = new Map()
+  purchases.forEach((row) => {
+    getPurchaseItems(row).forEach((item) => {
+      const name = normalizePurchaseStatLabel(item.name, '未命名品項')
+      const current = map.get(name) || { name, category: guessPurchaseItemCategory(name), count: 0, quantity: 0, amount: 0 }
+      current.count += 1
+      current.quantity += Number(item.quantity || 0)
+      current.amount += getPurchaseLineTaxedAmount(row, item)
+      map.set(name, current)
+    })
+  })
+  return Array.from(map.values()).sort((a, b) => b.amount - a.amount || b.quantity - a.quantity || b.count - a.count)
+}
+
+function buildPurchaseCategoryRanking(purchases = []) {
+  const map = new Map()
+  purchases.forEach((row) => {
+    getPurchaseItems(row).forEach((item) => {
+      const category = guessPurchaseItemCategory(item.name)
+      const current = map.get(category) || { category, count: 0, itemCount: 0, amount: 0 }
+      current.count += 1
+      current.itemCount += Number(item.quantity || 0)
+      current.amount += getPurchaseLineTaxedAmount(row, item)
+      map.set(category, current)
+    })
+  })
+  return Array.from(map.values()).sort((a, b) => b.amount - a.amount || b.itemCount - a.itemCount)
+}
+
+function buildDepartmentPurchaseRanking(purchases = []) {
+  return Array.from(purchases.reduce((map, row) => {
+    const department = normalizePurchaseStatLabel(row.department || row.usedDepartment || row.applyDepartment, '未指定單位')
+    const current = map.get(department) || { department, amount: 0, count: 0, itemCount: 0 }
+    current.amount += calculatePurchase(row).taxedTotal
+    current.count += 1
+    current.itemCount += getPurchaseItems(row).reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+    map.set(department, current)
+    return map
+  }, new Map()).values()).sort((a, b) => b.amount - a.amount || b.count - a.count)
+}
+
+function buildPurchaseMonthlyTrend(purchases = []) {
+  const rows = Array.from(purchases.reduce((map, row) => {
+    const month = String(getPurchaseReportDate(row) || '').slice(0, 7) || '未設定'
+    const current = map.get(month) || { month, amount: 0, count: 0 }
+    current.amount += calculatePurchase(row).taxedTotal
+    current.count += 1
+    map.set(month, current)
+    return map
+  }, new Map()).values()).sort((a, b) => String(b.month).localeCompare(String(a.month))).slice(0, 6)
+  const maxAmount = Math.max(1, ...rows.map((row) => row.amount))
+  return rows.map((row) => ({ ...row, percent: Math.max(6, Math.round((row.amount / maxAmount) * 100)) }))
+}
+
+
 function buildVendorRanking(purchases = []) {
   return Array.from(purchases.reduce((map, row) => {
     const vendor = row.vendor || '未指定廠商'
@@ -5958,12 +6179,13 @@ function buildReportTableRows(tab, data) {
   if (tab === '採購') {
     const rows = data.purchases.map((row) => {
       const amount = calculatePurchase(row).taxedTotal
+      const items = getPurchaseItems(row)
       return {
-        csv: { 編號: row.id, 採購內容: purchaseTitle(row), 廠商: row.vendor || '', 狀態: row.status || '', 金額: amount, 付款: row.paymentStatus || '未付款', 到貨: row.arrivalStatus || '未到貨', 驗收: row.acceptanceStatus || '未驗收' },
-        cells: [row.id, purchaseTitle(row), row.vendor || '未指定', row.status || '未設定', formatMoney(amount), row.paymentStatus || '未付款', row.arrivalStatus || '未到貨'],
+        csv: { 編號: row.id, 採購內容: purchaseTitle(row), 優先等級: normalizePurchasePriority(row.priority), 使用單位: row.department || '', 申請人: row.requester || '', 使用人: row.user || row.usedBy || '', 廠商: row.vendor || '', 狀態: row.status || '', 含稅金額: amount, 付款: row.paymentStatus || '未付款', 到貨: row.arrivalStatus || '未到貨', 驗收: row.acceptanceStatus || '未驗收', 歸檔: purchaseArchiveStatusV72(row), 品項數: items.length },
+        cells: [row.id, purchaseTitle(row), normalizePurchasePriority(row.priority), row.department || '未指定', row.vendor || '未指定', row.status || '未設定', formatMoney(amount), row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', purchaseArchiveStatusV72(row)],
       }
     })
-    return { headers: ['編號', '採購內容', '廠商', '狀態', '金額', '付款', '到貨'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
+    return { headers: ['編號', '採購內容', '優先', '使用單位', '廠商', '狀態', '金額', '付款', '到貨', '歸檔'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
   }
   if (tab === '任務') {
     const rows = data.tasks.map((row) => ({
