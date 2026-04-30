@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.98'
+const FLOWDESK_APP_VERSION = '20.3.99'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5080,6 +5080,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const taskKey = getGanttTaskKey(project, task, index)
             const subtaskCount = (task.subtasks || []).length
             const dependencyMeta = getTaskDependencyMeta(project, task, index)
+            const dependencyStartPoint = dependencyMeta.hasDependency ? ganttPoint(getTaskDependencyFinishDate(dependencyMeta.predecessor), displayStart, displayEnd) : 0
+            const dependencyEndPoint = dependencyMeta.hasDependency ? ganttPoint(taskStart, displayStart, displayEnd) : 0
+            const dependencyLineLeft = `${Math.max(0, Math.min(dependencyStartPoint, dependencyEndPoint))}%`
+            const dependencyLineWidth = `${Math.max(2, Math.abs(dependencyEndPoint - dependencyStartPoint))}%`
+            const dependencyLineBackward = dependencyMeta.hasDependency && dependencyEndPoint < dependencyStartPoint
             const taskStatus = getTaskStatusMeta(project, task, index)
             const subtasksOpen = isGanttTaskSubtasksOpen(project, task, index)
             return (
@@ -5141,6 +5146,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   </div>
                   <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                     {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
+                    {dependencyMeta.hasDependency ? (
+                      <span
+                        className={`fd203-dependency-arrow ${dependencyMeta.waiting ? 'waiting' : 'ready'} ${dependencyLineBackward ? 'backward' : 'forward'}`}
+                        style={{ left: dependencyLineLeft, width: dependencyLineWidth }}
+                        title={`前置任務：${dependencyMeta.predecessorName} → ${task.name || '未命名任務'}｜${dependencyMeta.waiting ? '等待前置完成' : '前置已完成'}`}
+                        aria-label={`前置任務 ${dependencyMeta.predecessorName} 連到 ${task.name || '未命名任務'}`}
+                      >
+                        <i />
+                      </span>
+                    ) : null}
                     {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}
                   </div>
                 </div>

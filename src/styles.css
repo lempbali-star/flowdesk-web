@@ -23597,3 +23597,99 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     gap: 8px;
   }
 }
+
+/* FlowDesk v20.3.99 - 專案任務相依性箭頭 */
+.fd203-gantt-track .fd203-dependency-arrow {
+  position: absolute;
+  top: calc(50% - 20px);
+  z-index: 4;
+  height: 20px;
+  min-width: 28px;
+  pointer-events: none;
+}
+
+.fd203-gantt-track .fd203-dependency-arrow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 9px;
+  top: 9px;
+  border-top: 2px dashed rgba(59, 130, 246, 0.72);
+  filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.16));
+}
+
+.fd203-gantt-track .fd203-dependency-arrow::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 4px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 9px solid rgba(59, 130, 246, 0.82);
+  filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.18));
+}
+
+.fd203-gantt-track .fd203-dependency-arrow > i {
+  position: absolute;
+  left: -4px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid rgba(59, 130, 246, 0.82);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.16);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.waiting::before {
+  border-top-color: rgba(245, 158, 11, 0.82);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.waiting::after {
+  border-left-color: rgba(245, 158, 11, 0.95);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.waiting > i {
+  border-color: rgba(245, 158, 11, 0.95);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.ready::before {
+  border-top-color: rgba(16, 185, 129, 0.75);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.ready::after {
+  border-left-color: rgba(16, 185, 129, 0.92);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.ready > i {
+  border-color: rgba(16, 185, 129, 0.92);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.backward::before {
+  border-top-style: solid;
+  border-top-color: rgba(239, 68, 68, 0.75);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.backward::after {
+  border-left-color: rgba(239, 68, 68, 0.92);
+}
+
+.fd203-gantt-fit-dense .fd203-gantt-track .fd203-dependency-arrow,
+.fd203-gantt-fit-fit .fd203-gantt-track .fd203-dependency-arrow {
+  top: calc(50% - 16px);
+  height: 16px;
+}
+
+.fd203-gantt-fit-dense .fd203-gantt-track .fd203-dependency-arrow::before,
+.fd203-gantt-fit-fit .fd203-gantt-track .fd203-dependency-arrow::before {
+  top: 7px;
+}
+
+.fd203-gantt-fit-dense .fd203-gantt-track .fd203-dependency-arrow::after,
+.fd203-gantt-fit-fit .fd203-gantt-track .fd203-dependency-arrow::after {
+  top: 2px;
+  border-top-width: 5px;
+  border-bottom-width: 5px;
+}
