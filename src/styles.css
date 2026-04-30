@@ -21258,3 +21258,247 @@ html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .fd
     justify-content: space-between;
   }
 }
+
+
+/* FlowDesk v20.3.83 採購清單資訊補強與選取狀態修正 */
+.purchase-list-extra-line {
+  display: none;
+}
+
+.purchase-card-list.purchase-list-mode {
+  gap: 8px;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact {
+  grid-template-columns: minmax(0, 1fr) minmax(136px, 172px) minmax(205px, auto);
+  min-height: 92px;
+  padding: 11px 12px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  background: rgba(255,255,255,.97);
+  position: relative;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.active {
+  border-color: rgba(var(--fd31-primary-rgb), .72) !important;
+  background: linear-gradient(135deg, rgba(var(--fd31-primary-rgb), .105), rgba(255,255,255,.98));
+  box-shadow: 0 0 0 4px rgba(var(--fd31-primary-rgb), .13), 0 16px 30px rgba(44,65,110,.12) !important;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.active::after {
+  content: '目前選取';
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  min-height: 22px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(var(--fd31-primary-rgb), .14);
+  color: var(--theme-primary-strong);
+  font-size: 11px;
+  font-weight: 950;
+  pointer-events: none;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-main {
+  display: grid !important;
+  grid-template-columns: minmax(220px, .86fr) minmax(420px, 1.28fr);
+  grid-template-rows: auto auto auto;
+  gap: 6px 16px !important;
+  align-items: center;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-topline {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-main > strong {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.purchase-card-list.purchase-list-mode .fd74-purchase-context {
+  grid-column: 2;
+  grid-row: 1;
+  padding-right: 82px;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-list-extra-line {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-list-extra-line span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 150px;
+  min-height: 23px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, .9);
+  color: #334155;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-list-extra-line b {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.purchase-card-list.purchase-list-mode .fd74-purchase-focus {
+  display: none !important;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-item-preview {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex !important;
+  flex-wrap: nowrap;
+  gap: 5px;
+  margin-top: 0;
+  overflow: hidden;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-item-preview span {
+  max-width: 260px;
+  min-height: 24px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(var(--fd31-primary-rgb), .07);
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-money {
+  padding: 9px 11px !important;
+  min-height: 62px;
+  background: linear-gradient(180deg, rgba(248,250,252,.95), rgba(241,245,249,.78));
+  border: 1px solid rgba(148, 163, 184, .16);
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-money span {
+  display: block !important;
+  margin-bottom: 2px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-money small {
+  display: block !important;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-card-money em {
+  display: none !important;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-actions.compact-actions {
+  min-width: 205px;
+}
+
+.purchase-card-list.purchase-list-mode .purchase-actions.compact-actions button {
+  min-height: 28px;
+  padding: 4px 7px;
+}
+
+.purchase-selection-status {
+  background: linear-gradient(135deg, rgba(var(--fd31-primary-rgb), .075), rgba(255,255,255,.96));
+  border-color: rgba(var(--fd31-primary-rgb), .16);
+}
+
+.purchase-selection-status b {
+  color: var(--theme-primary-strong);
+}
+
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact {
+  background: rgba(15, 23, 42, .88);
+  border-color: rgba(148, 163, 184, .20);
+}
+
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.active {
+  background: linear-gradient(135deg, rgba(var(--fd31-primary-rgb), .22), rgba(15,23,42,.90));
+}
+
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-card-main > strong,
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-list-extra-line span,
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-item-preview span {
+  color: #e2e8f0;
+}
+
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-list-extra-line span,
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-item-preview span,
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-card-money {
+  background: rgba(30, 41, 59, .74);
+  border-color: rgba(148, 163, 184, .16);
+}
+
+@media (max-width: 1280px) {
+  .purchase-card-list.purchase-list-mode .purchase-card-main {
+    grid-template-columns: minmax(200px, .9fr) minmax(300px, 1fr);
+  }
+  .purchase-card-list.purchase-list-mode .purchase-list-extra-line span {
+    max-width: 132px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact {
+    grid-template-columns: 1fr;
+  }
+  .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.active::after {
+    right: 12px;
+  }
+  .purchase-card-list.purchase-list-mode .purchase-card-money,
+  .purchase-card-list.purchase-list-mode .purchase-actions.compact-actions {
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 820px) {
+  .purchase-card-list.purchase-list-mode .purchase-card-main {
+    grid-template-columns: 1fr;
+  }
+  .purchase-card-list.purchase-list-mode .fd74-purchase-context,
+  .purchase-card-list.purchase-list-mode .purchase-list-extra-line,
+  .purchase-card-list.purchase-list-mode .purchase-card-main > strong,
+  .purchase-card-list.purchase-list-mode .purchase-card-topline,
+  .purchase-card-list.purchase-list-mode .purchase-item-preview {
+    grid-column: 1;
+    grid-row: auto;
+    padding-right: 0;
+  }
+  .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.active::after {
+    position: static;
+    width: fit-content;
+    margin-left: 4px;
+  }
+  .purchase-card-list.purchase-list-mode .purchase-list-extra-line span {
+    max-width: 100%;
+  }
+  .purchase-card-list.purchase-list-mode .purchase-item-preview {
+    flex-wrap: wrap;
+  }
+}

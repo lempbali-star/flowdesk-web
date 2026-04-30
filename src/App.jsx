@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.82'
+const FLOWDESK_APP_VERSION = '20.3.83'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2236,19 +2236,22 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     if (activeTable !== '採購紀錄') return
     if (!purchases.length) {
       if (selectedPurchase) setSelectedPurchase(null)
+      if (purchaseDetailOpenId) setPurchaseDetailOpenId(null)
       return
     }
+    if (!selectedPurchase) return
     const visibleRows = filteredPurchases.length ? filteredPurchases : purchases
-    const refreshed = selectedPurchase ? purchases.find((row) => isSamePurchase(row, selectedPurchase)) : null
+    const refreshed = purchases.find((row) => isSamePurchase(row, selectedPurchase)) || null
     const stillVisible = refreshed && visibleRows.some((row) => isSamePurchase(row, refreshed))
     if (stillVisible && refreshed !== selectedPurchase) {
       setSelectedPurchase(refreshed)
       return
     }
     if (!stillVisible) {
-      setSelectedPurchase(visibleRows[0] || null)
+      setSelectedPurchase(null)
+      if (purchaseDetailOpenId) setPurchaseDetailOpenId(null)
     }
-  }, [activeTable, filteredPurchases, purchases, selectedPurchase])
+  }, [activeTable, filteredPurchases, purchases, selectedPurchase, purchaseDetailOpenId])
 
   function updateCollectionView(viewId) {
     if (!activeCollection) return
@@ -2638,7 +2641,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <div><p className="eyebrow">處理優先序</p><strong>採購待辦焦點</strong><span>依優先等級、金額與未完成狀態排序</span></div>
               <div className="purchase-action-list">
                 {purchaseActionRows.length ? purchaseActionRows.map((item) => (
-                  <button type="button" key={getPurchaseKey(item.row)} onClick={() => setSelectedPurchase(item.row)}>
+                  <button type="button" key={getPurchaseKey(item.row)} onClick={() => openPurchaseDetailDialogV78(item.row)}>
                     <div><strong>{purchaseTitle(item.row)}</strong><small><PurchasePriorityBadge value={item.row.priority} compact /> {item.row.vendor || '未指定廠商'} · {item.reasons.join(' / ')}</small></div>
                     <b>{formatMoney(item.amount)}</b>
                   </button>
@@ -2692,7 +2695,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                 </div>
                 <div className="purchase-selection-status">
                   <span>目前顯示 <b>{pagedPurchases.length}</b> 筆 / 篩選 <b>{filteredPurchases.length}</b> 筆</span>
-                  <span>目前選取：<b>{stableSelectedPurchase ? `${stableSelectedPurchase.id} ${purchaseTitle(stableSelectedPurchase)}` : '尚未選取'}</b></span><span>點選卡片可開啟詳細彈窗</span>
+                  <span>目前選取：<b>{stableSelectedPurchase ? `${stableSelectedPurchase.id} ${purchaseTitle(stableSelectedPurchase)}` : '尚未選取'}</b></span><span>點選列或卡片可開啟詳細彈窗</span>
                 </div>
                 <div className={collectionView === 'card' ? 'purchase-card-list purchase-card-grid' : 'purchase-card-list purchase-list-mode'}>
                   {pagedPurchases.map((row) => {
@@ -2730,6 +2733,15 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                           <div className="fd74-purchase-context">
                             <span>廠商：{row.vendor || '未指定'}</span>
                             <span>日期：{row.requestDate || '未填日期'}</span>
+                          </div>
+                          <div className="purchase-list-extra-line" aria-label="採購清單重點資訊">
+                            <span><b>單位</b>{row.department || '未指定'}</span>
+                            <span><b>申請</b>{row.requester || '—'}</span>
+                            <span><b>使用</b>{row.user || row.usedBy || row.requester || '—'}</span>
+                            <span><b>付款</b>{row.paymentStatus || '未付款'}</span>
+                            <span><b>到貨</b>{row.arrivalStatus || '未到貨'}</span>
+                            <span><b>驗收</b>{row.acceptanceStatus || '未驗收'}</span>
+                            <span><b>歸檔</b>{purchaseArchiveStatusV72(row)}</span>
                           </div>
                           <PurchaseCardFocusMetaV74 row={row} amount={amount} />
                           <div className="purchase-item-preview">
@@ -6313,7 +6325,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.79 加入採購明細分頁、歸檔資料整理與彈窗內容放大優化，採購資訊更清楚但不破壞既有流程。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.83 加強採購清單可讀性與目前選取狀態，清單模式保留必要資訊但不回到厚重卡片。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
