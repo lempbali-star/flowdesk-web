@@ -23847,3 +23847,63 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-drag-tip {
   pointer-events: none;
 }
+
+/* FlowDesk v20.4.03 - 甘特圖拖移回穩 */
+.fd203-gantt-scroll {
+  padding-bottom: 34px !important;
+  scrollbar-gutter: stable both-edges;
+}
+
+.fd203-gantt-panel .fd203-gantt-track,
+.fd203-gantt-panel .fd203-gantt-track.soft,
+.fd203-gantt-panel .fd203-gantt-track.subtask {
+  overflow: visible !important;
+}
+
+.fd203-gantt-bar.task,
+.fd203-gantt-bar.subtask,
+.fd203-gantt-bar.project {
+  cursor: grab;
+  touch-action: none;
+}
+
+.fd203-gantt-bar.task:active,
+.fd203-gantt-bar.subtask:active,
+.fd203-gantt-bar.project:active {
+  cursor: grabbing;
+}
+
+.gantt-date-dragging .fd203-gantt-bar.task,
+.gantt-date-dragging .fd203-gantt-bar.subtask,
+.gantt-date-dragging .fd203-gantt-bar.project {
+  cursor: grabbing;
+}
+
+.fd203-gantt-bar .gantt-resize-handle,
+.fd203-gantt-progress-trigger,
+.fd203-gantt-progress-pop {
+  cursor: default;
+}
+
+.fd203-gantt-drag-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  z-index: 9;
+  max-width: 220px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 10px 24px rgba(15,23,42,.18);
+}
+
+.fd203-gantt-row.task:last-child,
+.fd203-gantt-task-group:last-child {
+  margin-bottom: 28px;
+}

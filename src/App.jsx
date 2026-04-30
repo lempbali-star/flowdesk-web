@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.02'
+const FLOWDESK_APP_VERSION = '20.4.03'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4671,8 +4671,20 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       return Math.max(earliestDelta, Math.min(latestDelta, deltaDays))
     }
 
+    let pendingCommit = null
+    let hasMoved = false
+
+    const setPreview = (previewScope, previewTaskIndex, previewSubtaskIndex, nextStart, nextEnd, patch) => {
+      pendingCommit = { scope: previewScope, taskIndex: previewTaskIndex, subtaskIndex: previewSubtaskIndex, patch }
+      updateGanttDragPreview(safeProject.id, previewScope, previewTaskIndex, previewSubtaskIndex, nextStart, nextEnd, edge)
+    }
+
     const applyMove = (moveEvent) => {
-      const deltaDays = Math.round((moveEvent.clientX - startX) / pixelsPerDay)
+      const rawDeltaDays = (moveEvent.clientX - startX) / pixelsPerDay
+      const deltaDays = Math.round(rawDeltaDays)
+      if (Math.abs(rawDeltaDays) < 0.35) return
+      hasMoved = true
+
       if (scope === 'project') {
         if (edge === 'move') {
           const nextStart = addDaysToDateValue(originalProjectStart, deltaDays)
@@ -4688,16 +4700,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             })),
           }))
           const shiftedMilestones = (safeProject.milestones || []).map((milestone) => ({ ...milestone, date: addDaysToDateValue(milestone.date || originalProjectEnd, deltaDays) }))
-          updateGanttDragPreview(safeProject.id, 'project', null, null, nextStart, nextEnd, edge)
-          updateProject(safeProject.id, { startDate: nextStart, endDate: nextEnd, tasks: shiftedTasks, milestones: shiftedMilestones })
+          setPreview('project', null, null, nextStart, nextEnd, { startDate: nextStart, endDate: nextEnd, tasks: shiftedTasks, milestones: shiftedMilestones })
         } else if (edge === 'start') {
           const nextStart = minIsoDate(addDaysToDateValue(originalProjectStart, deltaDays), originalProjectEnd)
-          updateGanttDragPreview(safeProject.id, 'project', null, null, nextStart, originalProjectEnd, edge)
-          updateProject(safeProject.id, { startDate: nextStart })
+          setPreview('project', null, null, nextStart, originalProjectEnd, { startDate: nextStart })
         } else {
           const nextEnd = maxIsoDate(addDaysToDateValue(originalProjectEnd, deltaDays), originalProjectStart)
-          updateGanttDragPreview(safeProject.id, 'project', null, null, originalProjectStart, nextEnd, edge)
-          updateProject(safeProject.id, { endDate: nextEnd })
+          setPreview('project', null, null, originalProjectStart, nextEnd, { endDate: nextEnd })
         }
         return
       }
@@ -4712,16 +4721,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             start: addDaysToDateValue(subtask.start || originalTaskStart, safeDelta),
             end: addDaysToDateValue(subtask.end || originalTaskEnd, safeDelta),
           }))
-          updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, nextStart, nextEnd, edge)
-          updateProjectTask(safeProject.id, taskIndex, { start: nextStart, end: nextEnd, subtasks: shiftedSubtasks })
+          setPreview('task', taskIndex, null, nextStart, nextEnd, { start: nextStart, end: nextEnd, subtasks: shiftedSubtasks })
         } else if (edge === 'start') {
           const nextStart = clampIsoDate(addDaysToDateValue(originalTaskStart, deltaDays), originalProjectStart, originalTaskEnd)
-          updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, nextStart, originalTaskEnd, edge)
-          updateProjectTask(safeProject.id, taskIndex, { start: nextStart })
+          setPreview('task', taskIndex, null, nextStart, originalTaskEnd, { start: nextStart })
         } else {
           const nextEnd = clampIsoDate(addDaysToDateValue(originalTaskEnd, deltaDays), originalTaskStart, originalProjectEnd)
-          updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, originalTaskStart, nextEnd, edge)
-          updateProjectTask(safeProject.id, taskIndex, { end: nextEnd })
+          setPreview('task', taskIndex, null, originalTaskStart, nextEnd, { end: nextEnd })
         }
         return
       }
@@ -4731,16 +4737,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           const safeDelta = clampSubtaskMoveDelta(deltaDays)
           const nextStart = addDaysToDateValue(originalSubtaskStart, safeDelta)
           const nextEnd = addDaysToDateValue(nextStart, originalSubtaskDuration)
-          updateGanttDragPreview(safeProject.id, 'subtask', taskIndex, subtaskIndex, nextStart, nextEnd, edge)
-          updateProjectSubtask(safeProject.id, taskIndex, subtaskIndex, { start: nextStart, end: nextEnd })
+          setPreview('subtask', taskIndex, subtaskIndex, nextStart, nextEnd, { start: nextStart, end: nextEnd })
         } else if (edge === 'start') {
           const nextStart = clampIsoDate(addDaysToDateValue(originalSubtaskStart, deltaDays), originalTaskStart, originalSubtaskEnd)
-          updateGanttDragPreview(safeProject.id, 'subtask', taskIndex, subtaskIndex, nextStart, originalSubtaskEnd, edge)
-          updateProjectSubtask(safeProject.id, taskIndex, subtaskIndex, { start: nextStart })
+          setPreview('subtask', taskIndex, subtaskIndex, nextStart, originalSubtaskEnd, { start: nextStart })
         } else {
           const nextEnd = clampIsoDate(addDaysToDateValue(originalSubtaskEnd, deltaDays), originalSubtaskStart, originalTaskEnd)
-          updateGanttDragPreview(safeProject.id, 'subtask', taskIndex, subtaskIndex, originalSubtaskStart, nextEnd, edge)
-          updateProjectSubtask(safeProject.id, taskIndex, subtaskIndex, { end: nextEnd })
+          setPreview('subtask', taskIndex, subtaskIndex, originalSubtaskStart, nextEnd, { end: nextEnd })
         }
       }
     }
@@ -4751,6 +4754,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       setGanttDragPreview(null)
       window.removeEventListener('pointermove', applyMove)
       window.removeEventListener('pointerup', stopMove)
+      if (!hasMoved || !pendingCommit?.patch) return
+      if (pendingCommit.scope === 'project') {
+        updateProject(safeProject.id, pendingCommit.patch)
+      } else if (pendingCommit.scope === 'task') {
+        updateProjectTask(safeProject.id, pendingCommit.taskIndex, pendingCommit.patch)
+      } else if (pendingCommit.scope === 'subtask') {
+        updateProjectSubtask(safeProject.id, pendingCommit.taskIndex, pendingCommit.subtaskIndex, pendingCommit.patch)
+      }
       const actionText = edge === 'move' ? '平移' : '調整'
       const scopeText = scope === 'project' ? '專案' : scope === 'subtask' ? '子任務' : '任務'
       finalizeProjectDependencySchedule(safeProject.id, `使用甘特圖${actionText}${scopeText}期程。`)
@@ -4981,15 +4992,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const endHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'end', event, subtaskIndex)
     const moveHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'move', event, subtaskIndex)
     const barMoveHandler = (event) => {
-      if (event.target?.closest?.('.gantt-resize-handle')) return
+      if (event.button !== 0) return
+      if (event.target?.closest?.('.gantt-resize-handle, .fd203-gantt-progress-trigger, .fd203-gantt-progress-pop, input, button')) return
       moveHandler(event)
     }
     return (
       <span
         className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''}`.trim()}
         style={ganttStyle(start, end, displayStart, displayEnd)}
-        onPointerDownCapture={barMoveHandler}
-        title={`${title}｜拖曳中間可整段移動；拖曳左右端可調整起訖日`}
+        onPointerDown={barMoveHandler}
+        title={`${title}｜按住任務條中間可整段移動；拖曳左右端可調整起訖日`}
       >
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
         {renderGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, label)}
