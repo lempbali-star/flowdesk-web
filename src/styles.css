@@ -13631,7 +13631,7 @@ button {
 
 
 
-/* FlowDesk v20.3.53 project gantt daily move + Chinese IME input hotfix */
+/* FlowDesk v20.3.55 project gantt daily move + Chinese IME input hotfix */
 .fd203-gantt-bar {
   cursor: grab;
   touch-action: none;
@@ -13661,7 +13661,7 @@ button {
   user-select: text;
 }
 
-/* FlowDesk v20.3.53 Project modal + subtask gantt refinement */
+/* FlowDesk v20.3.55 Project modal + subtask gantt refinement */
 .fd203-main-layout.modal-mode {
   grid-template-columns: 1fr !important;
 }
@@ -13982,7 +13982,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 expanded gantt + inline task naming + today marker */
+/* FlowDesk v20.3.55 expanded gantt + inline task naming + today marker */
 .fd203-pane-head-stack {
   align-items: flex-start;
   gap: 10px;
@@ -14133,7 +14133,7 @@ button {
   }
 }
 
-/* FlowDesk v20.3.53 gantt action refinement */
+/* FlowDesk v20.3.55 gantt action refinement */
 .fd203-gantt-actions {
   display: flex;
   flex-wrap: wrap;
@@ -14225,7 +14225,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 individual subtask toggle + larger project modal */
+/* FlowDesk v20.3.55 individual subtask toggle + larger project modal */
 .fd203-mini-muted {
   display: inline-flex;
   align-items: center;
@@ -14283,7 +14283,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 project modal real size fix */
+/* FlowDesk v20.3.55 project modal real size fix */
 .fd203-project-modal-backdrop {
   padding: 12px !important;
   place-items: center !important;
@@ -14366,7 +14366,7 @@ button {
   }
 }
 
-/* FlowDesk v20.3.53 - clearer gantt task/subtask collapse controls */
+/* FlowDesk v20.3.55 - clearer gantt task/subtask collapse controls */
 .fd203-gantt-actions .fd203-gantt-global-toggle {
   display: inline-flex;
   align-items: center;
@@ -14583,7 +14583,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 - Gantt completion checkbox */
+/* FlowDesk v20.3.55 - Gantt completion checkbox */
 .fd203-gantt-task-title-line {
   grid-template-columns: 28px auto minmax(0, 1fr) !important;
 }
@@ -14682,7 +14682,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 - cleaner gantt task label layout + persisted workspace state */
+/* FlowDesk v20.3.55 - cleaner gantt task label layout + persisted workspace state */
 .fd203-gantt-row.task {
   min-height: 78px;
 }
@@ -14815,7 +14815,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 project list running / next action visibility */
+/* FlowDesk v20.3.55 project list running / next action visibility */
 .fd203-project-list-info {
   display: grid;
   grid-template-rows: repeat(2, minmax(0, auto));
@@ -14891,7 +14891,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 project card alignment + compact running/next summary */
+/* FlowDesk v20.3.55 project card alignment + compact running/next summary */
 .fd203-project-card-list {
   align-items: stretch;
   grid-auto-rows: 1fr;
@@ -14983,7 +14983,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 project list summary logic + card summary polish */
+/* FlowDesk v20.3.55 project list summary logic + card summary polish */
 .fd203-project-list-info.compact-v21 {
   display: grid;
   grid-template-rows: auto auto;
@@ -15048,7 +15048,7 @@ button {
   }
 }
 
-/* FlowDesk v20.3.53 project priority and 10-step pagination */
+/* FlowDesk v20.3.55 project priority and 10-step pagination */
 .fd203-overview-strip {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
@@ -15164,7 +15164,7 @@ button {
 }
 
 
-/* v20.3.53 project focus, status chips, page jump */
+/* v20.3.55 project focus, status chips, page jump */
 .fd203-attention-panel {
   display: grid;
   grid-template-columns: minmax(220px, 0.78fr) minmax(0, 2.2fr);
@@ -15295,7 +15295,7 @@ button {
 }
 
 
-/* v20.3.53 task dependency / predecessor scheduling */
+/* v20.3.55 task dependency / predecessor scheduling */
 .fd203-task-dependency-note {
   display: inline-flex;
   align-items: center;
@@ -15323,7 +15323,7 @@ button {
 @media (max-width: 900px) { .fd203-task-dependency-note { white-space: normal; } }
 
 
-/* FlowDesk v20.3.53 - Gantt row alignment + dependency drag reschedule fix */
+/* FlowDesk v20.3.55 - Gantt row alignment + dependency drag reschedule fix */
 .fd203-gantt-grid.fd203-gantt-row {
   align-items: stretch !important;
 }
@@ -15370,7 +15370,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 - keep a single today marker visible while scrolling gantt rows */
+/* FlowDesk v20.3.55 - keep a single today marker visible while scrolling gantt rows */
 .fd203-gantt-floating-today {
   position: sticky;
   top: 58px;
@@ -15445,7 +15445,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 - prevent duplicate today labels inside gantt rows */
+/* FlowDesk v20.3.55 - prevent duplicate today labels inside gantt rows */
 .fd203-gantt-row .fd203-gantt-today-line i,
 .fd203-gantt-row .fd203-gantt-today-line.subtle i,
 .fd203-gantt-row .fd203-gantt-today-guide i {
@@ -15485,7 +15485,7 @@ button {
   }
 }
 
-/* FlowDesk v20.3.53 - Gantt operation stability and status cleanup */
+/* FlowDesk v20.3.55 - Gantt operation stability and status cleanup */
 .fd203-gantt-task-title-line.compact-v16 {
   grid-template-columns: 26px minmax(0, 1fr) auto auto !important;
   gap: 6px !important;
@@ -15578,7 +15578,7 @@ button {
 }
 
 
-/* FlowDesk v20.3.53 theme suite enhancement start */
+/* FlowDesk v20.3.55 theme suite enhancement start */
 :root {
   --fd30-primary-rgb: 53, 107, 255;
   --fd30-secondary-rgb: 140, 77, 255;
@@ -15634,9 +15634,9 @@ html[data-flowdesk-theme="slate"] { --fd30-primary-rgb: 71, 85, 105; --fd30-seco
 input:focus, select:focus, textarea:focus, button:focus-visible, [tabindex]:focus-visible { outline: 3px solid rgba(var(--fd30-primary-rgb), .18) !important; outline-offset: 2px; border-color: rgba(var(--fd30-primary-rgb), .38) !important; }
 .surface-toolbar, .settings-hero, .fd203-pane-head, .fd203-workspace-head { border-color: rgba(var(--fd30-primary-rgb), .12) !important; }
 @media (max-width: 760px) { .fd30-theme-toolbar { grid-template-columns: 1fr; } .fd30-reset-theme-btn { width: 100%; justify-content: center; } .theme-option { min-height: 128px; } }
-/* FlowDesk v20.3.53 theme suite enhancement end */
+/* FlowDesk v20.3.55 theme suite enhancement end */
 
-/* FlowDesk v20.3.53 vivid theme enhancement start */
+/* FlowDesk v20.3.55 vivid theme enhancement start */
 :root {
   --fd31-primary-rgb: var(--fd30-primary-rgb);
   --fd31-secondary-rgb: var(--fd30-secondary-rgb);
@@ -15943,9 +15943,9 @@ input:focus, select:focus, textarea:focus, button:focus-visible, [tabindex]:focu
   .fd31-theme-toolbar-preview { justify-content: center; width: 100%; }
   .fd31-theme-grid { grid-template-columns: 1fr !important; }
 }
-/* FlowDesk v20.3.53 vivid theme enhancement end */
+/* FlowDesk v20.3.55 vivid theme enhancement end */
 
-/* v20.3.53 vivid theme enhancement */
+/* v20.3.55 vivid theme enhancement */
 html[data-flowdesk-theme="galaxy"] {
   --theme-primary: #6d5dfc;
   --theme-primary-strong: #5b21b6;
@@ -16138,7 +16138,7 @@ button[data-primary="true"]:hover::after {
 }
 
 
-/* v20.3.53 theme motion enhancement */
+/* v20.3.55 theme motion enhancement */
 :root {
   --fd33-motion-fast: .18s;
   --fd33-motion-normal: .32s;
@@ -16428,7 +16428,7 @@ textarea:focus {
 }
 
 
-/* v20.3.53 appearance mode and motion level controls */
+/* v20.3.55 appearance mode and motion level controls */
 html[data-flowdesk-appearance="dark"] body {
   color: #dbeafe;
   background:
@@ -16649,7 +16649,7 @@ html[data-flowdesk-motion="standard"] .theme-swatch::before {
 }
 
 
-/* v20.3.53 theme preview, home atmosphere, and gantt status visuals */
+/* v20.3.55 theme preview, home atmosphere, and gantt status visuals */
 .fd35-theme-preview-panel {
   position: relative;
   overflow: hidden;
@@ -16974,7 +16974,7 @@ html[data-flowdesk-appearance="dark"] .fd35-preview-tags b {
 }
 
 
-/* v20.3.53 custom theme color builder */
+/* v20.3.55 custom theme color builder */
 html[data-flowdesk-theme="custom"] {
   --theme-primary: var(--fd36-custom-primary, #2563eb);
   --theme-primary-strong: var(--fd36-custom-primary, #2563eb);
@@ -17135,7 +17135,7 @@ html[data-flowdesk-appearance="dark"] .fd36-color-field span {
 }
 
 
-/* v20.3.53 holographic aurora visual system */
+/* v20.3.55 holographic aurora visual system */
 html[data-flowdesk-theme="hologlass"] {
   --theme-primary: #7dd3fc;
   --theme-primary-strong: #0369a1;
@@ -17480,7 +17480,7 @@ html[data-flowdesk-motion="holo"] .home-page::after {
 }
 
 
-/* v20.3.53 appearance presets and contrast protection */
+/* v20.3.55 appearance presets and contrast protection */
 .fd38-preset-panel {
   position: relative;
   overflow: hidden;
@@ -17685,7 +17685,7 @@ html[data-flowdesk-motion="holo"] .fd38-preset-card.active {
 }
 
 
-/* v20.3.53 appearance quick switcher and compact settings polish */
+/* v20.3.55 appearance quick switcher and compact settings polish */
 .fd39-appearance-quick {
   position: relative;
   z-index: 40;
@@ -18011,7 +18011,7 @@ html[data-flowdesk-appearance="dark"] .fd39-menu-settings {
 }
 
 
-/* v20.3.53 appearance settings consolidation and motion safety */
+/* v20.3.55 appearance settings consolidation and motion safety */
 .fd40-appearance-nav {
   position: sticky;
   top: 10px;
@@ -18135,7 +18135,7 @@ html[data-flowdesk-motion="off"] body::after { opacity: .18 !important; }
 }
 
 
-/* v20.3.53 functional boundary consolidation */
+/* v20.3.55 functional boundary consolidation */
 .fd41-boundary-note {
   display: grid;
   gap: 8px;
@@ -18287,7 +18287,7 @@ html[data-flowdesk-appearance="dark"] .fd41-boundary-card small {
 }
 
 
-/* FlowDesk v20.3.53 gantt left panel spacing fix */
+/* FlowDesk v20.3.55 gantt left panel spacing fix */
 .fd203-gantt-row.task {
   min-height: 132px !important;
 }
@@ -18358,7 +18358,7 @@ html[data-flowdesk-appearance="dark"] .fd41-boundary-card small {
 }
 
 
-/* FlowDesk v20.3.53 gantt visual refinement */
+/* FlowDesk v20.3.55 gantt visual refinement */
 .fd203-gantt-scroll {
   border-radius: 22px;
   background:
@@ -18539,7 +18539,7 @@ html[data-flowdesk-appearance="dark"] .fd41-boundary-card small {
 }
 
 
-/* FlowDesk v20.3.53 gantt left task card refinement */
+/* FlowDesk v20.3.55 gantt left task card refinement */
 .fd203-gantt-row.task {
   min-height: 112px !important;
 }
@@ -18655,5 +18655,254 @@ html[data-flowdesk-appearance="dark"] .fd203-gantt-row.task .fd203-gantt-label s
 @media (max-width: 900px) {
   .fd203-gantt-row.task {
     min-height: 132px !important;
+  }
+}
+
+
+/* FlowDesk v20.3.55 gantt left task slim layout */
+.fd203-gantt-row.task {
+  min-height: 90px !important;
+}
+
+.fd203-gantt-row.project {
+  min-height: 64px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-label {
+  padding: 8px 10px 8px !important;
+  gap: 5px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-label::before {
+  inset: 6px 6px 6px 6px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.035) !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-task-title-line.compact-v16 {
+  grid-template-columns: 24px minmax(0, 1fr) !important;
+  column-gap: 7px !important;
+  row-gap: 5px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-name-input {
+  min-height: 30px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  font-size: 13px !important;
+  line-height: 1.3 !important;
+  border-radius: 12px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-status-chip,
+.fd203-gantt-row.task .fd203-gantt-done-check {
+  min-height: 24px !important;
+  padding: 2px 9px !important;
+  font-size: 12px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-label small {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 {
+  gap: 4px !important;
+  margin-top: -1px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-mini-link,
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-subtask-count-pill,
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-mini-muted {
+  min-height: 22px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+}
+
+.fd203-gantt-grid.fd203-gantt-row.subtask-collapsed-note {
+  min-height: 28px !important;
+}
+
+.fd203-gantt-grid.fd203-gantt-row.subtask-collapsed-note .fd203-gantt-label {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.fd203-gantt-grid.fd203-gantt-row.subtask-collapsed-note .subtask-collapsed-note-track {
+  min-height: 12px !important;
+  margin-block: 4px !important;
+  font-size: 11px !important;
+}
+
+.fd203-gantt-track {
+  margin: 10px 8px !important;
+}
+
+.fd203-gantt-bar.task {
+  top: 5px !important;
+  height: 16px !important;
+}
+
+.fd203-gantt-bar.project {
+  top: 4px !important;
+  height: 18px !important;
+}
+
+.fd203-gantt-bar.subtask {
+  top: 5px !important;
+  height: 15px !important;
+}
+
+@media (max-width: 1280px) {
+  .fd203-gantt-row.task {
+    min-height: 98px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .fd203-gantt-row.task {
+    min-height: 108px !important;
+  }
+}
+
+
+/* FlowDesk v20.3.55 gantt layout repair + manual progress button restore */
+.fd203-gantt-row.task {
+  min-height: 96px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-label {
+  padding: 8px 10px !important;
+  gap: 5px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-label::before {
+  inset: 6px !important;
+  border-radius: 14px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-task-title-line.compact-v16 {
+  display: grid !important;
+  grid-template-columns: 24px minmax(0, 1fr) auto auto !important;
+  align-items: center !important;
+  column-gap: 7px !important;
+  row-gap: 4px !important;
+}
+
+.fd203-gantt-row.task .fd203-subtask-chevron {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+
+.fd203-gantt-row.task .fd203-gantt-name-input {
+  grid-column: 2 / 5;
+  min-height: 30px !important;
+  font-size: 13px !important;
+  line-height: 1.3 !important;
+  border-radius: 12px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-status-chip {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
+  min-height: 22px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-done-check {
+  grid-column: 3 / 5;
+  grid-row: 2;
+  justify-self: start;
+  min-height: 22px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+
+.fd203-gantt-row.task .fd203-gantt-label small {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  margin-top: 0 !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-mini-link,
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-subtask-count-pill,
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-mini-muted {
+  min-height: 22px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  border-radius: 999px !important;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-subtask-title-line.compact-v16 {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+  align-items: center !important;
+  column-gap: 7px !important;
+  row-gap: 4px !important;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-name-input.subtask {
+  grid-column: 1 / 4;
+  min-height: 28px !important;
+  font-size: 13px !important;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-status-chip.subtask {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
+  min-height: 22px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-done-check.subtask {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  justify-self: start;
+  min-height: 22px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-label small {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-row-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+}
+
+.fd203-gantt-row.subtask .fd203-gantt-row-actions .fd203-mini-link {
+  min-height: 22px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+}
+
+.fd203-gantt-progress-trigger {
+  cursor: pointer;
+}
+
+.fd203-gantt-progress-pop {
+  z-index: 8;
+}
+
+@media (max-width: 1280px) {
+  .fd203-gantt-row.task {
+    min-height: 104px !important;
   }
 }

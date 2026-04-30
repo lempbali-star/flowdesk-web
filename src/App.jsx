@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.53'
+const FLOWDESK_APP_VERSION = '20.3.55'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4363,7 +4363,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const displayEnd = frozenRange?.end || timelineRange.end
     const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
     const weekCellWidth = compact ? 124 : 140
-    const labelColumnWidth = compact ? 300 : 360
+    const labelColumnWidth = compact ? 290 : 342
     const gridColumns = `${labelColumnWidth}px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
     const todayValue = new Date().toISOString().slice(0, 10)
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
@@ -4464,6 +4464,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
                     {dependencyMeta.hasDependency ? <div className={`fd203-task-dependency-note ${dependencyMeta.waiting ? 'waiting' : 'ready'}`}>{dependencyMeta.waiting ? '等待前置' : '前置完成'}：{dependencyMeta.predecessorName}，排定 {formatMonthDay(dependencyMeta.startAfter)}</div> : null}
                     <div className="fd203-gantt-row-actions compact-v16 fd203-gantt-row-actions-v29">
+                      <button type="button" className="fd203-mini-link soft" onClick={(event) => openGanttProgressEditor('task', project.id, index, null, progress, event)}>調整%</button>
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>＋子任務</button>
                       {subtaskCount ? <button type="button" className="fd203-mini-link soft" onClick={() => autoEstimateProjectTask(project.id, index)}>自動%</button> : null}
                       {subtaskCount ? <span className={`fd203-subtask-count-pill ${subtasksOpen ? 'open' : 'closed'}`}>{subtasksOpen ? '已展開' : '已收合'} {subtaskCount}</span> : <span className="fd203-mini-muted">0 子任務</span>}
@@ -4510,6 +4511,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                         </div>
                         <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {subProgress}% · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
                         <div className="fd203-gantt-row-actions compact-v16">
+                          <button type="button" className="fd203-mini-link soft" onClick={(event) => openGanttProgressEditor('subtask', project.id, index, subIndex, subProgress, event)}>調整%</button>
                           <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectSubtask(project.id, index, subIndex)}>刪除</button>
                         </div>
                       </div>
@@ -5920,7 +5922,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.53 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.55 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
