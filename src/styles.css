@@ -23364,3 +23364,151 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* FlowDesk v20.3.97 - 專案分頁焦點模式與專案附件邏輯整理 */
+.fd203-project-modal--edit .fd203-workspace-metrics,
+.fd203-project-modal--gantt .fd203-workspace-metrics,
+.fd203-project-modal--tasks .fd203-workspace-metrics,
+.fd203-project-modal--milestones .fd203-workspace-metrics,
+.fd203-project-modal--records .fd203-workspace-metrics {
+  display: none !important;
+}
+
+.fd203-project-modal--edit .fd203-workspace-hero,
+.fd203-project-modal--gantt .fd203-workspace-hero,
+.fd203-project-modal--tasks .fd203-workspace-hero,
+.fd203-project-modal--milestones .fd203-workspace-hero,
+.fd203-project-modal--records .fd203-workspace-hero {
+  margin: 8px 14px 8px !important;
+  padding: 10px 14px !important;
+  border-radius: 18px !important;
+  box-shadow: none !important;
+  align-items: center !important;
+  background: rgba(255,255,255,.96) !important;
+}
+
+.fd203-project-modal--edit .fd203-workspace-label,
+.fd203-project-modal--gantt .fd203-workspace-label,
+.fd203-project-modal--tasks .fd203-workspace-label,
+.fd203-project-modal--milestones .fd203-workspace-label,
+.fd203-project-modal--records .fd203-workspace-label {
+  display: none !important;
+}
+
+.fd203-project-modal--edit .fd203-workspace-titleblock,
+.fd203-project-modal--gantt .fd203-workspace-titleblock,
+.fd203-project-modal--tasks .fd203-workspace-titleblock,
+.fd203-project-modal--milestones .fd203-workspace-titleblock,
+.fd203-project-modal--records .fd203-workspace-titleblock {
+  gap: 6px !important;
+}
+
+.fd203-project-modal--edit .fd203-workspace-title-row h3,
+.fd203-project-modal--gantt .fd203-workspace-title-row h3,
+.fd203-project-modal--tasks .fd203-workspace-title-row h3,
+.fd203-project-modal--milestones .fd203-workspace-title-row h3,
+.fd203-project-modal--records .fd203-workspace-title-row h3 {
+  font-size: 20px !important;
+  line-height: 1.15 !important;
+}
+
+.fd203-project-modal--edit .fd203-workspace-meta,
+.fd203-project-modal--gantt .fd203-workspace-meta,
+.fd203-project-modal--tasks .fd203-workspace-meta,
+.fd203-project-modal--milestones .fd203-workspace-meta,
+.fd203-project-modal--records .fd203-workspace-meta {
+  gap: 6px !important;
+}
+
+.fd203-project-modal--edit .fd203-workspace-meta span,
+.fd203-project-modal--gantt .fd203-workspace-meta span,
+.fd203-project-modal--tasks .fd203-workspace-meta span,
+.fd203-project-modal--milestones .fd203-workspace-meta span,
+.fd203-project-modal--records .fd203-workspace-meta span {
+  min-height: 28px !important;
+  padding: 4px 9px !important;
+  font-size: 12px !important;
+}
+
+.fd203-project-modal--edit .fd203-workspace-top-actions button,
+.fd203-project-modal--gantt .fd203-workspace-top-actions button,
+.fd203-project-modal--tasks .fd203-workspace-top-actions button,
+.fd203-project-modal--milestones .fd203-workspace-top-actions button,
+.fd203-project-modal--records .fd203-workspace-top-actions button {
+  min-height: 34px !important;
+  padding: 7px 10px !important;
+  border-radius: 12px !important;
+}
+
+.fd203-project-modal .fd203-tabs {
+  margin: 0 14px 10px !important;
+  padding: 8px !important;
+  border-radius: 18px !important;
+  background: rgba(248,250,252,.86) !important;
+}
+
+.fd203-project-modal .fd203-tabs button {
+  min-height: 40px !important;
+}
+
+.fd203-project-modal--edit .fd203-tab-panel,
+.fd203-project-modal--gantt .fd203-gantt-panel,
+.fd203-project-modal--tasks .fd203-tab-panel,
+.fd203-project-modal--milestones .fd203-tab-panel,
+.fd203-project-modal--records .fd203-tab-panel {
+  margin: 0 14px 14px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+.fd203-project-modal--gantt .fd203-gantt-scroll {
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.fd397-records-panel {
+  overflow: auto !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.fd397-records-grid {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.1fr) minmax(360px, .9fr);
+  gap: 14px;
+  min-height: 100%;
+}
+
+.fd397-records-archive,
+.fd397-records-timeline {
+  border: 1px solid rgba(148,163,184,.2);
+  border-radius: 24px;
+  background: rgba(255,255,255,.94);
+  overflow: hidden;
+}
+
+.fd397-records-timeline {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fd397-records-timeline .timeline-notes {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.fd397-records-timeline .detail-block-headline small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 1080px) {
+  .fd397-records-grid {
+    grid-template-columns: 1fr;
+  }
+}

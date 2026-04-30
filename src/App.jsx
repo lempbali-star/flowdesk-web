@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.96'
+const FLOWDESK_APP_VERSION = '20.3.97'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5454,25 +5454,26 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         )}
 
         {detailTab === 'records' && (
-          <section className="detail-block fd203-tab-panel fd203-records-panel">
-            <ArchiveFolderPanelV67
-              title="專案歸檔資料夾"
-              folder={project.archiveFolder}
-              suggestedName={buildArchiveFolderNameV67({ type: '專案', id: project.id, title: project.name, department: project.owner, date: project.startDate })}
-              onChange={(next) => updateProject(project.id, { archiveFolder: next }, '更新專案歸檔資料夾。')}
-            />
-          </section>
-        )}
-
-        {detailTab === 'records' && (
-          <section className="detail-block fd203-tab-panel">
-            <div className="detail-block-headline"><p className="eyebrow">處理紀錄</p></div>
-            <div className="fd203-record-input">
-              <ChineseTextField multiline value={manualRecordText} onCommit={setManualRecordText} placeholder="新增一筆專案紀錄..." />
-              <button type="button" onClick={addManualProjectRecord} disabled={!manualRecordText.trim()}>新增紀錄</button>
-            </div>
-            <div className="timeline-notes flow-timeline-notes">
-              {project.records.length ? project.records.map((record, index) => <div key={`${record}-${index}`}><span>{index + 1}</span><p>{record}</p></div>) : <div className="flow-empty-card">目前沒有處理紀錄。</div>}
+          <section className="detail-block fd203-tab-panel fd203-records-panel fd397-records-panel">
+            <div className="fd397-records-grid">
+              <div className="fd397-records-archive">
+                <ArchiveFolderPanelV67
+                  title="專案歸檔資料夾"
+                  folder={project.archiveFolder}
+                  suggestedName={buildArchiveFolderNameV67({ type: '專案', id: project.id, title: project.name, department: project.owner, date: project.startDate })}
+                  onChange={(next) => updateProject(project.id, { archiveFolder: next }, '更新專案歸檔資料夾。')}
+                />
+              </div>
+              <div className="fd397-records-timeline">
+                <div className="detail-block-headline"><p className="eyebrow">處理紀錄</p><small>專案附件統一放入上方專案歸檔資料夾，這裡只保留處理歷程。</small></div>
+                <div className="fd203-record-input">
+                  <ChineseTextField multiline value={manualRecordText} onCommit={setManualRecordText} placeholder="新增一筆專案紀錄..." />
+                  <button type="button" onClick={addManualProjectRecord} disabled={!manualRecordText.trim()}>新增紀錄</button>
+                </div>
+                <div className="timeline-notes flow-timeline-notes">
+                  {project.records.length ? project.records.map((record, index) => <div key={`${record}-${index}`}><span>{index + 1}</span><p>{record}</p></div>) : <div className="flow-empty-card">目前沒有處理紀錄。</div>}
+                </div>
+              </div>
             </div>
           </section>
         )}
