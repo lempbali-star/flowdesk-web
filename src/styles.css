@@ -22697,3 +22697,102 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     align-items: flex-start;
   }
 }
+
+
+/* v20.3.90 提醒中心與到期工作強化 */
+.reminders-v20390 .reminders-hero span {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.reminder-metric-strip-v20390 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.reminder-command-panel {
+  margin-bottom: 16px;
+}
+
+.reminder-command-grid article {
+  min-height: 108px;
+}
+
+.reminder-focus-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.reminder-case-bar.secondary {
+  margin-bottom: 12px;
+  opacity: 0.92;
+}
+
+.reminder-card.auto {
+  border-left: 5px solid color-mix(in srgb, var(--accent) 68%, #ffffff);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent), rgba(255, 255, 255, 0.96));
+}
+
+.auto-reminder-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #0369a1;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.24);
+  white-space: nowrap;
+}
+
+.reminders-v20390 .reminder-card-actions {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1080px) {
+  .reminder-metric-strip-v20390 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .reminder-metric-strip-v20390 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reminder-focus-bar button,
+  .reminder-case-bar.secondary button {
+    flex: 1 1 140px;
+  }
+}
+
+
+.fd90-draft-chip {
+  border-color: rgba(245, 158, 11, 0.38) !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #92400e !important;
+  font-weight: 800;
+}
+
+.fd203-editor-card input,
+.fd203-editor-card textarea,
+.fd203-editor-card select,
+.project-detail-card input,
+.project-detail-card textarea,
+.project-detail-card select,
+.fd203-gantt-name-input {
+  pointer-events: auto;
+  user-select: text;
+}
+
+.fd203-project-modal input,
+.fd203-project-modal textarea,
+.fd203-project-modal select {
+  position: relative;
+  z-index: 2;
+}

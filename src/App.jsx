@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.89'
+const FLOWDESK_APP_VERSION = '20.3.90'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1156,7 +1156,7 @@ function FlowDeskShell({ authSession, onLogout }) {
         {active === 'docs' && <DocsPage docs={docs} />}
         {active === 'flow' && <FlowPage rules={rules} />}
         {active === 'insight' && <InsightPage metrics={metrics} records={records} tickets={tickets} />}
-        {active === 'reminders' && <RemindersPage reminders={reminders} setReminders={setReminders} onNavigateSource={(item) => {
+        {active === 'reminders' && <RemindersPage reminders={reminders} setReminders={setReminders} workItems={workItems} onNavigateSource={(item) => {
           const sourceType = item?.sourceType || ''
           if (sourceType.includes('採購')) {
             setActiveBaseTable('採購紀錄')
@@ -3457,6 +3457,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return window.localStorage.getItem('flowdesk-project-modal-open-v20316') === 'true'
   })
   const [projectListExpandAllGantt, setProjectListExpandAllGantt] = useState(false)
+  const [newProjectDraftId, setNewProjectDraftId] = useState(null)
   const [projectKeyword, setProjectKeyword] = useState('')
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
   const [projectHealthFilter, setProjectHealthFilter] = useState('全部')
@@ -3757,6 +3758,38 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     }
   }
 
+  function isUntouchedProjectDraft(project = {}) {
+    if (!project) return false
+    const tasks = Array.isArray(project.tasks) ? project.tasks : []
+    const milestones = Array.isArray(project.milestones) ? project.milestones : []
+    const records = Array.isArray(project.records) ? project.records : []
+    const defaultTask = tasks[0] || {}
+    const defaultMilestone = milestones[0] || {}
+    const defaultNext = '補上專案目標、時程與負責人。'
+    return (
+      String(project.name || '') === '未命名專案' &&
+      String(project.phase || '') === '規劃中' &&
+      String(project.owner || '') === 'Kyle' &&
+      clampPercent(project.progress) === 0 &&
+      String(project.health || '') === '待確認' &&
+      String(project.priority || '') === '中' &&
+      String(project.next || '') === defaultNext &&
+      tasks.length === 1 &&
+      String(defaultTask.name || '') === '專案啟動' &&
+      String(defaultTask.owner || '') === 'Kyle' &&
+      clampPercent(defaultTask.progress) === 0 &&
+      !defaultTask.done &&
+      (!Array.isArray(defaultTask.subtasks) || defaultTask.subtasks.length === 0) &&
+      milestones.length === 1 &&
+      String(defaultMilestone.name || '') === '啟動確認' &&
+      !defaultMilestone.done &&
+      (!Array.isArray(project.meetings) || project.meetings.length === 0) &&
+      (!Array.isArray(project.decisions) || project.decisions.length === 0) &&
+      records.length === 1 &&
+      String(records[0] || '') === '建立專案。'
+    )
+  }
+
   function createProject() {
     const today = todayDate()
     const nextMonth = addDaysDate(30)
@@ -3783,10 +3816,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setProjects((rows) => [next, ...rows])
     setSelectedId(next.id)
     setDetailTab('overview')
+    setNewProjectDraftId(next.id)
     setProjectModalOpen(true)
   }
 
   function updateProject(projectId, patch, recordText) {
+    if (projectId && newProjectDraftId === projectId) setNewProjectDraftId(null)
     setProjects((rows) => rows.map((project) => {
       if (project.id !== projectId) return project
       const next = normalizeProject({ ...project, ...patch })
@@ -4204,12 +4239,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     setProjects((rows) => [next, ...rows])
     setSelectedId(next.id)
     setDetailTab('overview')
+    setNewProjectDraftId(null)
     setProjectModalOpen(true)
   }
 
   function deleteProject(projectId) {
     const target = projects.find((project) => project.id === projectId)
     if (!confirmDestructiveAction(target?.name || projectId || '專案')) return
+    if (newProjectDraftId === projectId) setNewProjectDraftId(null)
     setProjects((rows) => {
       const next = rows.filter((project) => project.id !== projectId)
       setSelectedId(next[0]?.id)
@@ -4234,12 +4271,24 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
   function openProject(projectId) {
     if (!projectId) return
+    setNewProjectDraftId(null)
     setSelectedId(projectId)
     setManualRecordText('')
     setProjectModalOpen(true)
   }
 
   function closeProjectModal() {
+    const closingDraftId = newProjectDraftId
+    if (closingDraftId) {
+      setProjects((rows) => {
+        const draft = rows.find((project) => project.id === closingDraftId)
+        if (!draft || !isUntouchedProjectDraft(draft)) return rows
+        const nextRows = rows.filter((project) => project.id !== closingDraftId)
+        setSelectedId((current) => current === closingDraftId ? nextRows[0]?.id : current)
+        return nextRows
+      })
+      setNewProjectDraftId(null)
+    }
     setProjectModalOpen(false)
     setGanttProgressEditor(null)
     setGanttDragPreview(null)
@@ -4978,7 +5027,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       ) : (
                         <span className="fd203-subtask-chevron empty">•</span>
                       )}
-                      <ChineseTextField commitOnBlur className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
+                      <ChineseTextField className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
                       <span className={`fd203-gantt-status-chip ${taskStatus.tone}`}>{taskStatus.label}</span>
                       <label className={`fd203-gantt-done-check ${task.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={task.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
                         <input
@@ -5043,7 +5092,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className={`fd203-gantt-grid fd203-gantt-row subtask ${subtask.done ? 'is-complete' : 'is-incomplete'}`} key={subtaskKey} style={{ gridTemplateColumns: gridColumns }}>
                       <div className="fd203-gantt-label subtask" title={dateRangeLabel(subStart, subEnd)}>
                         <div className="fd203-gantt-subtask-title-line compact-v16">
-                          <ChineseTextField commitOnBlur className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
+                          <ChineseTextField className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
                           <span className={`fd203-gantt-status-chip subtask ${subtaskStatus.tone}`}>{subtaskStatus.label}</span>
                           <label className={`fd203-gantt-done-check subtask ${subtask.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={subtask.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
                             <input
@@ -5117,6 +5166,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <span>進度：{project.progress}%</span>
           <span>逾期任務：{getProjectStatusMeta(project).overdueItems.length}</span>
           <span>下一步：{getProjectListInfo(project).next}</span>
+          {newProjectDraftId === project.id && <span className="fd90-draft-chip">新專案草稿｜未修改直接關閉會取消</span>}
         </div>
 
         <div className="project-segmented-tabs fd203-tabs">
@@ -5154,15 +5204,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <section className="fd203-editor-card">
               <div className="project-section-head compact"><div><p className="eyebrow">PROJECT PROFILE</p><h3>基本資料</h3></div></div>
               <div className="project-editor-grid fd203-editor-grid">
-                <label>專案名稱<ChineseTextField commitOnBlur value={project.name} onCommit={(value) => updateProject(project.id, { name: value || '未命名專案' })} /></label>
+                <label>專案名稱<ChineseTextField value={project.name} onCommit={(value) => updateProject(project.id, { name: value || '未命名專案' })} /></label>
                 <label>階段<select value={project.phase || '規劃中'} onChange={(event) => updateProject(project.id, { phase: event.target.value }, '更新專案階段。')}>{mergeOptionList(PROJECT_PHASE_OPTIONS, project.phase).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
                 <label>專案優先<select value={project.priority || '中'} onChange={(event) => updateProject(project.id, { priority: event.target.value }, `更新專案優先為 ${event.target.value}。`)}>{mergeOptionList(PROJECT_PRIORITY_OPTIONS, project.priority).map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
-                <label>負責人<ChineseTextField commitOnBlur value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} /></label>
+                <label>負責人<ChineseTextField value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} /></label>
                 <label>健康度<select value={project.health || '待確認'} onChange={(event) => updateProject(project.id, { health: event.target.value }, '更新健康度。')}>{mergeOptionList(PROJECT_HEALTH_OPTIONS, project.health).map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
                 <label>開始<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.startDate} onChange={(event) => updateProject(project.id, { startDate: minIsoDate(event.target.value, project.endDate) }, '更新開始日期。')} /></label>
                 <label>結束<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.endDate} onChange={(event) => updateProject(project.id, { endDate: maxIsoDate(event.target.value, project.startDate) }, '更新結束日期。')} /></label>
                 <label>進度 %<input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} /><small>{project.progress}%</small></label>
-                <label className="wide-field">下一步<ChineseTextField commitOnBlur multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} /></label>
+                <label className="wide-field">下一步<ChineseTextField multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} /></label>
               </div>
             </section>
 
@@ -5189,8 +5239,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="project-detail-card-head"><strong>{task.name || '未命名任務'}</strong><span title={dateRangeLabel(taskStart, taskEnd)}>{clampPercent(task.progress)}%</span></div>
                     {getTaskDependencyMeta(project, task, index).hasDependency ? <div className={`fd203-task-dependency-note detail ${getTaskDependencyMeta(project, task, index).waiting ? 'waiting' : 'ready'}`}>{getTaskDependencyMeta(project, task, index).waiting ? '等待前置任務' : '前置任務已完成'}：{getTaskDependencyMeta(project, task, index).predecessorName}，自動排定 {formatMonthDayWeekday(getTaskDependencyMeta(project, task, index).startAfter)}</div> : null}
                     <div className="project-detail-form-grid">
-                      <label>任務名稱<ChineseTextField commitOnBlur value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="任務名稱" /></label>
-                      <label>負責人<ChineseTextField commitOnBlur value={task.owner || ''} onCommit={(value) => updateProjectTask(project.id, index, { owner: value })} aria-label="負責人" /></label>
+                      <label>任務名稱<ChineseTextField value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="任務名稱" /></label>
+                      <label>負責人<ChineseTextField value={task.owner || ''} onCommit={(value) => updateProjectTask(project.id, index, { owner: value })} aria-label="負責人" /></label>
                       <label>開始日<input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskStart} onChange={(event) => updateProjectTask(project.id, index, { start: event.target.value }, '更新任務開始日。')} aria-label="開始日" /></label>
                       <label>結束日<input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskEnd} onChange={(event) => updateProjectTask(project.id, index, { end: event.target.value }, '更新任務結束日。')} aria-label="結束日" /></label>
                       <label>前置任務<select value={task.dependsOnTaskId || ''} onChange={(event) => {
@@ -5215,8 +5265,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                           <div key={subtask.id || subIndex} className="fd203-subtask-editor">
                             <div className="project-detail-card-head"><strong>↳ {subtask.name || '未命名子任務'}</strong><span title={dateRangeLabel(subStart, subEnd)}>{clampPercent(subtask.progress)}%</span></div>
                             <div className="project-detail-form-grid compact-3">
-                              <label>子任務名稱<ChineseTextField commitOnBlur value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="子任務名稱" /></label>
-                              <label>負責人<ChineseTextField commitOnBlur value={subtask.owner || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { owner: value })} aria-label="子任務負責人" /></label>
+                              <label>子任務名稱<ChineseTextField value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="子任務名稱" /></label>
+                              <label>負責人<ChineseTextField value={subtask.owner || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { owner: value })} aria-label="子任務負責人" /></label>
                               <label>開始日<input title={dateRangeLabel(subStart, subEnd)} type="date" value={subStart} onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { start: event.target.value }, '更新子任務開始日。')} /></label>
                               <label>結束日<input title={dateRangeLabel(subStart, subEnd)} type="date" value={subEnd} onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { end: event.target.value }, '更新子任務結束日。')} /></label>
                               <label>進度<input type="range" min="0" max="100" value={clampPercent(subtask.progress)} onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { progress: clampPercent(event.target.value) })} /></label>
@@ -5242,7 +5292,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <div key={milestone.id || index} className={milestone.done ? 'project-detail-card fd203-detail-card done' : 'project-detail-card fd203-detail-card'}>
                   <div className="project-detail-card-head"><strong>{milestone.name || '未命名里程碑'}</strong><span>{milestone.done ? '已完成' : '進行中'}</span></div>
                   <div className="project-detail-form-grid compact-3">
-                    <label>里程碑名稱<ChineseTextField commitOnBlur value={milestone.name || ''} onCommit={(value) => updateProjectMilestone(project.id, index, { name: value || '未命名里程碑' })} aria-label="里程碑名稱" /></label>
+                    <label>里程碑名稱<ChineseTextField value={milestone.name || ''} onCommit={(value) => updateProjectMilestone(project.id, index, { name: value || '未命名里程碑' })} aria-label="里程碑名稱" /></label>
                     <label>日期<input type="date" value={milestone.date || project.endDate} onChange={(event) => updateProjectMilestone(project.id, index, { date: event.target.value }, '更新里程碑日期。')} aria-label="里程碑日期" /></label>
                     <label className="milestone-check"><span>完成狀態</span><input type="checkbox" checked={Boolean(milestone.done)} onChange={(event) => updateProjectMilestone(project.id, index, { done: event.target.checked }, event.target.checked ? '里程碑標記完成。' : '里程碑改為進行中。')} /></label>
                   </div>
@@ -6270,6 +6320,86 @@ function getReminderSummary(reminders) {
   }, { open: 0, overdue: 0, today: 0, tomorrow: 0, week: 0 })
 }
 
+function reminderPriorityRank(priority = '中') {
+  if (['緊急', '高'].includes(priority)) return 3
+  if (['中', '一般'].includes(priority)) return 2
+  return 1
+}
+
+function normalizeReminderPriority(priority = '中') {
+  if (priority === '緊急') return '緊急'
+  if (priority === '高') return '高'
+  if (priority === '低') return '低'
+  return '中'
+}
+
+function readAutoReminderMap(key) {
+  if (typeof window === 'undefined') return {}
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeAutoReminderMap(key, value) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value || {}))
+  } catch {
+    // ignore localStorage quota issues
+  }
+}
+
+function isPurchaseReminderClosed(row = {}) {
+  const status = String(row.status || '')
+  return ['已完成', '已取消'].some((done) => status.includes(done))
+}
+
+function buildAutoReminderRows({ purchases = [], workItems = [], tasks = [], projects = [] } = {}, autoDone = {}, autoSnooze = {}) {
+  const today = todayDate()
+  const rows = []
+  const pushAuto = (item) => {
+    if (!item?.id || autoDone[item.id]) return
+    const snoozedUntil = autoSnooze[item.id]
+    if (snoozedUntil && snoozedUntil > today) return
+    rows.push({ ...item, virtual: true, status: '待處理', priority: normalizeReminderPriority(item.priority) })
+  }
+
+  purchases.forEach((row) => {
+    if (!row || isPurchaseReminderClosed(row)) return
+    const title = purchaseTitle(row)
+    const priority = normalizePurchasePriority(row.priority)
+    const purchaseKey = row.id || getPurchaseKey(row) || stableId('purchase-auto')
+    if ((row.paymentStatus || '未付款') !== '已付款') pushAuto({ id: `AUTO-PURCHASE-PAY-${purchaseKey}`, title: `付款追蹤｜${title}`, type: '付款提醒', priority: priority === '緊急' ? '緊急' : '高', dueDate: row.paymentDueDate || row.orderDate || row.requestDate || addDaysDate(1), sourceType: '採購', sourceTitle: title, note: `${row.department || '未填單位'} · ${row.vendor || '未填廠商'} · ${row.paymentStatus || '未付款'}` })
+    if ((row.arrivalStatus || '未到貨') !== '已到貨') pushAuto({ id: `AUTO-PURCHASE-ARR-${purchaseKey}`, title: `到貨追蹤｜${title}`, type: '到貨提醒', priority: priority === '緊急' ? '緊急' : priority === '高' ? '高' : '中', dueDate: row.arrivalDueDate || row.arrivalDate || row.orderDate || row.requestDate || addDaysDate(3), sourceType: '採購', sourceTitle: title, note: `${row.department || '未填單位'} · ${row.vendor || '未填廠商'} · ${row.arrivalStatus || '未到貨'}` })
+    if ((row.acceptanceStatus || '未驗收') !== '已驗收') pushAuto({ id: `AUTO-PURCHASE-ACC-${purchaseKey}`, title: `驗收追蹤｜${title}`, type: '驗收提醒', priority: priority === '緊急' ? '緊急' : '中', dueDate: row.acceptanceDate || row.arrivalDate || row.arrivalDueDate || addDaysDate(5), sourceType: '採購', sourceTitle: title, note: `${row.department || '未填單位'} · ${row.user || row.usedBy || '未填使用人'} · ${row.acceptanceStatus || '未驗收'}` })
+    if (purchaseArchiveStatusV72(row) !== '已歸檔') pushAuto({ id: `AUTO-PURCHASE-ARC-${purchaseKey}`, title: `歸檔追蹤｜${title}`, type: '歸檔提醒', priority: priority === '緊急' ? '高' : '中', dueDate: row.acceptanceDate || row.arrivalDate || row.requestDate || addDaysDate(7), sourceType: '採購', sourceTitle: title, note: `目前歸檔狀態：${purchaseArchiveStatusV72(row)}；請確認雲端資料夾與報價/PO/發票/驗收資料。` })
+    if (['緊急', '高'].includes(priority)) pushAuto({ id: `AUTO-PURCHASE-PRI-${purchaseKey}`, title: `${priority}優先採購｜${title}`, type: '追蹤提醒', priority, dueDate: row.requestDate || today, sourceType: '採購', sourceTitle: title, note: `${row.status || '未設定狀態'} · ${row.department || '未填單位'} · ${formatMoney(calculatePurchase(row).taxedTotal)}` })
+  })
+
+  workItems.forEach((item) => {
+    if (!item || item.lane === '已完成' || !item.due) return
+    pushAuto({ id: `AUTO-WORK-${item.id}`, title: `工作到期｜${item.title || '未命名工作'}`, type: '到期提醒', priority: normalizeReminderPriority(item.priority || '中'), dueDate: item.due, sourceType: '工作事項', sourceTitle: item.relation || item.title || '', note: `${item.lane || '未分類'} · ${item.owner || '未指定負責人'} · ${item.channel || '未設定來源'}` })
+  })
+
+  tasks.forEach((task) => {
+    if (!task || ['已完成', '已取消'].includes(task.status || '')) return
+    const dueDate = task.dueDate || task.due || task.nextDueDate
+    if (!dueDate) return
+    pushAuto({ id: `AUTO-TASK-${task.id}`, title: `任務到期｜${task.title || '未命名任務'}`, type: '到期提醒', priority: normalizeReminderPriority(task.priority || '中'), dueDate, sourceType: '任務', sourceTitle: task.relatedProject || task.relatedPurchase || '', note: `${task.status || '待跟進'} · ${task.owner || '未指定負責人'} · ${task.next || ''}` })
+  })
+
+  projects.forEach((project) => {
+    if (!project || ['已完成', '已取消'].some((done) => String(project.phase || '').includes(done)) || !project.endDate) return
+    const priority = PROJECT_PRIORITY_OPTIONS.includes(project.priority) ? project.priority : '中'
+    pushAuto({ id: `AUTO-PROJECT-${project.id}`, title: `專案到期｜${project.name || '未命名專案'}`, type: '專案提醒', priority: priority === '高' ? '高' : '中', dueDate: project.endDate, sourceType: '專案', sourceTitle: project.name || '', note: `${project.phase || '未設定階段'} · ${project.owner || '未指定負責人'} · ${project.progress || 0}%` })
+  })
+
+  return rows
+}
+
 function createEmptyReminder() {
   const today = new Date()
   today.setDate(today.getDate() + 3)
@@ -6277,30 +6407,59 @@ function createEmptyReminder() {
   return { title: '', type: '追蹤提醒', priority: '中', status: '待處理', dueDate, sourceType: '一般', sourceTitle: '', note: '' }
 }
 
-function RemindersPage({ reminders, setReminders, onNavigateSource }) {
+function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSource }) {
   const [keyword, setKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState('全部')
   const [caseFilter, setCaseFilter] = useState('未完成')
   const [typeFilter, setTypeFilter] = useState('全部')
+  const [focusFilter, setFocusFilter] = useState('全部')
   const [showForm, setShowForm] = useState(false)
   const [draft, setDraft] = useState(createEmptyReminder())
-  const summary = getReminderSummary(reminders)
-  const filtered = reminders
+  const [autoDone, setAutoDone] = useState(() => readAutoReminderMap('flowdesk-auto-reminder-done-v20390'))
+  const [autoSnooze, setAutoSnooze] = useState(() => readAutoReminderMap('flowdesk-auto-reminder-snooze-v20390'))
+  const purchases = readFlowdeskLocalArray('flowdesk-purchases-v19')
+  const tasks = readFlowdeskLocalArray('flowdesk-tasks-v1972')
+  const projectRows = readFlowdeskLocalArray('flowdesk-projects-v1972')
+  const autoReminders = buildAutoReminderRows({ purchases, workItems, tasks, projects: projectRows }, autoDone, autoSnooze)
+  const allReminderRows = [...reminders.map((item) => ({ ...item, virtual: false })), ...autoReminders]
+  const summary = getReminderSummary(allReminderRows)
+  const highPriorityCount = allReminderRows.filter((item) => item.status !== '已完成' && ['緊急', '高'].includes(item.priority)).length
+  const purchaseReminderCount = allReminderRows.filter((item) => item.status !== '已完成' && String(item.sourceType || '').includes('採購')).length
+  const workReminderCount = allReminderRows.filter((item) => item.status !== '已完成' && (String(item.sourceType || '').includes('工作') || String(item.sourceType || '').includes('任務'))).length
+  const filtered = allReminderRows
     .filter((item) => caseFilter === '全部' || (caseFilter === '未完成' ? item.status !== '已完成' : item.status === '已完成'))
     .filter((item) => statusFilter === '全部' || item.status === statusFilter)
     .filter((item) => typeFilter === '全部' || item.type === typeFilter)
+    .filter((item) => {
+      const due = getReminderDueInfo(item.dueDate)
+      if (focusFilter === '全部') return true
+      if (focusFilter === '逾期') return item.status !== '已完成' && due.days < 0
+      if (focusFilter === '今日') return item.status !== '已完成' && due.days === 0
+      if (focusFilter === '明日') return item.status !== '已完成' && due.days === 1
+      if (focusFilter === '本週') return item.status !== '已完成' && due.days >= 0 && due.days <= 7
+      if (focusFilter === '高優先') return item.status !== '已完成' && ['緊急', '高'].includes(item.priority)
+      if (focusFilter === '採購提醒') return item.status !== '已完成' && String(item.sourceType || '').includes('採購')
+      if (focusFilter === '工作事項') return item.status !== '已完成' && (String(item.sourceType || '').includes('工作') || String(item.sourceType || '').includes('任務'))
+      if (focusFilter === '已完成') return item.status === '已完成'
+      return true
+    })
     .filter((item) => {
       const q = keyword.trim().toLowerCase()
       if (!q) return true
       return [item.id, item.title, item.type, item.priority, item.status, item.sourceType, item.sourceTitle, item.note].join(' ').toLowerCase().includes(q)
     })
-    .sort((a, b) => (toDateOnly(a.dueDate)?.getTime() || 0) - (toDateOnly(b.dueDate)?.getTime() || 0))
+    .sort((a, b) => {
+      const dueSort = getReminderDueInfo(a.dueDate).days - getReminderDueInfo(b.dueDate).days
+      if (dueSort) return dueSort
+      return reminderPriorityRank(b.priority) - reminderPriorityRank(a.priority)
+    })
   const reminderGroups = [
     { id: 'overdue', title: '逾期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days < 0) },
-    { id: 'today', title: '今日', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 0) },
-    { id: 'tomorrow', title: '明日', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 1) },
-    { id: 'week', title: '本週', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 1 && getReminderDueInfo(item.dueDate).days <= 7) },
-    { id: 'later', title: '之後', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7) },
+    { id: 'today', title: '今日到期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 0) },
+    { id: 'tomorrow', title: '明日到期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 1) },
+    { id: 'week', title: '本週到期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 1 && getReminderDueInfo(item.dueDate).days <= 7) },
+    { id: 'high', title: '高優先 / 緊急', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7 && ['緊急', '高'].includes(item.priority)) },
+    { id: 'later', title: '之後', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7 && !['緊急', '高'].includes(item.priority)) },
     { id: 'done', title: '已完成', rows: filtered.filter((item) => item.status === '已完成') },
   ].filter((group) => group.rows.length)
 
@@ -6320,12 +6479,50 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
     setReminders((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item))
   }
 
-  function deferReminder(id, days = 3) {
+  function updateAutoReminder(id, action, days = 0) {
+    if (!id) return
+    if (action === 'done') {
+      setAutoDone((current) => {
+        const next = { ...current, [id]: todayDate() }
+        writeAutoReminderMap('flowdesk-auto-reminder-done-v20390', next)
+        return next
+      })
+    }
+    if (action === 'defer') {
+      setAutoSnooze((current) => {
+        const next = { ...current, [id]: addDaysDate(days) }
+        writeAutoReminderMap('flowdesk-auto-reminder-snooze-v20390', next)
+        return next
+      })
+    }
+  }
+
+  function deferReminder(id, days = 3, virtual = false) {
+    if (virtual) {
+      updateAutoReminder(id, 'defer', days)
+      return
+    }
     updateReminder(id, { status: '延後', dueDate: addDaysDate(days) })
+  }
+
+  function completeReminder(item) {
+    if (item.virtual) {
+      updateAutoReminder(item.id, 'done')
+      return
+    }
+    updateReminder(item.id, { status: item.status === '已完成' ? '待處理' : '已完成' })
   }
 
   function completeAllOverdue() {
     setReminders((current) => current.map((item) => getReminderDueInfo(item.dueDate).days < 0 ? { ...item, status: '已完成' } : item))
+    const overdueAuto = autoReminders.filter((item) => getReminderDueInfo(item.dueDate).days < 0).reduce((map, item) => ({ ...map, [item.id]: todayDate() }), {})
+    if (Object.keys(overdueAuto).length) {
+      setAutoDone((current) => {
+        const next = { ...current, ...overdueAuto }
+        writeAutoReminderMap('flowdesk-auto-reminder-done-v20390', next)
+        return next
+      })
+    }
   }
 
   function removeReminder(id) {
@@ -6335,17 +6532,34 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   }
 
   function resetDemoReminders() {
-    if (!confirmResetAction('確定要清空並重置提醒資料？')) return
+    if (!confirmResetAction('確定要清空並重置提醒資料？自動提醒的延後/完成紀錄也會清除。')) return
     setReminders(initialReminders)
+    setAutoDone({})
+    setAutoSnooze({})
     window.localStorage.removeItem('flowdesk-reminders-v193')
+    window.localStorage.removeItem('flowdesk-auto-reminder-done-v20390')
+    window.localStorage.removeItem('flowdesk-auto-reminder-snooze-v20390')
   }
 
+  const focusButtons = [
+    { key: '全部', label: '全部', count: allReminderRows.filter((item) => item.status !== '已完成').length },
+    { key: '逾期', label: '逾期', count: summary.overdue },
+    { key: '今日', label: '今日', count: summary.today },
+    { key: '明日', label: '明日', count: summary.tomorrow },
+    { key: '本週', label: '本週', count: summary.week },
+    { key: '高優先', label: '高優先', count: highPriorityCount },
+    { key: '採購提醒', label: '採購提醒', count: purchaseReminderCount },
+    { key: '工作事項', label: '工作 / 任務', count: workReminderCount },
+    { key: '已完成', label: '已完成', count: allReminderRows.filter((item) => item.status === '已完成').length },
+  ]
+
   return (
-    <div className="reminders-layout">
+    <div className="reminders-layout reminders-v20390">
       <section className="surface-toolbar reminders-hero">
         <div>
           <p className="eyebrow">提醒中心</p>
-          <h2>提醒事項工作區</h2>
+          <h2>到期工作與主動提醒</h2>
+          <span>整合手動提醒、採購待辦、工作事項與專案到期；先看逾期、今日與高優先。</span>
         </div>
         <div className="record-actions">
           <button className="ghost-btn" type="button" onClick={resetDemoReminders}>清空提醒資料</button>
@@ -6353,12 +6567,27 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
         </div>
       </section>
 
-      <section className="metric-strip reminder-metric-strip reminder-metric-strip-v20">
+      <section className="metric-strip reminder-metric-strip reminder-metric-strip-v20 reminder-metric-strip-v20390">
         <Metric label="逾期" value={summary.overdue} tone="red" />
         <Metric label="今日" value={summary.today} tone="amber" />
         <Metric label="明日" value={summary.tomorrow} tone="blue" />
         <Metric label="本週" value={summary.week} tone="violet" />
-        <Metric label="未結" value={summary.open} tone="green" />
+        <Metric label="高優先" value={highPriorityCount} tone="red" />
+        <Metric label="採購提醒" value={purchaseReminderCount} tone="green" />
+      </section>
+
+      <section className="fd203-attention-panel reminder-command-panel">
+        <div>
+          <p className="eyebrow">ACTION FOCUS</p>
+          <h3>今天先處理這些</h3>
+          <span>{summary.overdue ? `有 ${summary.overdue} 筆逾期，建議先處理。` : summary.today ? `今天有 ${summary.today} 筆到期。` : '目前沒有逾期，優先看本週與高優先。'}</span>
+        </div>
+        <div className="fd203-attention-grid reminder-command-grid">
+          <article className={summary.overdue ? 'danger' : ''}><span>已逾期</span><strong>{summary.overdue}</strong><small>超過到期日未完成</small></article>
+          <article className={summary.today ? 'warning' : ''}><span>今日到期</span><strong>{summary.today}</strong><small>今天需要處理</small></article>
+          <article className={purchaseReminderCount ? 'warning' : ''}><span>採購待辦</span><strong>{purchaseReminderCount}</strong><small>付款 / 到貨 / 驗收 / 歸檔</small></article>
+          <article className={highPriorityCount ? 'danger' : ''}><span>緊急高優先</span><strong>{highPriorityCount}</strong><small>建議排在最前面</small></article>
+        </div>
       </section>
 
       {showForm && (
@@ -6379,19 +6608,22 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
       )}
 
       <section className="panel wide reminder-list-panel">
-        <div className="fd88-case-filter-bar reminder-case-bar">
-          <button type="button" className={caseFilter === '未完成' ? 'active' : ''} onClick={() => { setCaseFilter('未完成'); setStatusFilter('全部') }}>未完成 <small>{reminders.filter((item) => item.status !== '已完成').length}</small></button>
-          <button type="button" className={caseFilter === '已完成' ? 'active done' : ''} onClick={() => { setCaseFilter('已完成'); setStatusFilter('全部') }}>已完成 <small>{reminders.filter((item) => item.status === '已完成').length}</small></button>
-          <button type="button" className={caseFilter === '全部' ? 'active' : ''} onClick={() => { setCaseFilter('全部'); setStatusFilter('全部') }}>全部 <small>{reminders.length}</small></button>
+        <div className="fd88-case-filter-bar reminder-case-bar reminder-focus-bar">
+          {focusButtons.map((item) => <button key={item.key} type="button" className={focusFilter === item.key ? 'active' : ''} onClick={() => { setFocusFilter(item.key); if (item.key === '已完成') setCaseFilter('全部') }}>{item.label} <small>{item.count}</small></button>)}
+        </div>
+        <div className="fd88-case-filter-bar reminder-case-bar secondary">
+          <button type="button" className={caseFilter === '未完成' ? 'active' : ''} onClick={() => { setCaseFilter('未完成'); setStatusFilter('全部'); if (focusFilter === '已完成') setFocusFilter('全部') }}>未完成 <small>{allReminderRows.filter((item) => item.status !== '已完成').length}</small></button>
+          <button type="button" className={caseFilter === '已完成' ? 'active done' : ''} onClick={() => { setCaseFilter('已完成'); setStatusFilter('全部'); setFocusFilter('已完成') }}>已完成 <small>{allReminderRows.filter((item) => item.status === '已完成').length}</small></button>
+          <button type="button" className={caseFilter === '全部' ? 'active' : ''} onClick={() => { setCaseFilter('全部'); setStatusFilter('全部') }}>全部 <small>{allReminderRows.length}</small></button>
         </div>
         <div className="purchase-filter-bar reminder-filter-bar">
           <label className="purchase-search-field">搜尋<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="標題、關聯來源、備註..." /></label>
           <label>狀態<select value={statusFilter} onChange={(event) => { const nextStatus = event.target.value; setStatusFilter(nextStatus); if (nextStatus === '已完成') setCaseFilter('全部') }}><option value="全部">全部</option>{reminderStatusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <label>類型<select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="全部">全部</option>{reminderTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <button className="ghost-btn" type="button" onClick={() => { setKeyword(''); setCaseFilter('未完成'); setStatusFilter('全部'); setTypeFilter('全部') }}>清除篩選</button>
+          <button className="ghost-btn" type="button" onClick={() => { setKeyword(''); setCaseFilter('未完成'); setStatusFilter('全部'); setTypeFilter('全部'); setFocusFilter('全部') }}>清除篩選</button>
         </div>
         <div className="reminder-bulk-actions">
-          <button type="button" onClick={() => { setCaseFilter('全部'); setStatusFilter('全部'); setTypeFilter('全部'); setKeyword('') }}>全部提醒</button>
+          <button type="button" onClick={() => { setCaseFilter('全部'); setStatusFilter('全部'); setTypeFilter('全部'); setKeyword(''); setFocusFilter('全部') }}>全部提醒</button>
           <button type="button" onClick={completeAllOverdue} disabled={!summary.overdue}>逾期全部完成</button>
         </div>
         <div className="reminder-card-list reminder-grouped-list">
@@ -6401,9 +6633,9 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
               {group.rows.map((item) => {
                 const due = getReminderDueInfo(item.dueDate)
                 return (
-                  <article className={`reminder-card ${item.status === '已完成' ? 'done' : ''}`} key={item.id}>
+                  <article className={`reminder-card ${item.status === '已完成' ? 'done' : ''} ${item.virtual ? 'auto' : ''}`} key={item.id}>
                     <div className="reminder-card-main">
-                      <span className="record-id">{item.id}</span>
+                      <span className="record-id">{item.virtual ? 'AUTO' : item.id}</span>
                       <strong>{item.title}</strong>
                       <small>{item.sourceType} · {item.sourceTitle || '未指定'} · {item.type}</small>
                       <p>{item.note}</p>
@@ -6411,14 +6643,15 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
                     <div className="reminder-card-meta">
                       <Badge value={item.priority} />
                       <span className={`due-chip ${due.tone}`}>{due.label}</span>
-                      <select value={item.status} onChange={(event) => updateReminder(item.id, { status: event.target.value })}>{reminderStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>
+                      {item.virtual ? <span className="auto-reminder-chip">自動提醒</span> : <select value={item.status} onChange={(event) => updateReminder(item.id, { status: event.target.value })}>{reminderStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>}
                     </div>
                     <div className="reminder-card-actions">
-                      <button type="button" onClick={() => updateReminder(item.id, { status: item.status === '已完成' ? '待處理' : '已完成' })}>{item.status === '已完成' ? '重新開啟' : '完成'}</button>
-                      <button type="button" onClick={() => deferReminder(item.id, 1)}>明天</button>
-                      <button type="button" onClick={() => deferReminder(item.id, 7)}>下週</button>
+                      <button type="button" onClick={() => completeReminder(item)}>{item.status === '已完成' ? '重新開啟' : '完成'}</button>
+                      <button type="button" onClick={() => deferReminder(item.id, 1, item.virtual)}>明天</button>
+                      <button type="button" onClick={() => deferReminder(item.id, 3, item.virtual)}>三天後</button>
+                      <button type="button" onClick={() => deferReminder(item.id, 7, item.virtual)}>下週</button>
                       {item.sourceType !== '一般' && <button type="button" onClick={() => onNavigateSource?.(item)}>開啟關聯</button>}
-                      <button className="danger" type="button" onClick={() => removeReminder(item.id)}>刪除</button>
+                      {!item.virtual && <button className="danger" type="button" onClick={() => removeReminder(item.id)}>刪除</button>}
                     </div>
                   </article>
                 )
