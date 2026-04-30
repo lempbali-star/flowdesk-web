@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.68'
+const FLOWDESK_APP_VERSION = '20.3.69'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -6047,7 +6047,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.68 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.69 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -6778,11 +6778,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
             onChange={(next) => update('archiveFolder', next)}
           />
 
-          <AttachmentLinksPanelV66
-            title="採購附件"
-            attachments={form.attachments}
-            onChange={(next) => update('attachments', next)}
-          />
+
         </div>
 
         <div className="form-actions sticky-form-actions">
@@ -6907,7 +6903,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
         suggestedName={buildArchiveFolderNameV67({ type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate })}
         compact
       />
-      <AttachmentLinksPanelV66 title="採購附件" attachments={row.attachments} compact />
+
       <div className="purchase-detail-actions">
         <button type="button" onClick={onEdit}>編輯採購</button>
         <button type="button" onClick={onAdvance}>下一流程</button>
@@ -7276,7 +7272,7 @@ function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedNam
         <div>
           <span>ARCHIVE FOLDER</span>
           <strong>{title}</strong>
-          <small>建議以 OneDrive / SharePoint 資料夾為主；後續檔案直接放進資料夾即可。</small>
+          <small>以 OneDrive / SharePoint / Google Drive 資料夾為主；後續檔案直接放進資料夾即可。</small>
         </div>
         <em className={draft.url ? 'ready' : 'empty'}>{draft.url ? '已連結' : '未建立'}</em>
       </div>
@@ -7298,7 +7294,7 @@ function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedNam
           <label className="wide">資料夾名稱
             <input value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} placeholder={suggestedName || safeFolder.name} />
           </label>
-          <label className="wide">OneDrive / SharePoint 資料夾連結
+          <label className="wide">雲端資料夾連結
             <input value={draft.url} onChange={(event) => updateDraft('url', event.target.value)} placeholder="貼上資料夾分享連結" />
           </label>
           <label>歸檔狀態
@@ -7345,7 +7341,7 @@ function AttachmentLinksPanelV66({ title = '附件連結', attachments = [], onC
         <div>
           <span>GLOBAL ATTACHMENTS</span>
           <strong>{title}</strong>
-          <small>檔案建議放 OneDrive / SharePoint，系統保存附件資訊與連結。</small>
+          <small>單一檔案可放雲端資料夾；系統主要記錄歸檔資料夾連結。</small>
         </div>
         <em>{safeAttachments.length} 件</em>
       </div>
