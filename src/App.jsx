@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.83'
+const FLOWDESK_APP_VERSION = '20.3.84'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -285,6 +285,46 @@ const defaultCustomTheme = {
   accent: '#f97316',
 }
 
+const defaultThemeShuffleSettings = {
+  enabled: false,
+  intervalMinutes: 5,
+  mode: 'vivid',
+  lastChangedAt: Date.now(),
+}
+
+const themeShuffleIntervalOptions = [
+  { id: 1, name: '1 分鐘', description: '展示或測試用，變化較頻繁。' },
+  { id: 5, name: '5 分鐘', description: '推薦設定，畫面會保持新鮮但不打擾操作。' },
+  { id: 15, name: '15 分鐘', description: '日常工作比較穩，不會太常跳色。' },
+  { id: 30, name: '30 分鐘', description: '低干擾，只偶爾換一下氛圍。' },
+]
+
+const themeShuffleModeOptions = [
+  { id: 'vivid', name: '炫彩主題', description: '只在極光、霓虹、賽博、星雲、電漿等高辨識主題中輪換。', themeIds: ['aurora', 'neon', 'cyber', 'galaxy', 'hologlass', 'nebula', 'plasma', 'prism', 'lava', 'sunset'] },
+  { id: 'work', name: '工作耐看', description: '只在預設藍、青綠、森綠、冰川青、石墨灰等低干擾主題中輪換。', themeIds: ['blue', 'fresh', 'green', 'ice', 'slate', 'tech'] },
+  { id: 'all', name: '全部內建', description: '排除我的主題，隨機套用所有內建主題。', themeIds: [] },
+]
+
+function normalizeThemeShuffleSettings(value = {}) {
+  const interval = Number(value.intervalMinutes)
+  const validMode = themeShuffleModeOptions.some((item) => item.id === value.mode) ? value.mode : defaultThemeShuffleSettings.mode
+  return {
+    enabled: Boolean(value.enabled),
+    intervalMinutes: themeShuffleIntervalOptions.some((item) => item.id === interval) ? interval : defaultThemeShuffleSettings.intervalMinutes,
+    mode: validMode,
+    lastChangedAt: Number.isFinite(Number(value.lastChangedAt)) ? Number(value.lastChangedAt) : Date.now(),
+  }
+}
+
+function formatThemeShuffleCountdown(ms) {
+  const safeMs = Math.max(0, Number(ms) || 0)
+  const totalSeconds = Math.ceil(safeMs / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  if (minutes <= 0) return `${seconds} 秒`
+  return `${minutes} 分 ${String(seconds).padStart(2, '0')} 秒`
+}
+
 function normalizeHexColor(value, fallback = '#2563eb') {
   if (typeof value !== 'string') return fallback
   const next = value.trim()
@@ -565,6 +605,16 @@ function FlowDeskShell({ authSession, onLogout }) {
     if (typeof window === 'undefined') return 'auto'
     return window.localStorage.getItem('flowdesk-icon-style-mode') || 'auto'
   })
+  const [themeShuffleSettings, setThemeShuffleSettings] = useState(() => {
+    if (typeof window === 'undefined') return defaultThemeShuffleSettings
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('flowdesk-theme-shuffle-settings') || '{}')
+      return normalizeThemeShuffleSettings(saved)
+    } catch {
+      return defaultThemeShuffleSettings
+    }
+  })
+  const [themeShuffleClock, setThemeShuffleClock] = useState(Date.now())
   const [activeBaseTable, setActiveBaseTable] = useState(() => {
     if (typeof window === 'undefined') return '採購紀錄'
     return window.localStorage.getItem('flowdesk-active-base-table-v20316') || '採購紀錄'
@@ -584,6 +634,34 @@ function FlowDeskShell({ authSession, onLogout }) {
 
   const resolvedIconStyle = iconStyleMode === 'auto' ? (iconAutoStyleByTheme[uiTheme] || 'soft') : iconStyleMode
   const shellAppearancePreset = appearancePresetOptions.find((preset) => preset.theme === uiTheme && preset.appearance === appearanceMode && preset.motion === motionLevel)
+
+  function pickRandomThemeId(currentTheme = uiTheme, mode = themeShuffleSettings.mode) {
+    const modeOption = themeShuffleModeOptions.find((item) => item.id === mode) || themeShuffleModeOptions[0]
+    const builtinThemes = themeOptions.filter((theme) => theme.id !== 'custom')
+    const pool = modeOption.themeIds.length
+      ? builtinThemes.filter((theme) => modeOption.themeIds.includes(theme.id))
+      : builtinThemes
+    const candidates = pool.filter((theme) => theme.id !== currentTheme)
+    const safePool = candidates.length ? candidates : pool
+    const next = safePool[Math.floor(Math.random() * safePool.length)]
+    return next?.id || 'blue'
+  }
+
+  function randomizeThemeNow() {
+    const nextTheme = pickRandomThemeId(uiTheme, themeShuffleSettings.mode)
+    setUiTheme(nextTheme)
+    setThemeShuffleSettings((current) => normalizeThemeShuffleSettings({ ...current, lastChangedAt: Date.now() }))
+  }
+
+  function freezeThemeShuffle() {
+    setThemeShuffleSettings((current) => normalizeThemeShuffleSettings({ ...current, enabled: false, lastChangedAt: Date.now() }))
+  }
+
+  const themeShuffleCountdown = useMemo(() => {
+    if (!themeShuffleSettings.enabled) return '未啟用'
+    const nextAt = Number(themeShuffleSettings.lastChangedAt || Date.now()) + Number(themeShuffleSettings.intervalMinutes || 5) * 60 * 1000
+    return formatThemeShuffleCountdown(nextAt - themeShuffleClock)
+  }, [themeShuffleClock, themeShuffleSettings])
 
   const [moduleIcons, setModuleIcons] = useState(() => {
     if (typeof window === 'undefined') return defaultModuleIcons
@@ -839,6 +917,29 @@ function FlowDeskShell({ authSession, onLogout }) {
   }, [uiTheme])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('flowdesk-theme-shuffle-settings', JSON.stringify(themeShuffleSettings))
+  }, [themeShuffleSettings])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !themeShuffleSettings.enabled) return undefined
+    const tick = window.setInterval(() => setThemeShuffleClock(Date.now()), 1000)
+    return () => window.clearInterval(tick)
+  }, [themeShuffleSettings.enabled])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !themeShuffleSettings.enabled) return undefined
+    const intervalMs = Number(themeShuffleSettings.intervalMinutes || 5) * 60 * 1000
+    const lastChangedAt = Number(themeShuffleSettings.lastChangedAt || Date.now())
+    const delay = Math.max(600, lastChangedAt + intervalMs - Date.now())
+    const timer = window.setTimeout(() => {
+      setUiTheme((currentTheme) => pickRandomThemeId(currentTheme, themeShuffleSettings.mode))
+      setThemeShuffleSettings((current) => normalizeThemeShuffleSettings({ ...current, lastChangedAt: Date.now() }))
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [themeShuffleSettings.enabled, themeShuffleSettings.intervalMinutes, themeShuffleSettings.lastChangedAt, themeShuffleSettings.mode])
+
+  useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.dataset.flowdeskAppearance = appearanceMode
       document.documentElement.dataset.flowdeskMotion = motionLevel
@@ -1068,7 +1169,7 @@ function FlowDeskShell({ authSession, onLogout }) {
             setActive('board')
           }
         }} />}
-        {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} customTheme={customTheme} setCustomTheme={setCustomTheme} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
+        {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} customTheme={customTheme} setCustomTheme={setCustomTheme} themeShuffleSettings={themeShuffleSettings} setThemeShuffleSettings={setThemeShuffleSettings} themeShuffleCountdown={themeShuffleCountdown} randomizeThemeNow={randomizeThemeNow} freezeThemeShuffle={freezeThemeShuffle} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
       </main>
 
       {active === 'board' && (
@@ -5938,7 +6039,7 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   )
 }
 
-function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, customTheme, setCustomTheme, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
+function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, customTheme, setCustomTheme, themeShuffleSettings, setThemeShuffleSettings, themeShuffleCountdown, randomizeThemeNow, freezeThemeShuffle, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
   const [settingsView, setSettingsView] = useState('home')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
@@ -5971,6 +6072,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
     'flowdesk-module-order',
     'flowdesk-ui-theme',
     'flowdesk-icon-style-mode',
+    'flowdesk-theme-shuffle-settings',
     'flowdesk-module-icons',
     'flowdesk-base-table-icons',
   ]
@@ -6204,6 +6306,22 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
     setUiTheme('custom')
   }
 
+  function updateThemeShuffleSettings(patch) {
+    setThemeShuffleSettings((current) => normalizeThemeShuffleSettings({ ...current, ...patch }))
+  }
+
+  function toggleThemeShuffle(enabled) {
+    updateThemeShuffleSettings({ enabled, lastChangedAt: Date.now() })
+  }
+
+  function setThemeShuffleInterval(intervalMinutes) {
+    updateThemeShuffleSettings({ intervalMinutes, lastChangedAt: Date.now() })
+  }
+
+  function setThemeShuffleMode(mode) {
+    updateThemeShuffleSettings({ mode, lastChangedAt: Date.now() })
+  }
+
   function addCollection() {
     const name = newCollectionName.trim()
     if (!name) return
@@ -6271,7 +6389,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   }
 
   const settingCards = [
-    { id: 'appearance', title: '外觀設定', eyebrow: 'UI THEME', summary: `目前方案：${activeAppearancePreset?.name || '自訂組合'} · ${activeTheme.name}`, icon: '🎨' },
+    { id: 'appearance', title: '外觀設定', eyebrow: 'UI THEME', summary: `目前方案：${activeAppearancePreset?.name || '自訂組合'} · ${activeTheme.name}${themeShuffleSettings.enabled ? ' · 自動隨機中' : ''}`, icon: '🎨' },
     { id: 'purchase', title: '採購設定', eyebrow: 'PURCHASE', summary: '採購資料與流程維護', icon: '🧾' },
     { id: 'collections', title: '資料集合設定', eyebrow: 'COLLECTIONS', summary: `${collections.filter((item) => item.visible !== false).length} 個顯示中，管理集合入口、視圖與外觀`, icon: '📚' },
     { id: 'sidebar', title: '側邊欄設定', eyebrow: 'LAYOUT', summary: '模組順序與側邊欄排序', icon: '🧭' },
@@ -6325,10 +6443,11 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.83 加強採購清單可讀性與目前選取狀態，清單模式保留必要資訊但不回到厚重卡片。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.84 新增主題自動隨機變化，可每 5 分鐘輪換主題，也能手動隨機與固定目前主題。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
+            <a href="#fd84-theme-shuffle">自動隨機</a>
             <a href="#fd40-preview">主題預覽</a>
             <a href="#fd40-custom">我的主題</a>
             <a href="#fd40-themes">主題色</a>
@@ -6345,6 +6464,51 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               <i />
             </div>
             <button className="ghost-btn fd30-reset-theme-btn" type="button" onClick={() => setUiTheme('blue')}>回復預設藍</button>
+          </div>
+          <div className={themeShuffleSettings.enabled ? 'fd84-theme-shuffle-panel active' : 'fd84-theme-shuffle-panel'} id="fd84-theme-shuffle">
+            <div className="fd84-theme-shuffle-head">
+              <div>
+                <span>主題自動隨機</span>
+                <strong>{themeShuffleSettings.enabled ? `自動變化中 · ${themeShuffleCountdown}` : '目前已固定主題'}</strong>
+                <small>只切換 FlowDesk 主題色，不會改資料、不會切頁，也不會動採購清單設定。預設每 5 分鐘輪換一次。</small>
+              </div>
+              <div className="fd84-theme-shuffle-actions">
+                <button className={themeShuffleSettings.enabled ? 'primary-btn' : 'ghost-btn'} type="button" onClick={() => toggleThemeShuffle(!themeShuffleSettings.enabled)}>
+                  {themeShuffleSettings.enabled ? '停止自動變化' : '啟用每 5 分鐘自動變化'}
+                </button>
+                <button className="ghost-btn" type="button" onClick={randomizeThemeNow}>立即換一個</button>
+                <button className="ghost-btn" type="button" onClick={freezeThemeShuffle}>固定目前主題</button>
+              </div>
+            </div>
+            <div className="fd84-theme-shuffle-grid">
+              <div className="fd84-theme-shuffle-card">
+                <span>變化間隔</span>
+                <div className="fd84-mini-segmented">
+                  {themeShuffleIntervalOptions.map((option) => (
+                    <button key={option.id} className={themeShuffleSettings.intervalMinutes === option.id ? 'active' : ''} type="button" onClick={() => setThemeShuffleInterval(option.id)}>
+                      {option.name}
+                    </button>
+                  ))}
+                </div>
+                <small>{themeShuffleIntervalOptions.find((item) => item.id === themeShuffleSettings.intervalMinutes)?.description}</small>
+              </div>
+              <div className="fd84-theme-shuffle-card">
+                <span>隨機範圍</span>
+                <div className="fd84-mini-segmented fd84-mode-segmented">
+                  {themeShuffleModeOptions.map((option) => (
+                    <button key={option.id} className={themeShuffleSettings.mode === option.id ? 'active' : ''} type="button" onClick={() => setThemeShuffleMode(option.id)}>
+                      {option.name}
+                    </button>
+                  ))}
+                </div>
+                <small>{themeShuffleModeOptions.find((item) => item.id === themeShuffleSettings.mode)?.description}</small>
+              </div>
+              <div className="fd84-theme-shuffle-card fd84-theme-shuffle-status">
+                <span>目前狀態</span>
+                <strong>{activeTheme.name}</strong>
+                <small>{themeShuffleSettings.enabled ? `下次自動切換：${themeShuffleCountdown}` : '已固定目前主題；可按「立即換一個」手動切換。'}</small>
+              </div>
+            </div>
           </div>
           <div className="fd38-preset-panel" id="fd40-presets">
             <div className="fd38-preset-head">
@@ -6497,7 +6661,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
                 key={theme.id}
                 className={uiTheme === theme.id ? 'theme-option active fd31-theme-option' : 'theme-option fd31-theme-option'}
                 type="button"
-                onClick={() => setUiTheme(theme.id)}
+                onClick={() => { setUiTheme(theme.id); updateThemeShuffleSettings({ lastChangedAt: Date.now() }) }}
                 style={{ '--theme-preview-color': theme.accent, '--theme-preview-secondary': theme.secondary || theme.accent }}
               >
                 <span className={`theme-swatch ${theme.id}`}>
