@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.55'
+const FLOWDESK_APP_VERSION = '20.3.56'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4348,7 +4348,19 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
         {renderGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, label)}
         <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label={`調整${label}開始日`} onPointerDown={startHandler} />
-        <button type="button" className={`fd203-gantt-progress-trigger${activeEditor ? ' active' : ''}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => openGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, event)}>{progress}%</button>
+        <button
+          type="button"
+          className={`fd203-gantt-progress-trigger${activeEditor ? ' active' : ''}`}
+          onPointerDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+          onMouseDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+          onClick={(event) => openGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, event)}
+        >{progress}%</button>
         <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label={`調整${label}結束日`} onPointerDown={endHandler} />
       </span>
     )
@@ -4461,7 +4473,24 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                         <span>{task.done ? '完成' : '未完成'}</span>
                       </label>
                     </div>
-                    <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {progress}% · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
+                    <div className="fd203-gantt-meta-progress">
+                      <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
+                      <label className="fd203-inline-progress-edit" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+                        <span>進度</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={progress}
+                          onChange={(event) => {
+                            const next = clampPercent(event.target.value)
+                            updateProjectTask(project.id, index, { progress: next, done: next >= 100 })
+                          }}
+                          aria-label="任務進度百分比"
+                        />
+                        <b>%</b>
+                      </label>
+                    </div>
                     {dependencyMeta.hasDependency ? <div className={`fd203-task-dependency-note ${dependencyMeta.waiting ? 'waiting' : 'ready'}`}>{dependencyMeta.waiting ? '等待前置' : '前置完成'}：{dependencyMeta.predecessorName}，排定 {formatMonthDay(dependencyMeta.startAfter)}</div> : null}
                     <div className="fd203-gantt-row-actions compact-v16 fd203-gantt-row-actions-v29">
                       <button type="button" className="fd203-mini-link soft" onClick={(event) => openGanttProgressEditor('task', project.id, index, null, progress, event)}>調整%</button>
@@ -4509,7 +4538,24 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                             <span>{subtask.done ? '完成' : '未完成'}</span>
                           </label>
                         </div>
-                        <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {subProgress}% · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
+                        <div className="fd203-gantt-meta-progress subtask">
+                          <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
+                          <label className="fd203-inline-progress-edit" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+                            <span>進度</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={subProgress}
+                              onChange={(event) => {
+                                const next = clampPercent(event.target.value)
+                                updateProjectSubtask(project.id, index, subIndex, { progress: next, done: next >= 100 })
+                              }}
+                              aria-label="子任務進度百分比"
+                            />
+                            <b>%</b>
+                          </label>
+                        </div>
                         <div className="fd203-gantt-row-actions compact-v16">
                           <button type="button" className="fd203-mini-link soft" onClick={(event) => openGanttProgressEditor('subtask', project.id, index, subIndex, subProgress, event)}>調整%</button>
                           <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectSubtask(project.id, index, subIndex)}>刪除</button>
@@ -5922,7 +5968,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.55 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.56 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
