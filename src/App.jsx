@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.99'
+const FLOWDESK_APP_VERSION = '20.4.00'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5019,6 +5019,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const todayValue = new Date().toISOString().slice(0, 10)
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
     const todayLeft = showToday ? `${ganttPoint(todayValue, displayStart, displayEnd)}%` : null
+    const visibleTasks = project.tasks || []
+    const taskRowHeight = compact ? 88 : weekCount >= 12 ? 92 : 96
+    const subtaskRowHeight = compact ? 64 : 72
+    const collapsedSubtaskHintHeight = 34
+    const taskAnchorY = compact ? 15 : 17
+    let taskCursorY = 0
+    const taskRowMetrics = visibleTasks.map((task, index) => {
+      const subtaskCount = (task.subtasks || []).length
+      const subtasksOpen = isGanttTaskSubtasksOpen(project, task, index)
+      const rowTop = taskCursorY
+      const center = rowTop + taskAnchorY
+      taskCursorY += taskRowHeight
+      if (subtaskCount > 0) taskCursorY += subtasksOpen ? subtaskCount * subtaskRowHeight : collapsedSubtaskHintHeight
+      return { rowTop, center }
+    })
     return (
       <div className={`fd203-gantt-panel fd203-gantt-fit-${fitMode}${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`} data-week-count={weekCount} data-fit-mode={fitMode}>
         <div className="fd203-gantt-summary">
@@ -5082,9 +5097,26 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             const dependencyMeta = getTaskDependencyMeta(project, task, index)
             const dependencyStartPoint = dependencyMeta.hasDependency ? ganttPoint(getTaskDependencyFinishDate(dependencyMeta.predecessor), displayStart, displayEnd) : 0
             const dependencyEndPoint = dependencyMeta.hasDependency ? ganttPoint(taskStart, displayStart, displayEnd) : 0
-            const dependencyLineLeft = `${Math.max(0, Math.min(dependencyStartPoint, dependencyEndPoint))}%`
-            const dependencyLineWidth = `${Math.max(2, Math.abs(dependencyEndPoint - dependencyStartPoint))}%`
             const dependencyLineBackward = dependencyMeta.hasDependency && dependencyEndPoint < dependencyStartPoint
+            const predecessorIndex = dependencyMeta.hasDependency ? visibleTasks.findIndex((item) => item.id === dependencyMeta.predecessor?.id) : -1
+            const predecessorCenter = predecessorIndex >= 0 ? taskRowMetrics[predecessorIndex]?.center ?? taskAnchorY : taskAnchorY
+            const currentCenter = taskRowMetrics[index]?.center ?? taskAnchorY
+            const predecessorLocalY = taskAnchorY + (predecessorCenter - currentCenter)
+            const currentLocalY = taskAnchorY
+            const dependencyConnectorTop = dependencyMeta.hasDependency ? Math.min(predecessorLocalY, currentLocalY) - 8 : 0
+            const dependencyConnectorHeight = dependencyMeta.hasDependency ? Math.abs(predecessorLocalY - currentLocalY) + 16 : 0
+            const dependencyForward = dependencyEndPoint >= dependencyStartPoint
+            const dependencyConnectorLeft = `${Math.max(0, Math.min(dependencyStartPoint, dependencyEndPoint))}%`
+            const dependencyConnectorWidth = `${Math.max(3, Math.abs(dependencyEndPoint - dependencyStartPoint))}%`
+            const dependencyStartX = dependencyForward ? 0 : 100
+            const dependencyEndX = dependencyForward ? 100 : 0
+            const dependencyBendX = dependencyForward ? 12 : 88
+            const dependencyPath = dependencyMeta.hasDependency
+              ? `M ${dependencyStartX} ${predecessorLocalY - dependencyConnectorTop} H ${dependencyBendX} V ${currentLocalY - dependencyConnectorTop} H ${dependencyEndX}`
+              : ''
+            const dependencyArrowPoints = dependencyForward
+              ? `${Math.max(100 - 8, 0)},${currentLocalY - dependencyConnectorTop - 5} 100,${currentLocalY - dependencyConnectorTop} ${Math.max(100 - 8, 0)},${currentLocalY - dependencyConnectorTop + 5}`
+              : `8,${currentLocalY - dependencyConnectorTop - 5} 0,${currentLocalY - dependencyConnectorTop} 8,${currentLocalY - dependencyConnectorTop + 5}`
             const taskStatus = getTaskStatusMeta(project, task, index)
             const subtasksOpen = isGanttTaskSubtasksOpen(project, task, index)
             return (
@@ -5146,14 +5178,18 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   </div>
                   <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                     {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
-                    {dependencyMeta.hasDependency ? (
+                    {dependencyMeta.hasDependency && predecessorIndex >= 0 ? (
                       <span
                         className={`fd203-dependency-arrow ${dependencyMeta.waiting ? 'waiting' : 'ready'} ${dependencyLineBackward ? 'backward' : 'forward'}`}
-                        style={{ left: dependencyLineLeft, width: dependencyLineWidth }}
+                        style={{ left: dependencyConnectorLeft, width: dependencyConnectorWidth, top: `${dependencyConnectorTop}px`, height: `${dependencyConnectorHeight}px` }}
                         title={`前置任務：${dependencyMeta.predecessorName} → ${task.name || '未命名任務'}｜${dependencyMeta.waiting ? '等待前置完成' : '前置已完成'}`}
                         aria-label={`前置任務 ${dependencyMeta.predecessorName} 連到 ${task.name || '未命名任務'}`}
                       >
-                        <i />
+                        <svg viewBox={`0 0 100 ${Math.max(16, dependencyConnectorHeight)}`} preserveAspectRatio="none" aria-hidden="true">
+                          <path d={dependencyPath} />
+                          <circle cx={dependencyForward ? 0 : 100} cy={predecessorLocalY - dependencyConnectorTop} r="4" />
+                          <polygon points={dependencyArrowPoints} />
+                        </svg>
                       </span>
                     ) : null}
                     {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}

@@ -23693,3 +23693,63 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   border-top-width: 5px;
   border-bottom-width: 5px;
 }
+
+/* FlowDesk v20.4.00 - 甘特圖相依箭頭真正連到其他任務 */
+.fd203-gantt-track .fd203-dependency-arrow {
+  position: absolute;
+  z-index: 4;
+  min-width: 18px;
+  pointer-events: none;
+  overflow: visible;
+  color: rgba(59, 130, 246, 0.84);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow::before,
+.fd203-gantt-track .fd203-dependency-arrow::after,
+.fd203-gantt-track .fd203-dependency-arrow > i {
+  content: none !important;
+  display: none !important;
+}
+
+.fd203-gantt-track .fd203-dependency-arrow svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.fd203-gantt-track .fd203-dependency-arrow path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 6 4;
+  filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.12));
+}
+
+.fd203-gantt-track .fd203-dependency-arrow circle {
+  fill: #ffffff;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.fd203-gantt-track .fd203-dependency-arrow polygon {
+  fill: currentColor;
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.ready {
+  color: rgba(16, 185, 129, 0.92);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.waiting {
+  color: rgba(245, 158, 11, 0.94);
+}
+
+.fd203-gantt-track .fd203-dependency-arrow.backward {
+  color: rgba(239, 68, 68, 0.92);
+}
+
+.fd203-gantt-fit-dense .fd203-gantt-track .fd203-dependency-arrow path,
+.fd203-gantt-fit-fit .fd203-gantt-track .fd203-dependency-arrow path {
+  stroke-width: 2.1;
+}
