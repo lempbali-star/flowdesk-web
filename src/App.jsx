@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.76'
+const FLOWDESK_APP_VERSION = '20.3.77'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -6201,7 +6201,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.76 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.77 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -7040,16 +7040,59 @@ function PurchaseDetailModalV76({
   onUpdateMeta,
 }) {
   if (!row) return null
+
+  const closeDialog = () => {
+    if (typeof onClose === 'function') onClose()
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') closeDialog()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   return (
-    <div className="fd76-purchase-modal-backdrop" onClick={onClose}>
-      <section className="fd76-purchase-modal-shell" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="fd76-purchase-modal-backdrop"
+      role="presentation"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) closeDialog()
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) closeDialog()
+      }}
+    >
+      <section
+        className="fd76-purchase-modal-shell"
+        role="dialog"
+        aria-modal="true"
+        aria-label="採購明細"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
         <header className="fd76-purchase-modal-head">
           <div>
             <p className="eyebrow">採購明細</p>
             <h3>{row.id} · {purchaseTitle(row)}</h3>
             <span>{row.department || '未指定單位'} · 申請人：{row.requester || '—'} · 使用人：{row.user || row.usedBy || row.requester || '—'}</span>
           </div>
-          <button type="button" className="fd76-purchase-modal-close" onClick={onClose}>關閉</button>
+          <button
+            type="button"
+            className="fd76-purchase-modal-close"
+            aria-label="關閉採購明細"
+            onPointerDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              closeDialog()
+            }}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              closeDialog()
+            }}
+          >關閉</button>
         </header>
 
         <div className="fd76-purchase-modal-content">
