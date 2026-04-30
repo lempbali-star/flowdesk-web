@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.70'
+const FLOWDESK_APP_VERSION = '20.3.71'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2048,6 +2048,21 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     })
   }
 
+  function movePurchaseByStep(row, direction) {
+    const rowKey = getPurchaseKey(row)
+    if (!rowKey) return
+    setPurchases((rows) => {
+      const next = [...rows]
+      const currentIndex = next.findIndex((item) => getPurchaseKey(item) === rowKey)
+      if (currentIndex === -1) return rows
+      const targetIndex = Math.max(0, Math.min(next.length - 1, currentIndex + direction))
+      if (targetIndex === currentIndex) return rows
+      const [moved] = next.splice(currentIndex, 1)
+      next.splice(targetIndex, 0, moved)
+      return next
+    })
+  }
+
   function getPurchaseDragProps(row) {
     const rowKey = getPurchaseKey(row)
     return {
@@ -2073,6 +2088,14 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       onDragOver: (event) => {
         event.preventDefault()
         if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+        const dragKey = draggingPurchaseIdRef.current || draggingPurchaseId
+        if (dragKey && dragKey !== rowKey) {
+          purchaseDragMovedRef.current = true
+          setDropPurchaseId(rowKey)
+        }
+      },
+      onDragEnter: (event) => {
+        event.preventDefault()
         const dragKey = draggingPurchaseIdRef.current || draggingPurchaseId
         if (dragKey && dragKey !== rowKey) {
           purchaseDragMovedRef.current = true
@@ -2547,6 +2570,13 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                       >
                         <div className="purchase-card-main">
                           <div className="purchase-card-topline">
+                            <span
+                              className="purchase-drag-grip"
+                              draggable
+                              title="拖曳調整採購順序"
+                              onClick={(event) => event.stopPropagation()}
+                              onDragStart={(event) => getPurchaseDragProps(row).onDragStart(event)}
+                            >⋮⋮</span>
                             <span className="record-id">{row.id}</span>
                             <StageBadge value={row.status} stages={purchaseStages} />
                           </div>
@@ -2576,6 +2606,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                           {quoteAmount > 0 && <em className={Math.abs(diff) > 1 ? 'has-diff' : ''}>報價差額 {formatMoney(diff)}</em>}
                         </div>
                         <div className="purchase-actions compact-actions" onClick={(event) => event.stopPropagation()}>
+                          <button type="button" className="sort-action" onClick={() => movePurchaseByStep(row, -1)}>上移</button>
+                          <button type="button" className="sort-action" onClick={() => movePurchaseByStep(row, 1)}>下移</button>
                           <button type="button" onClick={() => setEditingPurchase(row)}>編輯</button>
                           <button type="button" onClick={() => cancelPurchase(row)}>取消</button>
                           <button type="button" className="danger" onClick={() => deletePurchase(row)}>刪除</button>
@@ -6166,7 +6198,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.70 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.71 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
