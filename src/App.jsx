@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.56'
+const FLOWDESK_APP_VERSION = '20.3.58'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -74,12 +74,11 @@ function confirmResetAction(message) {
 
 const initialModules = [
   { id: 'home', name: '總覽', icon: 'overview' },
-  { id: 'board', name: '工作看板', icon: 'kanban' },
-  { id: 'base', name: '採購與紀錄', icon: 'records' },
-  { id: 'desk', name: '跟進紀錄', icon: 'issue' },
+  { id: 'board', name: '工作事項', icon: 'kanban' },
+  { id: 'base', name: '採購管理', icon: 'records' },
+  { id: 'desk', name: '處理紀錄', icon: 'issue' },
   { id: 'roadmap', name: '專案管理', icon: 'project' },
   { id: 'docs', name: '文件備忘', icon: 'knowledge' },
-  { id: 'flow', name: '流程規則', icon: 'automation' },
   { id: 'insight', name: '分析摘要', icon: 'report' },
   { id: 'reminders', name: '提醒中心', icon: 'reminders' },
   { id: 'settings', name: '系統設定', icon: 'settings' },
@@ -5968,7 +5967,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.56 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.58 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
