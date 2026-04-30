@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.94'
+const FLOWDESK_APP_VERSION = '20.3.95'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5216,15 +5216,25 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function renderProjectWorkspace(project) {
     if (!project?.id) return null
     const priorityMeta = getProjectPriorityMeta(project)
+    const projectStatusMeta = getProjectStatusMeta(project)
+    const projectInfo = getProjectListInfo(project)
     return (
       <>
-        <div className="fd203-workspace-head">
-          <div>
-            <p className="eyebrow">PROJECT WORKSPACE</p>
-            <h3>{project.name}</h3>
-            <span>{project.id} · {project.phase} · {formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
+        <div className="fd203-workspace-head fd203-workspace-hero">
+          <div className="fd203-workspace-titleblock">
+            <p className="fd203-workspace-label">PROJECT WORKSPACE</p>
+            <div className="fd203-workspace-title-row">
+              <h3>{project.name}</h3>
+              <span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span>
+            </div>
+            <div className="fd203-workspace-meta">
+              <span>{project.id}</span>
+              <span>{project.phase || '規劃中'}</span>
+              <span>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
+              <span>負責：{project.owner || '未指定'}</span>
+            </div>
           </div>
-          <div className="fd203-workspace-actions">
+          <div className="fd203-workspace-actions fd203-workspace-top-actions">
             <button type="button" className="fd203-primary-action" onClick={() => setDetailTab('edit')}>編輯專案</button>
             <button type="button" onClick={() => duplicateProject(project)}>複製</button>
             <button className="danger" type="button" onClick={() => deleteProject(project.id)}>刪除</button>
@@ -5232,12 +5242,23 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           </div>
         </div>
 
-        <div className="fd203-modal-summary-bar">
-          <span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span>
-          <span>健康度：{project.health || '待確認'}</span>
-          <span>進度：{project.progress}%</span>
-          <span>逾期任務：{getProjectStatusMeta(project).overdueItems.length}</span>
-          <span>下一步：{getProjectListInfo(project).next}</span>
+        <div className="fd203-modal-summary-bar fd203-workspace-metrics">
+          <article>
+            <span>健康度</span>
+            <strong>{project.health || '待確認'}</strong>
+          </article>
+          <article>
+            <span>進度</span>
+            <strong>{project.progress}%</strong>
+          </article>
+          <article>
+            <span>逾期任務</span>
+            <strong>{projectStatusMeta.overdueItems.length}</strong>
+          </article>
+          <article className="wide">
+            <span>下一步</span>
+            <strong>{projectInfo.next}</strong>
+          </article>
           {newProjectDraftId === project.id && <span className="fd90-draft-chip">新專案草稿｜未修改直接關閉會取消</span>}
         </div>
 
