@@ -23907,3 +23907,83 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-task-group:last-child {
   margin-bottom: 28px;
 }
+
+/* FlowDesk v20.4.04 - 甘特圖互動回穩與版面修正 */
+.fd203-gantt-row.task {
+  min-height: 92px !important;
+}
+
+.fd203-gantt-row.project {
+  min-height: 64px !important;
+}
+
+.fd203-gantt-scroll {
+  padding-bottom: 18px !important;
+}
+
+.fd203-gantt-track {
+  margin: 8px 10px !important;
+  overflow: visible !important;
+}
+
+.fd203-gantt-bar {
+  cursor: default;
+}
+
+.fd203-gantt-move-handle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 24px;
+  height: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  color: rgba(255,255,255,.95);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  z-index: 4;
+  box-shadow: 0 2px 8px rgba(15,23,42,.14);
+}
+
+.fd203-gantt-move-handle:active {
+  cursor: grabbing;
+}
+
+.fd203-gantt-progress-trigger {
+  z-index: 3;
+}
+
+.fd203-gantt-bar.project .fd203-gantt-move-handle {
+  top: 50%;
+}
+
+.fd203-gantt-drag-tip {
+  bottom: calc(100% + 8px) !important;
+}
+
+.fd203-gantt-track .fd203-dependency-arrow {
+  opacity: .72;
+}
+
+.fd203-gantt-row.task .fd203-gantt-label {
+  padding: 8px 10px 8px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 {
+  gap: 4px !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-mini-link,
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-subtask-count-pill,
+.fd203-gantt-row.task .fd203-gantt-row-actions-v29 .fd203-mini-muted {
+  min-height: 24px !important;
+  padding: 3px 8px !important;
+}

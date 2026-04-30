@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.03'
+const FLOWDESK_APP_VERSION = '20.4.04'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5000,12 +5000,22 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       <span
         className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''}`.trim()}
         style={ganttStyle(start, end, displayStart, displayEnd)}
-        onPointerDown={barMoveHandler}
-        title={`${title}｜按住任務條中間可整段移動；拖曳左右端可調整起訖日`}
+        title={`${title}｜拖曳中間握把可整段移動；拖曳左右端可調整起訖日`}
       >
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
         {renderGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, label)}
         <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label={`調整${label}開始日`} onPointerDown={startHandler} />
+        <button
+          type="button"
+          className="fd203-gantt-move-handle"
+          onPointerDown={barMoveHandler}
+          onMouseDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+          title={`拖移${label}`}
+          aria-label={`拖移${label}`}
+        >⋮⋮</button>
         <button
           type="button"
           className={`fd203-gantt-progress-trigger${activeEditor ? ' active' : ''}`}
