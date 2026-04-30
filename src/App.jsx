@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.62'
+const FLOWDESK_APP_VERSION = '20.3.63'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2214,11 +2214,11 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   }
 
   function exportFilteredPurchases() {
-    const headers = ['編號', '品項', '廠商', '部門', '申請人', '流程狀態', '付款狀態', '到貨狀態', '驗收狀態', '報價單號', 'PO單號', '發票號碼', '申請日', '下單日', '預計到貨', '到貨日', '付款期限', '驗收日', '預算', '報價金額', '未稅', '稅額', '含稅', '預算差異', '品項明細', '備註']
+    const headers = ['編號', '品項', '廠商', '部門', '申請人', '使用人', '流程狀態', '付款狀態', '到貨狀態', '驗收狀態', '報價單號', 'PO單號', '發票號碼', '申請日', '下單日', '預計到貨', '到貨日', '付款期限', '驗收日', '預算', '報價金額', '未稅', '稅額', '含稅', '預算差異', '品項明細', '備註']
     const rows = filteredPurchases.map((row) => {
       const amount = calculatePurchase(row)
       const itemsText = getPurchaseItems(row).map((item) => `${item.name || '未命名'} x ${item.quantity || 0} @ ${item.unitPrice || 0}`).join('；')
-      return [row.id, purchaseTitle(row), row.vendor, row.department, row.requester, row.status, row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', row.acceptanceStatus || '未驗收', row.quoteNo, row.poNo, row.invoiceNo, row.requestDate, row.orderDate, row.arrivalDueDate, row.arrivalDate, row.paymentDueDate, row.acceptanceDate, row.budgetAmount || 0, row.quoteAmount || 0, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, Number(row.budgetAmount || 0) ? amount.taxedTotal - Number(row.budgetAmount || 0) : '', itemsText, row.note]
+      return [row.id, purchaseTitle(row), row.vendor, row.department, row.requester, row.user || row.usedBy, row.status, row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', row.acceptanceStatus || '未驗收', row.quoteNo, row.poNo, row.invoiceNo, row.requestDate, row.orderDate, row.arrivalDueDate, row.arrivalDate, row.paymentDueDate, row.acceptanceDate, row.budgetAmount || 0, row.quoteAmount || 0, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, Number(row.budgetAmount || 0) ? amount.taxedTotal - Number(row.budgetAmount || 0) : '', itemsText, row.note]
     })
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
     const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
@@ -2346,7 +2346,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <Metric label="未到貨" value={notArrived} tone="red" />
             </div>
             <div className="purchase-filter-bar">
-              <label className="purchase-search-field">搜尋<input value={purchaseKeyword} onChange={(event) => setPurchaseKeyword(event.target.value)} placeholder="編號、品項、廠商、申請人..." /></label>
+              <label className="purchase-search-field">搜尋<input value={purchaseKeyword} onChange={(event) => setPurchaseKeyword(event.target.value)} placeholder="編號、品項、廠商、申請人、使用人..." /></label>
               <label>流程<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="全部">全部</option>{activeStages.map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
               <label>付款<select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}><option value="全部">全部</option>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>到貨<select value={arrivalFilter} onChange={(event) => setArrivalFilter(event.target.value)}><option value="全部">全部</option>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
@@ -2425,6 +2425,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                           <div className="purchase-card-meta-grid">
                             <span>廠商<b>{row.vendor || '—'}</b></span>
                             <span>申請人<b>{row.requester || '—'}</b></span>
+                            <span>使用人<b>{row.user || row.usedBy || row.requester || '—'}</b></span>
                             <span>日期<b>{row.requestDate || '未填日期'}</b></span>
                             <span>品項<b>{getPurchaseItems(row).length} 項</b></span>
                             <span>付款<b>{row.paymentStatus || '未付款'}</b></span>
@@ -5979,7 +5980,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.62 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.63 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -6543,6 +6544,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
     items: initial ? getPurchaseItems(initial) : [{ id: `line-${Date.now()}`, name: '', quantity: 1, unitPrice: 0, note: '' }],
     department: initial?.department || '',
     requester: initial?.requester || '',
+    user: initial?.user || initial?.usedBy || initial?.requester || '',
     vendor: initial?.vendor || '',
     taxMode: initial?.taxMode || '未稅',
     taxRate: initial?.taxRate ?? 5,
@@ -6637,6 +6639,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
           <div className="form-grid">
             <label>使用單位<input value={form.department} onChange={(event) => update('department', event.target.value)} placeholder="例如 高雄營業所" /></label>
             <label>申請人<input value={form.requester} onChange={(event) => update('requester', event.target.value)} /></label>
+            <label>使用人<input value={form.user || ''} onChange={(event) => update('user', event.target.value)} placeholder="實際使用人 / 部門" /></label>
             <label>廠商<input value={form.vendor} onChange={(event) => update('vendor', event.target.value)} /></label>
             <label>流程狀態<select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
             <label>付款狀態<select value={form.paymentStatus} onChange={(event) => update('paymentStatus', event.target.value)}>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
@@ -6718,6 +6721,8 @@ function normalizePurchase(row) {
     _purchaseKey: row._purchaseKey || row.uid || row.key || createPurchaseKey(),
     item: title,
     items,
+    user: row.user || row.usedBy || row.requester || '未指定',
+    usedBy: row.user || row.usedBy || row.requester || '未指定',
     quantity: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
     unitPrice: items.length === 1 ? Number(items[0].unitPrice || 0) : 0,
     taxRate: Number(row.taxRate ?? 5),
@@ -6796,6 +6801,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
         <StageBadge value={row.status} stages={stages} />
         <span>{row.department || '未填部門'}</span>
         <span>{row.requester || '未填申請人'}</span>
+        <span>使用人：{row.user || row.usedBy || row.requester || '未指定'}</span>
         <span>{row.paymentStatus || '未付款'}</span>
         <span>{row.arrivalStatus || '未到貨'}</span>
         <span>{row.acceptanceStatus || '未驗收'}</span>
@@ -6805,7 +6811,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
           <span>目前選取</span>
           <strong>{row.id} · {purchaseTitle(row)}</strong>
         </div>
-        <small>{row.vendor || '未指定廠商'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
+        <small>{row.vendor || '未指定廠商'} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
       </div>
       <div className="purchase-detail-actions">
         <button type="button" onClick={onEdit}>編輯採購</button>
