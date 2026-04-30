@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.77'
+const FLOWDESK_APP_VERSION = '20.3.78'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1898,6 +1898,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     return purchasePageSizeOptions.includes(saved) ? saved : 10
   })
   const [selectedPurchase, setSelectedPurchase] = useState(null)
+  const [purchaseDetailOpenId, setPurchaseDetailOpenId] = useState(null)
+  const purchaseDetailCloseLockRef = useRef(0)
   const [draggingPurchaseId, setDraggingPurchaseId] = useState(null)
   const [dropPurchaseId, setDropPurchaseId] = useState(null)
   const draggingPurchaseIdRef = useRef(null)
@@ -2001,6 +2003,22 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const safePurchasePage = Math.min(purchasePage, purchasePageCount)
   const pagedPurchases = filteredPurchases.slice((safePurchasePage - 1) * purchasePageSize, safePurchasePage * purchasePageSize)
   const stableSelectedPurchase = selectedPurchase ? purchases.find((row) => isSamePurchase(row, selectedPurchase)) || null : null
+  const detailDialogPurchaseV78 = purchaseDetailOpenId ? purchases.find((row) => getPurchaseKey(row) === purchaseDetailOpenId || row.id === purchaseDetailOpenId) || null : null
+
+  function openPurchaseDetailDialogV78(row) {
+    if (!row) return
+    if (Date.now() - purchaseDetailCloseLockRef.current < 350) return
+    const key = getPurchaseKey(row) || row.id
+    setSelectedPurchase(row)
+    setPurchaseDetailOpenId(key)
+  }
+
+  function closePurchaseDetailDialogV78() {
+    purchaseDetailCloseLockRef.current = Date.now()
+    setPurchaseDetailOpenId(null)
+    setSelectedPurchase(null)
+  }
+
   const totalUntaxed = filteredPurchases.reduce((sum, row) => sum + calculatePurchase(row).untaxedAmount, 0)
   const totalTax = filteredPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxAmount, 0)
   const totalAmount = filteredPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
@@ -2129,7 +2147,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       purchaseDragMovedRef.current = false
       return
     }
-    setSelectedPurchase(row)
+    openPurchaseDetailDialogV78(row)
   }
 
   function getPurchaseRelatedTasks(row) {
@@ -2554,19 +2572,20 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                     <p className="eyebrow">採購清單</p>
                     <h3>{filteredPurchases.length} 筆採購單</h3>
                   </div>
-            {stableSelectedPurchase ? (
+            {detailDialogPurchaseV78 ? (
               <PurchaseDetailModalV76
-                row={stableSelectedPurchase}
+                key={detailDialogPurchaseV78.id}
+                row={detailDialogPurchaseV78}
                 stages={purchaseStages}
-                purchaseHistory={purchaseHistory}
+                purchaseHistory={purchaseHistory.filter((entry) => entry.purchaseId === detailDialogPurchaseV78.id)}
                 vendorSpendRanking={vendorSpendRanking}
-                onClose={() => setSelectedPurchase(null)}
-                onEdit={() => setEditingPurchase(stableSelectedPurchase)}
-                onDelete={() => deletePurchase(stableSelectedPurchase)}
-                onDuplicate={() => duplicatePurchase(stableSelectedPurchase)}
-                onCreateTask={() => createTaskFromPurchase(stableSelectedPurchase)}
-                onCreateReminder={() => createReminderFromPurchase(stableSelectedPurchase)}
-                onUpdateMeta={(patch, message) => updatePurchase(stableSelectedPurchase.id, patch, message)}
+                onClose={closePurchaseDetailDialogV78}
+                onEdit={() => setEditingPurchase(detailDialogPurchaseV78)}
+                onDelete={() => deletePurchase(detailDialogPurchaseV78)}
+                onDuplicate={() => duplicatePurchase(detailDialogPurchaseV78)}
+                onCreateTask={() => createTaskFromPurchase(detailDialogPurchaseV78)}
+                onCreateReminder={() => createReminderFromPurchase(detailDialogPurchaseV78)}
+                onUpdateMeta={(patch, message) => updatePurchase(detailDialogPurchaseV78.id, patch, message)}
               />
             ) : null}
                   <div className="purchase-list-head-actions">
@@ -6201,7 +6220,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.77 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.78 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
