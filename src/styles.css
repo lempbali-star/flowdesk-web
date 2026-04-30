@@ -20986,3 +20986,18 @@ html[data-flowdesk-appearance="dark"] .fd79-archive-checklist small {
     flex: 0 0 auto;
   }
 }
+
+/* FlowDesk v20.3.80 採購編輯彈窗層級修正：避免被採購明細大彈窗擋住 */
+.fd20380-purchase-edit-backdrop {
+  z-index: 180 !important;
+  pointer-events: auto !important;
+}
+
+.fd20380-purchase-edit-backdrop .purchase-modal {
+  position: relative;
+  z-index: 181;
+}
+
+html[data-flowdesk-appearance="dark"] .fd20380-purchase-edit-backdrop {
+  background: rgba(2, 6, 23, .62);
+}

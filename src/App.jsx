@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.79'
+const FLOWDESK_APP_VERSION = '20.3.80'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -6911,7 +6911,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
   }
 
   return (
-    <div className="modal-backdrop">
+    <div className={`modal-backdrop purchase-form-backdrop ${mode === 'edit' ? 'purchase-edit-backdrop fd20380-purchase-edit-backdrop' : 'purchase-create-backdrop'}`}>
       <section className="launcher purchase-modal v16-modal">
         <div className="launcher-head purchase-modal-head">
           <div><p className="eyebrow">採購紀錄</p><h2>{mode === 'edit' ? '編輯採購' : '新增採購'}</h2></div>
