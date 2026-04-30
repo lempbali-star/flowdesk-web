@@ -23512,3 +23512,88 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     grid-template-columns: 1fr;
   }
 }
+
+/* FlowDesk v20.3.98 - 甘特圖自動縮放 */
+.fd203-gantt-panel.fd203-gantt-fit-soft-fit .fd203-gantt-scroll,
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-gantt-scroll,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-scroll {
+  scrollbar-gutter: stable both-edges;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-soft-fit .fd203-gantt-head,
+.fd203-gantt-panel.fd203-gantt-fit-soft-fit .fd203-gantt-row,
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-gantt-head,
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-gantt-row,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-head,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-row {
+  font-size: 12px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-week-head,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-week-head {
+  padding-inline: 8px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-week-head b,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-week-head b {
+  font-size: 12px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-week-head small,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-week-head small {
+  font-size: 10px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-gantt-label,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-label {
+  padding: 10px 10px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-gantt-name-input,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-name-input {
+  font-size: 12px;
+  min-height: 30px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-label small,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-task-dependency-note,
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-mini-muted {
+  font-size: 10px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-row-actions,
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-gantt-row-actions {
+  gap: 5px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-mini-link,
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-mini-link {
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-bar,
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-gantt-bar {
+  min-height: 18px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-progress-trigger,
+.fd203-gantt-panel.fd203-gantt-fit-fit .fd203-gantt-progress-trigger {
+  min-width: 42px;
+  height: 20px;
+  font-size: 10px;
+}
+
+.fd203-gantt-panel.fd203-gantt-fit-dense .fd203-gantt-scroll {
+  --fd203-auto-fit-note: 'dense';
+}
+
+@media (max-width: 1280px) {
+  .fd203-gantt-panel:not(.compact) .fd203-gantt-summary {
+    gap: 10px;
+  }
+
+  .fd203-gantt-panel:not(.compact) .fd203-gantt-actions {
+    gap: 8px;
+  }
+}

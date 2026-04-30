@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.97'
+const FLOWDESK_APP_VERSION = '20.3.98'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5011,19 +5011,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const displayStart = frozenRange?.start || timelineRange.start
     const displayEnd = frozenRange?.end || timelineRange.end
     const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
-    const weekCellWidth = compact ? 124 : 140
-    const labelColumnWidth = compact ? 290 : 342
+    const weekCount = weekTicks.length
+    const fitMode = compact ? 'compact' : weekCount >= 12 ? 'dense' : weekCount >= 9 ? 'fit' : weekCount >= 7 ? 'soft-fit' : 'normal'
+    const weekCellWidth = compact ? 124 : weekCount >= 12 ? 96 : weekCount >= 9 ? 108 : weekCount >= 7 ? 118 : 140
+    const labelColumnWidth = compact ? 290 : weekCount >= 12 ? 268 : weekCount >= 9 ? 292 : weekCount >= 7 ? 312 : 342
     const gridColumns = `${labelColumnWidth}px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
     const todayValue = new Date().toISOString().slice(0, 10)
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
     const todayLeft = showToday ? `${ganttPoint(todayValue, displayStart, displayEnd)}%` : null
     return (
-      <div className={`fd203-gantt-panel${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`}>
+      <div className={`fd203-gantt-panel fd203-gantt-fit-${fitMode}${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`} data-week-count={weekCount} data-fit-mode={fitMode}>
         <div className="fd203-gantt-summary">
           <div>
             <p className="eyebrow">PROJECT GANTT</p>
             <h3>{project.name}</h3>
-            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 甘特圖依實際起迄顯示，最後一週會包含結束日；中間保留每日刻度{showToday ? ` · 今日：${formatMonthDayWeekday(todayValue)}` : ''}</small>
+            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 甘特圖依實際起迄顯示，最後一週會包含結束日；中間保留每日刻度{fitMode !== 'normal' && !compact ? ' · 已自動縮小顯示' : ''}{showToday ? ` · 今日：${formatMonthDayWeekday(todayValue)}` : ''}</small>
           </div>
           <div className="fd203-gantt-actions">
             {!compact && (
