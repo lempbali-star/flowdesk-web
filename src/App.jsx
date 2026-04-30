@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.90'
+const FLOWDESK_APP_VERSION = '20.3.91'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -15,13 +15,19 @@ function mergeOptionList(base = [], current) {
 function ChineseTextField({ value = '', onCommit, multiline = false, commitOnBlur = false, ...props }) {
   const [draft, setDraft] = useState(value ?? '')
   const composingRef = useRef(false)
+  const focusedRef = useRef(false)
 
   useEffect(() => {
-    if (!composingRef.current) setDraft(value ?? '')
+    if (!composingRef.current && !focusedRef.current) setDraft(value ?? '')
   }, [value])
 
   const commitValue = (nextValue) => {
     if (typeof onCommit === 'function') onCommit(nextValue)
+  }
+
+  const handleFocus = (event) => {
+    focusedRef.current = true
+    if (typeof props.onFocus === 'function') props.onFocus(event)
   }
 
   const handleChange = (event) => {
@@ -42,7 +48,10 @@ function ChineseTextField({ value = '', onCommit, multiline = false, commitOnBlu
   }
 
   const handleBlur = (event) => {
-    if (commitOnBlur) commitValue(event.currentTarget.value)
+    focusedRef.current = false
+    const nextValue = event.currentTarget.value
+    setDraft(nextValue)
+    if (commitOnBlur) commitValue(nextValue)
     if (typeof props.onBlur === 'function') props.onBlur(event)
   }
 
@@ -51,6 +60,7 @@ function ChineseTextField({ value = '', onCommit, multiline = false, commitOnBlu
     <Component
       {...props}
       value={draft}
+      onFocus={handleFocus}
       onChange={handleChange}
       onCompositionStart={handleCompositionStart}
       onCompositionEnd={handleCompositionEnd}
@@ -5027,7 +5037,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       ) : (
                         <span className="fd203-subtask-chevron empty">•</span>
                       )}
-                      <ChineseTextField className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="甘特圖任務名稱" />
+                      <ChineseTextField className="fd203-gantt-name-input" value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} commitOnBlur aria-label="甘特圖任務名稱" />
                       <span className={`fd203-gantt-status-chip ${taskStatus.tone}`}>{taskStatus.label}</span>
                       <label className={`fd203-gantt-done-check ${task.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={task.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
                         <input
@@ -5092,7 +5102,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className={`fd203-gantt-grid fd203-gantt-row subtask ${subtask.done ? 'is-complete' : 'is-incomplete'}`} key={subtaskKey} style={{ gridTemplateColumns: gridColumns }}>
                       <div className="fd203-gantt-label subtask" title={dateRangeLabel(subStart, subEnd)}>
                         <div className="fd203-gantt-subtask-title-line compact-v16">
-                          <ChineseTextField className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="甘特圖子任務名稱" />
+                          <ChineseTextField className="fd203-gantt-name-input subtask" value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} commitOnBlur aria-label="甘特圖子任務名稱" />
                           <span className={`fd203-gantt-status-chip subtask ${subtaskStatus.tone}`}>{subtaskStatus.label}</span>
                           <label className={`fd203-gantt-done-check subtask ${subtask.done ? 'checked' : ''}`} onClick={(event) => event.stopPropagation()} title={subtask.done ? '已完成，取消勾選可改回未完成' : '未完成，勾選後視為完成'}>
                             <input
@@ -5204,15 +5214,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <section className="fd203-editor-card">
               <div className="project-section-head compact"><div><p className="eyebrow">PROJECT PROFILE</p><h3>基本資料</h3></div></div>
               <div className="project-editor-grid fd203-editor-grid">
-                <label>專案名稱<ChineseTextField value={project.name} onCommit={(value) => updateProject(project.id, { name: value || '未命名專案' })} /></label>
+                <label>專案名稱<ChineseTextField value={project.name} onCommit={(value) => updateProject(project.id, { name: value || '未命名專案' })} commitOnBlur /></label>
                 <label>階段<select value={project.phase || '規劃中'} onChange={(event) => updateProject(project.id, { phase: event.target.value }, '更新專案階段。')}>{mergeOptionList(PROJECT_PHASE_OPTIONS, project.phase).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
                 <label>專案優先<select value={project.priority || '中'} onChange={(event) => updateProject(project.id, { priority: event.target.value }, `更新專案優先為 ${event.target.value}。`)}>{mergeOptionList(PROJECT_PRIORITY_OPTIONS, project.priority).map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
-                <label>負責人<ChineseTextField value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} /></label>
+                <label>負責人<ChineseTextField value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} commitOnBlur /></label>
                 <label>健康度<select value={project.health || '待確認'} onChange={(event) => updateProject(project.id, { health: event.target.value }, '更新健康度。')}>{mergeOptionList(PROJECT_HEALTH_OPTIONS, project.health).map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
                 <label>開始<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.startDate} onChange={(event) => updateProject(project.id, { startDate: minIsoDate(event.target.value, project.endDate) }, '更新開始日期。')} /></label>
                 <label>結束<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.endDate} onChange={(event) => updateProject(project.id, { endDate: maxIsoDate(event.target.value, project.startDate) }, '更新結束日期。')} /></label>
                 <label>進度 %<input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} /><small>{project.progress}%</small></label>
-                <label className="wide-field">下一步<ChineseTextField multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} /></label>
+                <label className="wide-field">下一步<ChineseTextField multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} commitOnBlur /></label>
               </div>
             </section>
 
@@ -5239,8 +5249,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="project-detail-card-head"><strong>{task.name || '未命名任務'}</strong><span title={dateRangeLabel(taskStart, taskEnd)}>{clampPercent(task.progress)}%</span></div>
                     {getTaskDependencyMeta(project, task, index).hasDependency ? <div className={`fd203-task-dependency-note detail ${getTaskDependencyMeta(project, task, index).waiting ? 'waiting' : 'ready'}`}>{getTaskDependencyMeta(project, task, index).waiting ? '等待前置任務' : '前置任務已完成'}：{getTaskDependencyMeta(project, task, index).predecessorName}，自動排定 {formatMonthDayWeekday(getTaskDependencyMeta(project, task, index).startAfter)}</div> : null}
                     <div className="project-detail-form-grid">
-                      <label>任務名稱<ChineseTextField value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} aria-label="任務名稱" /></label>
-                      <label>負責人<ChineseTextField value={task.owner || ''} onCommit={(value) => updateProjectTask(project.id, index, { owner: value })} aria-label="負責人" /></label>
+                      <label>任務名稱<ChineseTextField value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '未命名任務' })} commitOnBlur aria-label="任務名稱" /></label>
+                      <label>負責人<ChineseTextField value={task.owner || ''} onCommit={(value) => updateProjectTask(project.id, index, { owner: value })} commitOnBlur aria-label="負責人" /></label>
                       <label>開始日<input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskStart} onChange={(event) => updateProjectTask(project.id, index, { start: event.target.value }, '更新任務開始日。')} aria-label="開始日" /></label>
                       <label>結束日<input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskEnd} onChange={(event) => updateProjectTask(project.id, index, { end: event.target.value }, '更新任務結束日。')} aria-label="結束日" /></label>
                       <label>前置任務<select value={task.dependsOnTaskId || ''} onChange={(event) => {
@@ -5265,8 +5275,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                           <div key={subtask.id || subIndex} className="fd203-subtask-editor">
                             <div className="project-detail-card-head"><strong>↳ {subtask.name || '未命名子任務'}</strong><span title={dateRangeLabel(subStart, subEnd)}>{clampPercent(subtask.progress)}%</span></div>
                             <div className="project-detail-form-grid compact-3">
-                              <label>子任務名稱<ChineseTextField value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} aria-label="子任務名稱" /></label>
-                              <label>負責人<ChineseTextField value={subtask.owner || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { owner: value })} aria-label="子任務負責人" /></label>
+                              <label>子任務名稱<ChineseTextField value={subtask.name || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { name: value || '未命名子任務' })} commitOnBlur aria-label="子任務名稱" /></label>
+                              <label>負責人<ChineseTextField value={subtask.owner || ''} onCommit={(value) => updateProjectSubtask(project.id, index, subIndex, { owner: value })} commitOnBlur aria-label="子任務負責人" /></label>
                               <label>開始日<input title={dateRangeLabel(subStart, subEnd)} type="date" value={subStart} onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { start: event.target.value }, '更新子任務開始日。')} /></label>
                               <label>結束日<input title={dateRangeLabel(subStart, subEnd)} type="date" value={subEnd} onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { end: event.target.value }, '更新子任務結束日。')} /></label>
                               <label>進度<input type="range" min="0" max="100" value={clampPercent(subtask.progress)} onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { progress: clampPercent(event.target.value) })} /></label>
@@ -5292,7 +5302,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <div key={milestone.id || index} className={milestone.done ? 'project-detail-card fd203-detail-card done' : 'project-detail-card fd203-detail-card'}>
                   <div className="project-detail-card-head"><strong>{milestone.name || '未命名里程碑'}</strong><span>{milestone.done ? '已完成' : '進行中'}</span></div>
                   <div className="project-detail-form-grid compact-3">
-                    <label>里程碑名稱<ChineseTextField value={milestone.name || ''} onCommit={(value) => updateProjectMilestone(project.id, index, { name: value || '未命名里程碑' })} aria-label="里程碑名稱" /></label>
+                    <label>里程碑名稱<ChineseTextField value={milestone.name || ''} onCommit={(value) => updateProjectMilestone(project.id, index, { name: value || '未命名里程碑' })} commitOnBlur aria-label="里程碑名稱" /></label>
                     <label>日期<input type="date" value={milestone.date || project.endDate} onChange={(event) => updateProjectMilestone(project.id, index, { date: event.target.value }, '更新里程碑日期。')} aria-label="里程碑日期" /></label>
                     <label className="milestone-check"><span>完成狀態</span><input type="checkbox" checked={Boolean(milestone.done)} onChange={(event) => updateProjectMilestone(project.id, index, { done: event.target.checked }, event.target.checked ? '里程碑標記完成。' : '里程碑改為進行中。')} /></label>
                   </div>
