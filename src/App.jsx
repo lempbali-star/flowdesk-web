@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.75'
+const FLOWDESK_APP_VERSION = '20.3.76'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2554,6 +2554,21 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                     <p className="eyebrow">採購清單</p>
                     <h3>{filteredPurchases.length} 筆採購單</h3>
                   </div>
+            {stableSelectedPurchase ? (
+              <PurchaseDetailModalV76
+                row={stableSelectedPurchase}
+                stages={purchaseStages}
+                purchaseHistory={purchaseHistory}
+                vendorSpendRanking={vendorSpendRanking}
+                onClose={() => setSelectedPurchase(null)}
+                onEdit={() => setEditingPurchase(stableSelectedPurchase)}
+                onDelete={() => deletePurchase(stableSelectedPurchase)}
+                onDuplicate={() => duplicatePurchase(stableSelectedPurchase)}
+                onCreateTask={() => createTaskFromPurchase(stableSelectedPurchase)}
+                onCreateReminder={() => createReminderFromPurchase(stableSelectedPurchase)}
+                onUpdateMeta={(patch, message) => updatePurchase(stableSelectedPurchase.id, patch, message)}
+              />
+            ) : null}
                   <div className="purchase-list-head-actions">
                     <label className="purchase-page-size-control purchase-inline-page-size"><span>每頁筆數</span>
                       <select value={purchasePageSize} onChange={(event) => setPurchasePageSize(Number(event.target.value))}>
@@ -2567,7 +2582,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                 </div>
                 <div className="purchase-selection-status">
                   <span>目前顯示 <b>{pagedPurchases.length}</b> 筆 / 篩選 <b>{filteredPurchases.length}</b> 筆</span>
-                  <span>右側明細：<b>{stableSelectedPurchase ? `${stableSelectedPurchase.id} ${purchaseTitle(stableSelectedPurchase)}` : '尚未選取'}</b></span>
+                  <span>目前選取：<b>{stableSelectedPurchase ? `${stableSelectedPurchase.id} ${purchaseTitle(stableSelectedPurchase)}` : '尚未選取'}</b></span><span>點選卡片可開啟詳細彈窗</span>
                 </div>
                 <div className={collectionView === 'card' ? 'purchase-card-list purchase-card-grid' : 'purchase-card-list'}>
                   {pagedPurchases.map((row) => {
@@ -2636,31 +2651,6 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                   <button type="button" onClick={() => setPurchasePage((page) => Math.min(purchasePageCount, page + 1))} disabled={safePurchasePage >= purchasePageCount}>下一頁</button>
                 </div>
               </section>
-
-              <aside className="purchase-side-panel">
-                <section className="purchase-detail-card compact-detail-card">
-                  <PanelTitle eyebrow="採購明細" title={stableSelectedPurchase ? purchaseTitle(stableSelectedPurchase) : '請選擇採購項目'} action={stableSelectedPurchase?.id} />
-          <ModuleBoundaryNote moduleId="base" compact />
-                  {stableSelectedPurchase ? <PurchaseDetail row={stableSelectedPurchase} stages={purchaseStages} relatedTasks={getPurchaseRelatedTasks(stableSelectedPurchase)} history={purchaseHistory.filter((entry) => entry.purchaseId === stableSelectedPurchase.id)} onEdit={() => setEditingPurchase(stableSelectedPurchase)} onAdvance={() => advancePurchase(stableSelectedPurchase)} onComplete={() => completePurchase(stableSelectedPurchase)} onDuplicate={() => duplicatePurchase(stableSelectedPurchase)} onCreateTask={() => createPurchaseWorkItem(stableSelectedPurchase)} onCreateReminder={(kind) => createPurchaseReminder(stableSelectedPurchase, kind)} onUpdateMeta={(patch, message) => updatePurchaseMeta(stableSelectedPurchase, patch, message)} /> : <p>點選左側採購項目，可查看含稅、未稅與日期明細。</p>}
-                </section>
-                <section className="purchase-history-card compact-history-card">
-                  <PanelTitle eyebrow="狀態歷程" title="最近變更" />
-                  <div className="history-list">
-                    {purchaseHistory.length ? purchaseHistory.slice(0, 6).map((entry) => <article key={entry.id}><strong>{entry.title}</strong><span>{entry.message}</span><small>{entry.time}</small></article>) : <p>尚無變更紀錄。</p>}
-                  </div>
-                </section>
-                <section className="purchase-vendor-rank-card">
-                  <PanelTitle eyebrow="廠商統計" title="採購金額排行" />
-                  <div className="purchase-vendor-rank">
-                    {vendorSpendRanking.length ? vendorSpendRanking.map((vendor) => (
-                      <article key={vendor.vendor}>
-                        <div><strong>{vendor.vendor}</strong><span>{vendor.count} 筆</span></div>
-                        <b>{formatMoney(vendor.amount)}</b>
-                      </article>
-                    )) : <p>尚無廠商採購資料。</p>}
-                  </div>
-                </section>
-              </aside>
             </div>
           </>
         ) : (
@@ -6211,7 +6201,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.75 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.76 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -7034,6 +7024,81 @@ function csvEscape(value) {
   const text = String(value ?? '')
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
+
+
+function PurchaseDetailModalV76({
+  row,
+  stages,
+  purchaseHistory = [],
+  vendorSpendRanking = [],
+  onClose,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  onCreateTask,
+  onCreateReminder,
+  onUpdateMeta,
+}) {
+  if (!row) return null
+  return (
+    <div className="fd76-purchase-modal-backdrop" onClick={onClose}>
+      <section className="fd76-purchase-modal-shell" onClick={(event) => event.stopPropagation()}>
+        <header className="fd76-purchase-modal-head">
+          <div>
+            <p className="eyebrow">採購明細</p>
+            <h3>{row.id} · {purchaseTitle(row)}</h3>
+            <span>{row.department || '未指定單位'} · 申請人：{row.requester || '—'} · 使用人：{row.user || row.usedBy || row.requester || '—'}</span>
+          </div>
+          <button type="button" className="fd76-purchase-modal-close" onClick={onClose}>關閉</button>
+        </header>
+
+        <div className="fd76-purchase-modal-content">
+          <section className="fd76-purchase-modal-main">
+            <PurchaseDetail
+              row={row}
+              stages={stages}
+              relatedTasks={[]}
+              history={purchaseHistory}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onDuplicate={onDuplicate}
+              onCreateTask={onCreateTask}
+              onCreateReminder={onCreateReminder}
+              onUpdateMeta={onUpdateMeta}
+            />
+          </section>
+
+          <aside className="fd76-purchase-modal-side">
+            <section className="fd76-purchase-side-card">
+              <PanelTitle eyebrow="狀態歷程" title="最近變更" />
+              <div className="history-list">
+                {purchaseHistory.length ? purchaseHistory.slice(0, 12).map((entry, index) => (
+                  <article key={`${entry.time || 'time'}-${index}`}>
+                    <span>{entry.message}</span>
+                    <small>{entry.time}</small>
+                  </article>
+                )) : <p>尚無變更紀錄。</p>}
+              </div>
+            </section>
+
+            <section className="fd76-purchase-side-card">
+              <PanelTitle eyebrow="廠商統計" title="採購金額排行" />
+              <div className="purchase-vendor-rank">
+                {vendorSpendRanking.length ? vendorSpendRanking.slice(0, 8).map((vendor) => (
+                  <article key={vendor.vendor}>
+                    <div><strong>{vendor.vendor}</strong><span>{vendor.count} 筆</span></div>
+                    <b>{formatMoney(vendor.amount)}</b>
+                  </article>
+                )) : <p>尚無廠商採購資料。</p>}
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 
 function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder, onUpdateMeta }) {
   const amount = calculatePurchase(row)
