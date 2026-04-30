@@ -23274,3 +23274,93 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     grid-template-columns: 1fr;
   }
 }
+
+/* FlowDesk v20.3.96 - 專案分頁全畫面模式 */
+.fd203-project-modal .fd203-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fd203-project-modal .fd203-tabs button {
+  min-height: 48px;
+  border-radius: 16px;
+  font-weight: 800;
+}
+
+.fd203-project-modal .fd203-tabs button.active {
+  box-shadow: 0 14px 28px rgba(59,130,246,.16);
+}
+
+.fd203-project-modal--edit .fd203-workspace-hero,
+.fd203-project-modal--gantt .fd203-workspace-hero,
+.fd203-project-modal--tasks .fd203-workspace-hero,
+.fd203-project-modal--milestones .fd203-workspace-hero,
+.fd203-project-modal--records .fd203-workspace-hero {
+  margin-bottom: 8px;
+  padding: 14px 18px;
+}
+
+.fd203-project-modal--edit .fd203-workspace-title-row h3,
+.fd203-project-modal--gantt .fd203-workspace-title-row h3,
+.fd203-project-modal--tasks .fd203-workspace-title-row h3,
+.fd203-project-modal--milestones .fd203-workspace-title-row h3,
+.fd203-project-modal--records .fd203-workspace-title-row h3 {
+  font-size: 26px;
+}
+
+.fd203-project-modal--edit .fd203-workspace-metrics,
+.fd203-project-modal--gantt .fd203-workspace-metrics,
+.fd203-project-modal--tasks .fd203-workspace-metrics,
+.fd203-project-modal--milestones .fd203-workspace-metrics,
+.fd203-project-modal--records .fd203-workspace-metrics {
+  margin-bottom: 10px;
+}
+
+.fd203-project-modal--edit .fd203-tab-panel,
+.fd203-project-modal--gantt .fd203-gantt-panel,
+.fd203-project-modal--tasks .fd203-tab-panel,
+.fd203-project-modal--milestones .fd203-tab-panel,
+.fd203-project-modal--records .fd203-tab-panel {
+  margin: 0 22px 22px !important;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.fd203-project-modal--gantt .fd203-gantt-panel,
+.fd203-project-modal--tasks .fd203-tab-panel,
+.fd203-project-modal--milestones .fd203-tab-panel,
+.fd203-project-modal--records .fd203-tab-panel,
+.fd203-project-modal--edit .fd203-tab-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.fd203-project-modal--tasks .project-task-block,
+.fd203-project-modal--milestones .fd203-tab-panel,
+.fd203-project-modal--records .fd203-records-panel,
+.fd203-project-modal--edit .fd203-edit-panel {
+  overflow: auto;
+}
+
+.fd203-project-modal--records .fd203-records-panel {
+  padding: 0 !important;
+  border: none;
+  background: transparent;
+}
+
+.fd203-project-modal--records .fd203-records-panel .archive-folder-panel {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .fd203-project-modal .fd203-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .fd203-project-modal .fd203-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
