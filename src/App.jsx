@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.86'
+const FLOWDESK_APP_VERSION = '20.3.87'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -7070,6 +7070,7 @@ function normalizePurchaseList(rows = []) {
 }
 
 function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) {
+  const [saveAttempted, setSaveAttempted] = useState(false)
   const [form, setForm] = useState(() => ({
     id: initial?.id,
     _purchaseKey: initial?._purchaseKey || initial?.uid || initial?.key,
@@ -7106,6 +7107,23 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
   const itemCount = form.items.length
   const totalQuantity = form.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
   const itemSubtotal = form.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0)
+  const cleanItemPreview = form.items
+    .map((item) => ({ ...item, name: String(item.name || '').trim(), quantity: Number(item.quantity || 0), unitPrice: Number(item.unitPrice || 0) }))
+    .filter((item) => item.name || item.quantity || item.unitPrice)
+  const hasNamedItem = cleanItemPreview.some((item) => item.name)
+  const folderUrl = String(form.archiveFolder?.url || '').trim()
+  const folderUrlLooksOk = !folderUrl || /^https?:\/\//i.test(folderUrl)
+  const validationIssues = [
+    !String(form.department || '').trim() ? { type: 'block', text: '請填寫使用單位，清單與統計才有依據。' } : null,
+    !hasNamedItem ? { type: 'block', text: '至少需要填寫一個採購品項。' } : null,
+    amount.taxedTotal <= 0 ? { type: 'warn', text: '目前含稅總額為 0，請確認數量與單價是否正確。' } : null,
+    !String(form.requester || '').trim() ? { type: 'warn', text: '尚未填寫申請人，後續追蹤會比較難判斷窗口。' } : null,
+    !String(form.user || '').trim() ? { type: 'warn', text: '尚未填寫使用人，可先留空但建議補上。' } : null,
+    folderUrl && !folderUrlLooksOk ? { type: 'warn', text: '雲端資料夾連結看起來不是 http/https 開頭，請確認是否可開啟。' } : null,
+  ].filter(Boolean)
+  const validationBlockers = validationIssues.filter((issue) => issue.type === 'block')
+  const validationWarnings = validationIssues.filter((issue) => issue.type === 'warn')
+  const validationVisible = saveAttempted || validationIssues.length > 0
 
   function update(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -7147,6 +7165,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
   }
 
   function submitForm() {
+    setSaveAttempted(true)
     const cleanItems = form.items
       .map((item) => ({
         ...item,
@@ -7156,6 +7175,13 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
         note: String(item.note || '').trim(),
       }))
       .filter((item) => item.name || item.quantity || item.unitPrice)
+
+    const blockers = [
+      !String(form.department || '').trim(),
+      !cleanItems.some((item) => item.name),
+    ].filter(Boolean)
+    if (blockers.length) return
+
     onSubmit({
       ...form,
       items: cleanItems.length ? cleanItems : [{ id: `line-${Date.now()}`, name: form.item || '未命名品項', quantity: 1, unitPrice: 0, note: '' }],
@@ -7165,108 +7191,173 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
 
   return (
     <div className={`modal-backdrop purchase-form-backdrop ${mode === 'edit' ? 'purchase-edit-backdrop fd20380-purchase-edit-backdrop' : 'purchase-create-backdrop'}`}>
-      <section className="launcher purchase-modal v16-modal">
-        <div className="launcher-head purchase-modal-head">
-          <div><p className="eyebrow">採購紀錄</p><h2>{mode === 'edit' ? '編輯採購' : '新增採購'}</h2></div>
+      <section className="launcher purchase-modal v16-modal fd20387-purchase-modal">
+        <div className="launcher-head purchase-modal-head fd20387-purchase-modal-head">
+          <div>
+            <p className="eyebrow">採購紀錄</p>
+            <h2>{mode === 'edit' ? '編輯採購' : '新增採購'}</h2>
+            <span>分區填寫，品項與金額會即時計算，儲存前會做基本檢查。</span>
+          </div>
           <button type="button" onClick={onClose}>✕</button>
         </div>
 
-        <div className="purchase-modal-body">
-          <div className="form-grid">
-            <label>使用單位<input value={form.department} onChange={(event) => update('department', event.target.value)} placeholder="例如 高雄營業所" /></label>
-            <label>申請人<input value={form.requester} onChange={(event) => update('requester', event.target.value)} /></label>
-            <label>使用人<input value={form.user || ''} onChange={(event) => update('user', event.target.value)} placeholder="實際使用人 / 部門" /></label>
-            <label>廠商<input value={form.vendor} onChange={(event) => update('vendor', event.target.value)} /></label>
-            <label>流程狀態<select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
-            <label>優先等級<select value={form.priority} onChange={(event) => update('priority', event.target.value)}>{purchasePriorityOptions.map((priority) => <option key={priority.id} value={priority.id}>{priority.label}</option>)}</select></label>
-            <label>付款狀態<select value={form.paymentStatus} onChange={(event) => update('paymentStatus', event.target.value)}>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-            <label>到貨狀態<select value={form.arrivalStatus} onChange={(event) => update('arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-            <label>驗收狀態<select value={form.acceptanceStatus} onChange={(event) => update('acceptanceStatus', event.target.value)}>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-          </div>
+        <div className="purchase-modal-body fd20387-purchase-modal-body">
+          <section className="purchase-form-summary-strip" aria-label="採購表單摘要">
+            <article><span>採購摘要</span><strong>{purchaseTitle(form)}</strong></article>
+            <article><span>使用單位</span><strong>{form.department || '未填寫'}</strong></article>
+            <article><span>優先等級</span><strong><PurchasePriorityBadge value={form.priority} compact /></strong></article>
+            <article><span>含稅總額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
+          </section>
 
-          <div className="purchase-priority-editor" aria-label="採購優先等級說明">
-            {purchasePriorityOptions.map((priority) => (
-              <button key={priority.id} type="button" className={form.priority === priority.id ? 'active ' + priority.tone : priority.tone} onClick={() => update('priority', priority.id)}>
-                <span>{priority.label}</span>
-                <small>{priority.hint}</small>
-              </button>
-            ))}
-          </div>
+          {validationVisible && (
+            <section className={validationBlockers.length ? 'purchase-validation-panel has-blockers' : 'purchase-validation-panel'}>
+              <div>
+                <p className="eyebrow">儲存前檢查</p>
+                <h3>{validationBlockers.length ? '還有必要欄位要補' : validationWarnings.length ? '可儲存，但建議再確認' : '必要資料已完成'}</h3>
+              </div>
+              <div className="purchase-validation-list">
+                {validationIssues.length ? validationIssues.map((issue) => (
+                  <span key={issue.text} className={issue.type}>{issue.type === 'block' ? '必填' : '提醒'}：{issue.text}</span>
+                )) : <span className="ok">資料看起來完整，可以儲存。</span>}
+              </div>
+            </section>
+          )}
 
-          <section className="purchase-items-editor">
-            <div className="purchase-items-head">
-              <div><p className="eyebrow">品項明細</p><h3>一筆採購可加入多個物品</h3></div>
-              <button className="ghost-btn" type="button" onClick={addItem}>新增品項</button>
+          <section className="purchase-form-section">
+            <div className="purchase-form-section-head">
+              <div><p className="eyebrow">基本資料</p><h3>先判斷這筆採購的重要性與目前階段</h3></div>
             </div>
-            <div className="purchase-item-summary">
-              <span>品項數 <b>{itemCount}</b></span>
-              <span>總數量 <b>{totalQuantity}</b></span>
-              <span>品項小計 <b>{formatMoney(itemSubtotal)}</b></span>
+            <div className="form-grid fd20387-basic-grid">
+              <label>流程狀態<select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+              <label>優先等級<select value={form.priority} onChange={(event) => update('priority', event.target.value)}>{purchasePriorityOptions.map((priority) => <option key={priority.id} value={priority.id}>{priority.label}</option>)}</select></label>
+              <label>廠商<input value={form.vendor} onChange={(event) => update('vendor', event.target.value)} placeholder="例如 月達 / 昌達" /></label>
+              <label>申請日<input type="date" value={form.requestDate} onChange={(event) => update('requestDate', event.target.value)} /></label>
             </div>
-            <div className="purchase-item-rows">
-              {form.items.map((item, index) => {
-                const lineTotal = Number(item.quantity || 0) * Number(item.unitPrice || 0)
-                return (
-                  <article className="purchase-item-row" key={item.id}>
-                    <div className="item-index">{index + 1}</div>
-                    <label className="item-name">品項<input value={item.name} onChange={(event) => updateItem(item.id, 'name', event.target.value)} placeholder="例如 Wi‑Fi AP" /></label>
-                    <label>數量<input type="number" value={item.quantity} onChange={(event) => updateItem(item.id, 'quantity', event.target.value)} /></label>
-                    <label>單價<input type="number" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', event.target.value)} /></label>
-                    <label className="item-note">備註<input value={item.note || ''} onChange={(event) => updateItem(item.id, 'note', event.target.value)} placeholder="規格 / 用途" /></label>
-                    <div className="line-total"><span>小計</span><strong>{formatMoney(lineTotal)}</strong></div>
-                    <div className="line-actions">
-                      <button type="button" onClick={() => duplicateItem(item.id)}>複製</button>
-                      <button className="line-remove" type="button" onClick={() => removeItem(item.id)} disabled={form.items.length <= 1}>刪除</button>
-                    </div>
-                  </article>
-                )
-              })}
+            <div className="purchase-priority-editor" aria-label="採購優先等級說明">
+              {purchasePriorityOptions.map((priority) => (
+                <button key={priority.id} type="button" className={form.priority === priority.id ? 'active ' + priority.tone : priority.tone} onClick={() => update('priority', priority.id)}>
+                  <span>{priority.label}</span>
+                  <small>{priority.hint}</small>
+                </button>
+              ))}
             </div>
           </section>
 
-          <div className="form-grid money-grid">
-            <label>稅別<select value={form.taxMode} onChange={(event) => update('taxMode', event.target.value)}><option value="未稅">單價未稅</option><option value="含稅">單價含稅</option></select></label>
-            <label>稅率 %<input type="number" value={form.taxRate} onChange={(event) => update('taxRate', event.target.value)} /></label>
-            <label>預算金額<input type="number" value={form.budgetAmount} onChange={(event) => update('budgetAmount', event.target.value)} /></label>
-            <label>報價金額<input type="number" value={form.quoteAmount} onChange={(event) => update('quoteAmount', event.target.value)} /></label>
-            <label>報價單號<input value={form.quoteNo} onChange={(event) => update('quoteNo', event.target.value)} placeholder="QT / 報價單號" /></label>
-            <label>PO 單號<input value={form.poNo} onChange={(event) => update('poNo', event.target.value)} placeholder="PO / 訂單編號" /></label>
-            <label>發票號碼<input value={form.invoiceNo} onChange={(event) => update('invoiceNo', event.target.value)} placeholder="發票 / 請款單號" /></label>
-            <label>付款期限<input type="date" value={form.paymentDueDate} onChange={(event) => update('paymentDueDate', event.target.value)} /></label>
-            <label>預計到貨<input type="date" value={form.arrivalDueDate} onChange={(event) => update('arrivalDueDate', event.target.value)} /></label>
-            <label>申請日<input type="date" value={form.requestDate} onChange={(event) => update('requestDate', event.target.value)} /></label>
-            <label>下單日<input type="date" value={form.orderDate} onChange={(event) => update('orderDate', event.target.value)} /></label>
-            <label>到貨日<input type="date" value={form.arrivalDate} onChange={(event) => update('arrivalDate', event.target.value)} /></label>
-            <label>驗收日<input type="date" value={form.acceptanceDate} onChange={(event) => update('acceptanceDate', event.target.value)} /></label>
-            <label className="form-wide">備註<textarea value={form.note} onChange={(event) => update('note', event.target.value)} /></label>
-          </div>
+          <section className="purchase-form-section">
+            <div className="purchase-form-section-head">
+              <div><p className="eyebrow">使用與申請資訊</p><h3>讓後續追蹤知道誰申請、誰使用、哪個單位要用</h3></div>
+            </div>
+            <div className="form-grid fd20387-people-grid">
+              <label>使用單位<input value={form.department} onChange={(event) => update('department', event.target.value)} placeholder="例如 高雄營業所" /></label>
+              <label>申請人<input value={form.requester} onChange={(event) => update('requester', event.target.value)} /></label>
+              <label>使用人<input value={form.user || ''} onChange={(event) => update('user', event.target.value)} placeholder="實際使用人 / 部門" /></label>
+            </div>
+          </section>
 
-          <div className="tax-preview">
-            <article><span>未稅金額</span><strong>{formatMoney(amount.untaxedAmount)}</strong></article>
-            <article><span>稅額</span><strong>{formatMoney(amount.taxAmount)}</strong></article>
-            <article><span>含稅總額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
-            <article><span>預算差異</span><strong className={Number(form.budgetAmount || 0) && amount.taxedTotal > Number(form.budgetAmount || 0) ? 'has-diff' : ''}>{Number(form.budgetAmount || 0) ? formatMoney(amount.taxedTotal - Number(form.budgetAmount || 0)) : '—'}</strong></article>
-          </div>
+          <section className="purchase-form-section purchase-form-section-flat">
+            <div className="purchase-items-editor fd20387-purchase-items-editor">
+              <div className="purchase-items-head">
+                <div><p className="eyebrow">採購品項</p><h3>一筆採購可加入多個物品</h3></div>
+                <button className="ghost-btn" type="button" onClick={addItem}>新增品項</button>
+              </div>
+              <div className="purchase-item-summary">
+                <span>品項數 <b>{itemCount}</b></span>
+                <span>總數量 <b>{totalQuantity}</b></span>
+                <span>品項小計 <b>{formatMoney(itemSubtotal)}</b></span>
+              </div>
+              <div className="purchase-item-rows">
+                {form.items.map((item, index) => {
+                  const lineTotal = Number(item.quantity || 0) * Number(item.unitPrice || 0)
+                  return (
+                    <article className="purchase-item-row" key={item.id}>
+                      <div className="item-index">{index + 1}</div>
+                      <label className="item-name">品項<input value={item.name} onChange={(event) => updateItem(item.id, 'name', event.target.value)} placeholder="例如 Wi‑Fi AP" /></label>
+                      <label>數量<input type="number" min="0" value={item.quantity} onChange={(event) => updateItem(item.id, 'quantity', event.target.value)} /></label>
+                      <label>單價<input type="number" min="0" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', event.target.value)} /></label>
+                      <label className="item-note">備註<input value={item.note || ''} onChange={(event) => updateItem(item.id, 'note', event.target.value)} placeholder="規格 / 用途" /></label>
+                      <div className="line-total"><span>小計</span><strong>{formatMoney(lineTotal)}</strong></div>
+                      <div className="line-actions">
+                        <button type="button" onClick={() => duplicateItem(item.id)}>複製</button>
+                        <button className="line-remove" type="button" onClick={() => removeItem(item.id)} disabled={form.items.length <= 1}>刪除</button>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
 
-          <ArchiveFolderPanelV67
-            title="採購歸檔資料夾"
-            folder={form.archiveFolder}
-            suggestedName={buildArchiveFolderNameV67({ type: '採購', id: form.id, title: purchaseTitle(form), department: form.department, date: form.requestDate })}
-            onChange={(next) => update('archiveFolder', next)}
-          />
+          <section className="purchase-form-section">
+            <div className="purchase-form-section-head">
+              <div><p className="eyebrow">金額與稅額</p><h3>品項單價會自動帶出未稅、稅額與含稅總額</h3></div>
+            </div>
+            <div className="form-grid money-grid fd20387-money-grid">
+              <label>稅別<select value={form.taxMode} onChange={(event) => update('taxMode', event.target.value)}><option value="未稅">單價未稅</option><option value="含稅">單價含稅</option></select></label>
+              <label>稅率 %<input type="number" value={form.taxRate} onChange={(event) => update('taxRate', event.target.value)} /></label>
+              <label>預算金額<input type="number" value={form.budgetAmount} onChange={(event) => update('budgetAmount', event.target.value)} /></label>
+              <label>報價金額<input type="number" value={form.quoteAmount} onChange={(event) => update('quoteAmount', event.target.value)} /></label>
+              <label>報價單號<input value={form.quoteNo} onChange={(event) => update('quoteNo', event.target.value)} placeholder="QT / 報價單號" /></label>
+              <label>PO 單號<input value={form.poNo} onChange={(event) => update('poNo', event.target.value)} placeholder="PO / 訂單編號" /></label>
+              <label>發票號碼<input value={form.invoiceNo} onChange={(event) => update('invoiceNo', event.target.value)} placeholder="發票 / 請款單號" /></label>
+            </div>
+            <div className="tax-preview fd20387-tax-preview">
+              <article><span>未稅金額</span><strong>{formatMoney(amount.untaxedAmount)}</strong></article>
+              <article><span>稅額</span><strong>{formatMoney(amount.taxAmount)}</strong></article>
+              <article><span>含稅總額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
+              <article><span>預算差異</span><strong className={Number(form.budgetAmount || 0) && amount.taxedTotal > Number(form.budgetAmount || 0) ? 'has-diff' : ''}>{Number(form.budgetAmount || 0) ? formatMoney(amount.taxedTotal - Number(form.budgetAmount || 0)) : '—'}</strong></article>
+            </div>
+          </section>
 
+          <section className="purchase-form-section">
+            <div className="purchase-form-section-head">
+              <div><p className="eyebrow">流程狀態與日期</p><h3>付款、到貨、驗收集中管理，後續提醒也會比較準</h3></div>
+            </div>
+            <div className="form-grid fd20387-status-grid">
+              <label>付款狀態<select value={form.paymentStatus} onChange={(event) => update('paymentStatus', event.target.value)}>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>到貨狀態<select value={form.arrivalStatus} onChange={(event) => update('arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>驗收狀態<select value={form.acceptanceStatus} onChange={(event) => update('acceptanceStatus', event.target.value)}>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>付款期限<input type="date" value={form.paymentDueDate} onChange={(event) => update('paymentDueDate', event.target.value)} /></label>
+              <label>預計到貨<input type="date" value={form.arrivalDueDate} onChange={(event) => update('arrivalDueDate', event.target.value)} /></label>
+              <label>下單日<input type="date" value={form.orderDate} onChange={(event) => update('orderDate', event.target.value)} /></label>
+              <label>到貨日<input type="date" value={form.arrivalDate} onChange={(event) => update('arrivalDate', event.target.value)} /></label>
+              <label>驗收日<input type="date" value={form.acceptanceDate} onChange={(event) => update('acceptanceDate', event.target.value)} /></label>
+            </div>
+          </section>
 
+          <section className="purchase-form-section purchase-form-archive-section">
+            <div className="purchase-form-section-head">
+              <div><p className="eyebrow">歸檔資料</p><h3>FlowDesk 只記錄雲端資料夾，不存附件本體</h3></div>
+            </div>
+            <ArchiveFolderPanelV67
+              title="採購歸檔資料夾"
+              folder={form.archiveFolder}
+              suggestedName={buildArchiveFolderNameV67({ type: '採購', id: form.id, title: purchaseTitle(form), department: form.department, date: form.requestDate })}
+              onChange={(next) => update('archiveFolder', next)}
+            />
+          </section>
+
+          <section className="purchase-form-section">
+            <div className="purchase-form-section-head">
+              <div><p className="eyebrow">備註 / 歷程補充</p><h3>記錄詢價、主管確認、特殊規格或後續處理說明</h3></div>
+            </div>
+            <div className="form-grid">
+              <label className="form-wide">備註<textarea value={form.note} onChange={(event) => update('note', event.target.value)} placeholder="例如：待主管確認規格、已請廠商補報價、需搭配螢幕使用..." /></label>
+            </div>
+          </section>
         </div>
 
-        <div className="form-actions sticky-form-actions">
+        <div className="form-actions sticky-form-actions fd20387-sticky-form-actions">
+          <div className="fd20387-save-hint">
+            <strong>{validationBlockers.length ? `尚有 ${validationBlockers.length} 個必要欄位` : '可儲存'}</strong>
+            <span>{validationWarnings.length ? `${validationWarnings.length} 個提醒可稍後補齊` : '必要資訊已檢查'}</span>
+          </div>
           <button className="ghost-btn" type="button" onClick={onClose}>取消</button>
-          <button className="primary-btn" type="button" onClick={submitForm} disabled={!form.items.some((item) => String(item.name || '').trim())}>儲存</button>
+          <button className="primary-btn" type="button" onClick={submitForm}>儲存</button>
         </div>
       </section>
     </div>
   )
 }
-
 function normalizePurchase(row) {
   const items = getPurchaseItems(row)
   const title = purchaseTitle({ ...row, items })

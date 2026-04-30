@@ -22022,3 +22022,232 @@ html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .pu
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* FlowDesk v20.3.87 採購新增 / 編輯表單整理版 */
+.fd20387-purchase-modal {
+  width: min(1180px, calc(100vw - 28px));
+  padding: 0;
+  background: #f8fbff;
+}
+.fd20387-purchase-modal-head {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(148, 163, 184, .18);
+  background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(239,246,255,.92));
+}
+.fd20387-purchase-modal-head > div {
+  display: grid;
+  gap: 3px;
+}
+.fd20387-purchase-modal-head span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+.fd20387-purchase-modal-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px 20px;
+}
+.purchase-form-summary-strip {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr .8fr .8fr;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 16px 32px rgba(44, 65, 110, .06);
+}
+.purchase-form-summary-strip article {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fbff, #fff);
+  border: 1px solid rgba(226, 232, 240, .85);
+}
+.purchase-form-summary-strip span,
+.purchase-form-section-head .eyebrow,
+.purchase-validation-panel .eyebrow {
+  display: block;
+  margin: 0 0 5px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .04em;
+}
+.purchase-form-summary-strip strong {
+  display: block;
+  min-width: 0;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 950;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.purchase-validation-panel {
+  display: grid;
+  grid-template-columns: minmax(190px, .35fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 13px 14px;
+  border: 1px solid rgba(245, 158, 11, .28);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff7ed, #fff);
+}
+.purchase-validation-panel.has-blockers {
+  border-color: rgba(239, 68, 68, .26);
+  background: linear-gradient(135deg, #fff1f2, #fff);
+}
+.purchase-validation-panel h3,
+.purchase-form-section-head h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 950;
+}
+.purchase-validation-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.purchase-validation-list span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+.purchase-validation-list .block { color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; }
+.purchase-validation-list .warn { color: #b45309; background: #fef3c7; border: 1px solid #fde68a; }
+.purchase-validation-list .ok { color: #047857; background: #d1fae5; border: 1px solid #a7f3d0; }
+.purchase-form-section {
+  padding: 15px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 16px 34px rgba(44, 65, 110, .055);
+}
+.purchase-form-section-flat {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.purchase-form-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.fd20387-purchase-modal .form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.fd20387-purchase-modal .form-grid label {
+  min-width: 0;
+}
+.fd20387-purchase-modal .form-grid input,
+.fd20387-purchase-modal .form-grid select,
+.fd20387-purchase-modal .form-grid textarea {
+  background: #fff;
+}
+.fd20387-purchase-modal .form-grid .form-wide {
+  grid-column: 1 / -1;
+}
+.fd20387-purchase-items-editor {
+  margin-top: 0;
+  border-radius: 24px;
+  box-shadow: 0 16px 34px rgba(44, 65, 110, .055);
+}
+.fd20387-tax-preview {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 12px;
+}
+.fd20387-tax-preview article {
+  background: linear-gradient(135deg, #f8fbff, #fff);
+}
+.purchase-form-archive-section .archive-folder-panel,
+.purchase-form-archive-section .archive-folder-card,
+.purchase-form-archive-section .fd67-archive-folder-panel {
+  margin-top: 0;
+}
+.fd20387-sticky-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 13px 18px;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(18px);
+}
+.fd20387-save-hint {
+  margin-right: auto;
+  display: grid;
+  gap: 2px;
+  color: #64748b;
+}
+.fd20387-save-hint strong {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 950;
+}
+.fd20387-save-hint span {
+  font-size: 12px;
+  font-weight: 800;
+}
+html[data-flowdesk-appearance="dark"] .fd20387-purchase-modal {
+  background: #0f172a;
+}
+html[data-flowdesk-appearance="dark"] .fd20387-purchase-modal-head,
+html[data-flowdesk-appearance="dark"] .purchase-form-section,
+html[data-flowdesk-appearance="dark"] .purchase-form-summary-strip,
+html[data-flowdesk-appearance="dark"] .purchase-form-summary-strip article,
+html[data-flowdesk-appearance="dark"] .fd20387-sticky-form-actions {
+  background: rgba(15, 23, 42, .92);
+  border-color: rgba(148, 163, 184, .20);
+}
+html[data-flowdesk-appearance="dark"] .purchase-form-summary-strip strong,
+html[data-flowdesk-appearance="dark"] .purchase-form-section-head h3,
+html[data-flowdesk-appearance="dark"] .purchase-validation-panel h3,
+html[data-flowdesk-appearance="dark"] .fd20387-save-hint strong {
+  color: #f8fafc;
+}
+html[data-flowdesk-appearance="dark"] .fd20387-purchase-modal-head span,
+html[data-flowdesk-appearance="dark"] .purchase-form-summary-strip span,
+html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
+  color: #cbd5e1;
+}
+@media (max-width: 1080px) {
+  .purchase-form-summary-strip,
+  .fd20387-purchase-modal .form-grid,
+  .fd20387-tax-preview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .purchase-validation-panel {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 680px) {
+  .fd20387-purchase-modal {
+    width: calc(100vw - 16px);
+  }
+  .fd20387-purchase-modal-body {
+    padding: 12px;
+  }
+  .purchase-form-summary-strip,
+  .fd20387-purchase-modal .form-grid,
+  .fd20387-tax-preview {
+    grid-template-columns: 1fr;
+  }
+  .fd20387-sticky-form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .fd20387-save-hint {
+    grid-column: 1 / -1;
+  }
+}
