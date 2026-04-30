@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.65'
+const FLOWDESK_APP_VERSION = '20.3.66'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -326,6 +326,40 @@ function protectThemeContrast(theme) {
     secondary: getHexLuminance(secondary) > 0.78 ? adjustHexBrightness(secondary, -62) : secondary,
     accent: getHexLuminance(accent) > 0.82 ? adjustHexBrightness(accent, -56) : accent,
   }
+}
+
+const attachmentTypeOptionsV66 = ['報價單', 'PO / 採購單', '發票', '驗收單', '合約', '截圖', 'SOP', '會議紀錄', '其他']
+
+function normalizeAttachmentList(value) {
+  return Array.isArray(value) ? value.map((item, index) => ({
+    id: item.id || `ATT-${Date.now()}-${index}`,
+    type: item.type || '其他',
+    name: item.name || item.title || '未命名附件',
+    url: item.url || item.link || '',
+    note: item.note || '',
+    createdAt: item.createdAt || todayDate(),
+  })) : []
+}
+
+function addAttachmentToList(list, draft = {}) {
+  const name = String(draft.name || '').trim()
+  const url = String(draft.url || '').trim()
+  if (!name && !url) return normalizeAttachmentList(list)
+  return [
+    ...normalizeAttachmentList(list),
+    {
+      id: `ATT-${Date.now()}`,
+      type: draft.type || '其他',
+      name: name || '未命名附件',
+      url,
+      note: String(draft.note || '').trim(),
+      createdAt: todayDate(),
+    },
+  ]
+}
+
+function removeAttachmentFromList(list, attachmentId) {
+  return normalizeAttachmentList(list).filter((item) => item.id !== attachmentId)
 }
 
 const initialWorkItems = []
@@ -1741,6 +1775,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
           onUpdateItem={onUpdateItem}
           onDuplicateItem={onDuplicateItem}
           onDeleteItem={onDeleteItem}
+          onUpdateItem={onUpdateItem}
         />
       )}
 
@@ -1756,7 +1791,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
                 </div>
                 <div className="lane-cards">
                   {laneItems.length ? laneItems.map((item) => (
-                    <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} selectable checked={selectedIds.includes(item.id)} onToggleSelect={() => toggleSelectedId(item.id)} />
+                    <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} selectable checked={selectedIds.includes(item.id)} onToggleSelect={() => toggleSelectedId(item.id)} onUpdateItem={onUpdateItem} />
                   )) : <div className="lane-empty">尚無項目</div>}
                 </div>
               </article>
@@ -1765,8 +1800,8 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         </section>
       )}
 
-      {view === '表格' && <WorkGrid items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} />}
-      {view === '卡片' && <CardWall items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} />}
+      {view === '表格' && <WorkGrid items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} onUpdateItem={onUpdateItem} />}
+      {view === '卡片' && <CardWall items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} onUpdateItem={onUpdateItem} />}
     </div>
   )
 }
@@ -1789,7 +1824,7 @@ function BoardFloatingPreview({ selected }) {
   )
 }
 
-function BoardInlinePreview({ selected }) {
+function BoardInlinePreview({ selected, onUpdateItem }) {
   return (
     <section className="board-inline-preview" aria-label="手機工作詳細預覽">
       <div className="board-inline-head">
@@ -1806,6 +1841,12 @@ function BoardInlinePreview({ selected }) {
         <span>健康度 <b>{selected.health}%</b></span>
       </div>
       <div className="tag-list">{(Array.isArray(selected.tags) ? selected.tags : []).map((tag) => <span key={tag}>{tag}</span>)}</div>
+      <AttachmentLinksPanelV66
+        title="工作事項附件"
+        attachments={selected.attachments}
+        compact
+        onChange={onUpdateItem ? (next) => onUpdateItem(selected.id, { attachments: next }) : undefined}
+      />
     </section>
   )
 }
@@ -2426,6 +2467,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                             <span>廠商<b>{row.vendor || '—'}</b></span>
                             <span>申請人<b>{row.requester || '—'}</b></span>
                             <span>品項<b>{purchaseTitle(row)}</b></span>
+                            <span>附件<b>{normalizeAttachmentList(row.attachments).length} 件</b></span>
                             <span>日期<b>{row.requestDate || '未填日期'}</b></span>
                             <span>品項<b>{getPurchaseItems(row).length} 項</b></span>
                             <span>付款<b>{row.paymentStatus || '未付款'}</b></span>
@@ -3298,6 +3340,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         done: Boolean(milestone.done),
       })) : [],
       records: Array.isArray(project.records) ? project.records : [],
+      attachments: normalizeAttachmentList(project.attachments),
       related: Array.isArray(project.related) ? project.related : [],
     }
     return {
@@ -4750,6 +4793,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         )}
 
         {detailTab === 'records' && (
+          <AttachmentLinksPanelV66
+            title="專案附件"
+            attachments={project.attachments}
+            onChange={(next) => updateProject(project.id, { attachments: next }, '更新專案附件。')}
+          />
+        )}
+
+        {detailTab === 'records' && (
           <section className="detail-block fd203-tab-panel">
             <div className="detail-block-headline"><p className="eyebrow">處理紀錄</p></div>
             <div className="fd203-record-input">
@@ -5980,7 +6031,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.65 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.66 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -6545,6 +6596,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
     department: initial?.department || '',
     requester: initial?.requester || '',
     user: initial?.user || initial?.usedBy || initial?.requester || '',
+    attachments: normalizeAttachmentList(initial?.attachments),
     vendor: initial?.vendor || '',
     taxMode: initial?.taxMode || '未稅',
     taxRate: initial?.taxRate ?? 5,
@@ -6701,6 +6753,12 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
             <article><span>含稅總額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
             <article><span>預算差異</span><strong className={Number(form.budgetAmount || 0) && amount.taxedTotal > Number(form.budgetAmount || 0) ? 'has-diff' : ''}>{Number(form.budgetAmount || 0) ? formatMoney(amount.taxedTotal - Number(form.budgetAmount || 0)) : '—'}</strong></article>
           </div>
+
+          <AttachmentLinksPanelV66
+            title="採購附件"
+            attachments={form.attachments}
+            onChange={(next) => update('attachments', next)}
+          />
         </div>
 
         <div className="form-actions sticky-form-actions">
@@ -6723,6 +6781,7 @@ function normalizePurchase(row) {
     items,
     user: row.user || row.usedBy || row.requester || '未指定',
     usedBy: row.user || row.usedBy || row.requester || '未指定',
+    attachments: normalizeAttachmentList(row.attachments),
     quantity: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
     unitPrice: items.length === 1 ? Number(items[0].unitPrice || 0) : 0,
     taxRate: Number(row.taxRate ?? 5),
@@ -6817,6 +6876,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
         </div>
         <small>{row.vendor || '未指定廠商'} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
       </div>
+      <AttachmentLinksPanelV66 title="採購附件" attachments={row.attachments} compact />
       <div className="purchase-detail-actions">
         <button type="button" onClick={onEdit}>編輯採購</button>
         <button type="button" onClick={onAdvance}>下一流程</button>
@@ -7001,7 +7061,7 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
               <button type="button" onClick={(event) => { event.stopPropagation(); onDuplicateItem?.(item.id) }}>複製</button>
               <button type="button" className="danger" onClick={(event) => { event.stopPropagation(); onDeleteItem?.(item.id) }}>刪除</button>
             </div>
-            {isSelected && <BoardInlinePreview selected={item} />}
+            {isSelected && <BoardInlinePreview selected={item} onUpdateItem={onUpdateItem} />}
           </article>
         )
       })}
@@ -7010,7 +7070,7 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
 }
 
 
-function WorkCard({ item, onSelect, selected, selectable = false, checked = false, onToggleSelect }) {
+function WorkCard({ item, onSelect, selected, selectable = false, checked = false, onToggleSelect, onUpdateItem }) {
   const isSelected = selected?.id === item.id
   return (
     <article className={isSelected ? 'work-card-shell selected' : 'work-card-shell'}>
@@ -7027,13 +7087,13 @@ function WorkCard({ item, onSelect, selected, selectable = false, checked = fals
         <div className="tag-list">{item.tags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}</div>
         <div className="card-bottom"><span>{item.owner}</span><span>{item.due}</span></div>
       </button>
-      {isSelected && <BoardInlinePreview selected={item} />}
+      {isSelected && <BoardInlinePreview selected={item} onUpdateItem={onUpdateItem} />}
     </article>
   )
 }
 
 
-function WorkGrid({ items, selected, setSelected, selectedIds = [], onToggleSelect }) {
+function WorkGrid({ items, selected, setSelected, selectedIds = [], onToggleSelect, onUpdateItem }) {
   return (
     <section className="work-grid">
       <div className="work-grid-head work-grid-head-v199">
@@ -7052,7 +7112,7 @@ function WorkGrid({ items, selected, setSelected, selectedIds = [], onToggleSele
               <span className="work-grid-relation" data-label="關聯">{item.relation}</span>
               <span className="work-grid-due" data-label="到期日">{item.due}</span>
             </button>
-            {isSelected && <BoardInlinePreview selected={item} />}
+            {isSelected && <BoardInlinePreview selected={item} onUpdateItem={onUpdateItem} />}
           </article>
         )
       })}
@@ -7061,11 +7121,11 @@ function WorkGrid({ items, selected, setSelected, selectedIds = [], onToggleSele
 }
 
 
-function CardWall({ items, selected, setSelected, selectedIds = [], onToggleSelect }) {
+function CardWall({ items, selected, setSelected, selectedIds = [], onToggleSelect, onUpdateItem }) {
   return (
     <section className="card-wall board-card-view">
       {items.map((item) => (
-        <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} selectable checked={selectedIds.includes(item.id)} onToggleSelect={() => onToggleSelect?.(item.id)} />
+        <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} selectable checked={selectedIds.includes(item.id)} onToggleSelect={() => onToggleSelect?.(item.id)} onUpdateItem={onUpdateItem} />
       ))}
     </section>
   )
@@ -7096,6 +7156,83 @@ function ModuleScopeBar({ active }) {
 function Metric({ label, value, tone }) {
   return <article className={`metric ${tone}`}><span>{label}</span><strong>{value}</strong></article>
 }
+
+function AttachmentLinksPanelV66({ title = '附件連結', attachments = [], onChange, compact = false }) {
+  const safeAttachments = normalizeAttachmentList(attachments)
+  const [draft, setDraft] = useState({ type: '其他', name: '', url: '', note: '' })
+  const canEdit = typeof onChange === 'function'
+
+  function updateDraft(key, value) {
+    setDraft((current) => ({ ...current, [key]: value }))
+  }
+
+  function submitAttachment() {
+    if (!canEdit) return
+    const next = addAttachmentToList(safeAttachments, draft)
+    if (next.length === safeAttachments.length) return
+    onChange(next)
+    setDraft({ type: draft.type || '其他', name: '', url: '', note: '' })
+  }
+
+  function removeAttachment(id) {
+    if (!canEdit) return
+    onChange(removeAttachmentFromList(safeAttachments, id))
+  }
+
+  return (
+    <section className={compact ? 'fd66-attachments compact' : 'fd66-attachments'}>
+      <div className="fd66-attachments-head">
+        <div>
+          <span>GLOBAL ATTACHMENTS</span>
+          <strong>{title}</strong>
+          <small>檔案建議放 OneDrive / SharePoint，系統保存附件資訊與連結。</small>
+        </div>
+        <em>{safeAttachments.length} 件</em>
+      </div>
+
+      {safeAttachments.length ? (
+        <div className="fd66-attachment-list">
+          {safeAttachments.map((item) => (
+            <article className="fd66-attachment-item" key={item.id}>
+              <div>
+                <span>{item.type}</span>
+                <strong>{item.name}</strong>
+                <small>{item.note || item.createdAt || '—'}</small>
+              </div>
+              <div className="fd66-attachment-actions">
+                {item.url ? <a href={item.url} target="_blank" rel="noreferrer">開啟</a> : <span>無連結</span>}
+                {canEdit ? <button type="button" onClick={() => removeAttachment(item.id)}>刪除</button> : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="fd66-attachment-empty">尚未建立附件連結。</div>
+      )}
+
+      {canEdit ? (
+        <div className="fd66-attachment-form">
+          <label>類型
+            <select value={draft.type} onChange={(event) => updateDraft('type', event.target.value)}>
+              {attachmentTypeOptionsV66.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
+          <label>附件名稱
+            <input value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} placeholder="例如 報價單 / 發票 / 驗收單" />
+          </label>
+          <label className="wide">OneDrive / SharePoint 連結
+            <input value={draft.url} onChange={(event) => updateDraft('url', event.target.value)} placeholder="貼上檔案或資料夾分享連結" />
+          </label>
+          <label className="wide">備註
+            <input value={draft.note} onChange={(event) => updateDraft('note', event.target.value)} placeholder="版本、用途或權限備註" />
+          </label>
+          <button type="button" onClick={submitAttachment}>新增附件</button>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 
 function WorkItemPositionNoteV60() {
   return (
