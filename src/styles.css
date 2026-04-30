@@ -21683,3 +21683,78 @@ html[data-flowdesk-appearance="dark"] .fd84-mini-segmented button {
     grid-template-columns: 1fr;
   }
 }
+
+/* v20.3.85 採購清單優先等級顏色修正
+   v20.3.83 的清單列 border shorthand 會蓋掉 v20.3.81 的 priority border-left，
+   這裡只針對清單模式補回左側優先等級色條與標籤辨識度。 */
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-red {
+  border-left: 6px solid #ef4444 !important;
+  background: linear-gradient(90deg, rgba(254, 226, 226, .72) 0, rgba(255,255,255,.98) 68px, rgba(255,255,255,.97) 100%) !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-orange {
+  border-left: 6px solid #f97316 !important;
+  background: linear-gradient(90deg, rgba(255, 237, 213, .78) 0, rgba(255,255,255,.98) 68px, rgba(255,255,255,.97) 100%) !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-blue {
+  border-left: 6px solid #3b82f6 !important;
+  background: linear-gradient(90deg, rgba(219, 234, 254, .70) 0, rgba(255,255,255,.98) 68px, rgba(255,255,255,.97) 100%) !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-slate {
+  border-left: 6px solid #94a3b8 !important;
+  background: linear-gradient(90deg, rgba(241, 245, 249, .88) 0, rgba(255,255,255,.98) 68px, rgba(255,255,255,.97) 100%) !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-red.active {
+  border-left-color: #dc2626 !important;
+  background: linear-gradient(90deg, rgba(254, 202, 202, .88) 0, rgba(var(--fd31-primary-rgb), .105) 74px, rgba(255,255,255,.98) 100%) !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-orange.active {
+  border-left-color: #ea580c !important;
+  background: linear-gradient(90deg, rgba(254, 215, 170, .92) 0, rgba(var(--fd31-primary-rgb), .105) 74px, rgba(255,255,255,.98) 100%) !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-blue.active {
+  border-left-color: #2563eb !important;
+  background: linear-gradient(90deg, rgba(191, 219, 254, .86) 0, rgba(var(--fd31-primary-rgb), .105) 74px, rgba(255,255,255,.98) 100%) !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-slate.active {
+  border-left-color: #64748b !important;
+  background: linear-gradient(90deg, rgba(226, 232, 240, .92) 0, rgba(var(--fd31-primary-rgb), .105) 74px, rgba(255,255,255,.98) 100%) !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge.red,
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge.orange,
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge.blue,
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge.slate {
+  border-width: 1.5px;
+  box-shadow: 0 5px 13px rgba(15, 23, 42, .06);
+}
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge.red {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge.orange {
+  color: #9a3412;
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge.blue {
+  color: #1e40af;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge.slate {
+  color: #334155;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-red {
+  background: linear-gradient(90deg, rgba(127, 29, 29, .38) 0, rgba(15,23,42,.90) 70px, rgba(15,23,42,.88) 100%) !important;
+}
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-orange {
+  background: linear-gradient(90deg, rgba(124, 45, 18, .38) 0, rgba(15,23,42,.90) 70px, rgba(15,23,42,.88) 100%) !important;
+}
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-blue {
+  background: linear-gradient(90deg, rgba(30, 64, 175, .34) 0, rgba(15,23,42,.90) 70px, rgba(15,23,42,.88) 100%) !important;
+}
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.priority-slate {
+  background: linear-gradient(90deg, rgba(71, 85, 105, .38) 0, rgba(15,23,42,.90) 70px, rgba(15,23,42,.88) 100%) !important;
+}
