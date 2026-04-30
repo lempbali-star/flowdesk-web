@@ -23819,3 +23819,31 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   border-radius: inherit;
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.06);
 }
+
+
+/* FlowDesk v20.4.02 - 甘特圖任務整段拖移 */
+.fd203-gantt-bar {
+  cursor: grab;
+  touch-action: none;
+}
+
+.fd203-gantt-bar:active {
+  cursor: grabbing;
+}
+
+.fd203-gantt-bar .fd203-gantt-progress-trigger {
+  cursor: grab;
+}
+
+.gantt-date-dragging .fd203-gantt-bar,
+.gantt-date-dragging .fd203-gantt-bar .fd203-gantt-progress-trigger {
+  cursor: grabbing !important;
+}
+
+.fd203-gantt-bar .gantt-resize-handle {
+  cursor: ew-resize;
+}
+
+.fd203-gantt-drag-tip {
+  pointer-events: none;
+}
