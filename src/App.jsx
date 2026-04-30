@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.72'
+const FLOWDESK_APP_VERSION = '20.3.73'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2600,17 +2600,12 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                             <StageBadge value={row.status} stages={purchaseStages} />
                           </div>
                           <strong>{purchaseCardTitle(row)}</strong>
-                          <div className="purchase-card-meta-grid">
-                            <span>廠商<b>{row.vendor || '—'}</b></span>
-                            <span>申請人<b>{row.requester || '—'}</b></span>
-                            <span>品項<b>{purchaseTitle(row)}</b></span>
-                            <span>歸檔<b className={`fd72-archive-status ${purchaseArchiveStatusV72(row)}`}>{purchaseArchiveStatusV72(row)}</b></span>
-                            <span>附件<b>{normalizeAttachmentList(row.attachments).length} 件</b></span>
-                            <span>日期<b>{row.requestDate || '未填日期'}</b></span>
-                            <span>品項<b>{getPurchaseItems(row).length} 項</b></span>
-                            <span>付款<b>{row.paymentStatus || '未付款'}</b></span>
-                            <span>到貨<b>{row.arrivalStatus || '未到貨'}</b></span>
+                          <div className="fd73-purchase-context">
+                            <span>廠商：{row.vendor || '未指定'}</span>
+                            <span>申請：{row.requester || '—'}</span>
+                            <span>日期：{row.requestDate || '未填日期'}</span>
                           </div>
+                          <PurchaseCardFocusMetaV73 row={row} amount={amount} />
                           <div className="purchase-item-preview">
                             {getPurchaseItems(row).slice(0, 3).map((item) => (
                               <span key={item.id}>{item.name || '未命名'} × {item.quantity}</span>
@@ -6217,7 +6212,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.72 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.73 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -7391,6 +7386,36 @@ function purchaseArchiveStatusV72(row = {}) {
   if (folder.status === '已歸檔') return '已歸檔'
   if (folder.url) return folder.status && folder.status !== '未建立' ? folder.status : '已建立'
   return '未建立'
+}
+
+function PurchaseCardFocusMetaV73({ row, amount }) {
+  const archiveStatus = purchaseArchiveStatusV72(row)
+  return (
+    <div className="fd73-purchase-focus">
+      <div className="fd73-purchase-primary">
+        <span>使用單位</span>
+        <strong>{row.department || '未指定單位'}</strong>
+      </div>
+      <div className="fd73-purchase-secondary">
+        <span>品項</span>
+        <strong>{purchaseTitle(row)}</strong>
+      </div>
+      <div className="fd73-purchase-money">
+        <span>含稅金額</span>
+        <strong>{formatMoney(amount.taxedTotal)}</strong>
+      </div>
+      <div className="fd73-purchase-state">
+        <span>流程</span>
+        <StageBadge value={row.status} stages={[]} />
+      </div>
+      <div className="fd73-purchase-mini-states">
+        <em>付款：{row.paymentStatus || '未付款'}</em>
+        <em>到貨：{row.arrivalStatus || '未到貨'}</em>
+        <em>驗收：{row.acceptanceStatus || '未驗收'}</em>
+        <em className={`archive ${archiveStatus}`}>歸檔：{archiveStatus}</em>
+      </div>
+    </div>
+  )
 }
 
 function PurchaseArchiveHintV72({ row }) {
