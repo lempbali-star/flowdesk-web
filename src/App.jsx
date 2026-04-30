@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.81'
+const FLOWDESK_APP_VERSION = '20.3.82'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2531,20 +2531,22 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
             <h2>{activeTable === '採購紀錄' ? '採購流程追蹤' : activeTable}</h2>
           </div>
           <div className="record-actions collection-record-actions">
-            <div className="collection-view-control" aria-label="資料集合視圖">
-              <span className="collection-control-label">視圖</span>
-              {collectionViewOptions.map((option) => (
-                <button key={option.id} className={collectionView === option.id ? 'active' : ''} type="button" onClick={() => updateCollectionView(option.id)}>
-                  <span aria-hidden="true">{option.id === 'list' ? '☰' : '▦'}</span>{option.name}
-                </button>
-              ))}
-            </div>
             {activeTable !== '採購紀錄' && (
-              <label className="collection-page-size-control"><span>每頁筆數</span>
-                <select value={collectionPageSize} onChange={(event) => setCollectionPageSize(Number(event.target.value))}>
-                  {collectionPageSizeOptions.map((size) => <option key={size} value={size}>{size} 筆</option>)}
-                </select>
-              </label>
+              <>
+                <div className="collection-view-control" aria-label="資料集合視圖">
+                  <span className="collection-control-label">視圖</span>
+                  {collectionViewOptions.map((option) => (
+                    <button key={option.id} className={collectionView === option.id ? 'active' : ''} type="button" onClick={() => updateCollectionView(option.id)}>
+                      <span aria-hidden="true">{option.id === 'list' ? '☰' : '▦'}</span>{option.name}
+                    </button>
+                  ))}
+                </div>
+                <label className="collection-page-size-control"><span>每頁筆數</span>
+                  <select value={collectionPageSize} onChange={(event) => setCollectionPageSize(Number(event.target.value))}>
+                    {collectionPageSizeOptions.map((size) => <option key={size} value={size}>{size} 筆</option>)}
+                  </select>
+                </label>
+              </>
             )}
             {activeTable === '採購紀錄' && (
               <>
@@ -2670,6 +2672,14 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               />
             ) : null}
                   <div className="purchase-list-head-actions">
+                    <div className="collection-view-control purchase-local-view-control" aria-label="採購清單視圖">
+                      <span className="collection-control-label">視圖</span>
+                      {collectionViewOptions.map((option) => (
+                        <button key={option.id} className={collectionView === option.id ? 'active' : ''} type="button" onClick={() => updateCollectionView(option.id)}>
+                          <span aria-hidden="true">{option.id === 'list' ? '☰' : '▦'}</span>{option.id === 'list' ? '清單' : '卡片'}
+                        </button>
+                      ))}
+                    </div>
                     <label className="purchase-page-size-control purchase-inline-page-size"><span>每頁筆數</span>
                       <select value={purchasePageSize} onChange={(event) => setPurchasePageSize(Number(event.target.value))}>
                         {purchasePageSizeOptions.map((size) => <option key={size} value={size}>{size} 筆</option>)}
@@ -2684,7 +2694,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                   <span>目前顯示 <b>{pagedPurchases.length}</b> 筆 / 篩選 <b>{filteredPurchases.length}</b> 筆</span>
                   <span>目前選取：<b>{stableSelectedPurchase ? `${stableSelectedPurchase.id} ${purchaseTitle(stableSelectedPurchase)}` : '尚未選取'}</b></span><span>點選卡片可開啟詳細彈窗</span>
                 </div>
-                <div className={collectionView === 'card' ? 'purchase-card-list purchase-card-grid' : 'purchase-card-list'}>
+                <div className={collectionView === 'card' ? 'purchase-card-list purchase-card-grid' : 'purchase-card-list purchase-list-mode'}>
                   {pagedPurchases.map((row) => {
                     const amount = calculatePurchase(row)
                     const quoteAmount = Number(row.quoteAmount || 0)

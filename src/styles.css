@@ -21072,3 +21072,189 @@ html[data-flowdesk-appearance="dark"] .purchase-priority-editor button small { c
 @media (max-width: 620px) {
   .purchase-priority-editor { grid-template-columns: 1fr; }
 }
+
+/* FlowDesk v20.3.82 採購視圖位置與清單模式瘦身 */
+.purchase-local-view-control {
+  box-shadow: none;
+  background: rgba(248, 250, 252, .92);
+  border-color: rgba(148, 163, 184, .22);
+}
+.purchase-local-view-control .collection-control-label {
+  padding-left: 4px;
+}
+.purchase-local-view-control button {
+  padding: 8px 11px;
+}
+.purchase-list-head-actions {
+  align-items: center;
+}
+.purchase-card-list.purchase-list-mode {
+  gap: 7px;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact {
+  grid-template-columns: minmax(0, 1fr) minmax(124px, 150px) minmax(190px, auto);
+  align-items: center;
+  gap: 10px;
+  min-height: 70px;
+  padding: 9px 11px;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px rgba(44,65,110,.035);
+}
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact:hover,
+.purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact.active {
+  transform: none;
+  box-shadow: 0 10px 22px rgba(44,65,110,.08);
+}
+.purchase-card-list.purchase-list-mode .purchase-card-main {
+  display: grid !important;
+  grid-template-columns: minmax(170px, .74fr) minmax(260px, 1fr);
+  grid-template-rows: auto auto;
+  gap: 5px 14px !important;
+  align-items: center;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-topline {
+  grid-column: 1;
+  grid-row: 1;
+  justify-content: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-topline .stage-badge,
+.purchase-card-list.purchase-list-mode .purchase-card-topline .purchase-priority-badge {
+  transform: scale(.92);
+  transform-origin: left center;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-main > strong {
+  grid-column: 1;
+  grid-row: 2;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.2;
+}
+.purchase-card-list.purchase-list-mode .fd74-purchase-context {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+.purchase-card-list.purchase-list-mode .fd74-purchase-context span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.purchase-card-list.purchase-list-mode .fd74-purchase-focus {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+.purchase-card-list.purchase-list-mode .fd74-purchase-focus > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0 !important;
+  max-width: 150px !important;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, .82);
+}
+.purchase-card-list.purchase-list-mode .fd74-purchase-focus span {
+  display: none !important;
+}
+.purchase-card-list.purchase-list-mode .fd74-purchase-focus strong {
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.1 !important;
+}
+.purchase-card-list.purchase-list-mode .fd74-purchase-state,
+.purchase-card-list.purchase-list-mode .fd74-purchase-item,
+.purchase-card-list.purchase-list-mode .fd74-purchase-money,
+.purchase-card-list.purchase-list-mode .fd74-purchase-mini-states,
+.purchase-card-list.purchase-list-mode .purchase-item-preview {
+  display: none !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-money {
+  margin: 0;
+  padding: 8px 10px !important;
+  border-radius: 14px !important;
+  align-content: center;
+  min-height: 52px;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-money span,
+.purchase-card-list.purchase-list-mode .purchase-card-money small,
+.purchase-card-list.purchase-list-mode .purchase-card-money em {
+  display: none !important;
+}
+.purchase-card-list.purchase-list-mode .purchase-card-money strong {
+  margin: 0;
+  font-size: 16px !important;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.purchase-card-list.purchase-list-mode .purchase-actions.compact-actions {
+  display: flex !important;
+  align-content: center;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 6px !important;
+  min-width: 190px;
+}
+.purchase-card-list.purchase-list-mode .purchase-actions.compact-actions button {
+  width: auto !important;
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+html[data-flowdesk-appearance="dark"] .purchase-local-view-control {
+  background: rgba(15, 23, 42, .72);
+  border-color: rgba(148, 163, 184, .20);
+}
+html[data-flowdesk-appearance="dark"] .purchase-card-list.purchase-list-mode .fd74-purchase-focus > div {
+  background: rgba(30, 41, 59, .78);
+}
+
+@media (max-width: 1180px) {
+  .purchase-card-list.purchase-list-mode .purchase-card-row.purchase-card-compact {
+    grid-template-columns: 1fr;
+  }
+  .purchase-card-list.purchase-list-mode .purchase-card-money {
+    justify-self: start;
+  }
+  .purchase-card-list.purchase-list-mode .purchase-actions.compact-actions {
+    justify-content: flex-start;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 820px) {
+  .purchase-card-list.purchase-list-mode .purchase-card-main {
+    grid-template-columns: 1fr;
+  }
+  .purchase-card-list.purchase-list-mode .fd74-purchase-context,
+  .purchase-card-list.purchase-list-mode .fd74-purchase-focus,
+  .purchase-card-list.purchase-list-mode .purchase-card-main > strong,
+  .purchase-card-list.purchase-list-mode .purchase-card-topline {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .purchase-local-view-control {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
