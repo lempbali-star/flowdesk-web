@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.78'
+const FLOWDESK_APP_VERSION = '20.3.79'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2297,6 +2297,45 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     updatePurchaseStatus(row, doneStage)
   }
 
+
+  function createTaskFromPurchase(row) {
+    if (!row || typeof onCreateWorkItem !== 'function') return null
+    const amount = calculatePurchase(row)
+    return onCreateWorkItem({
+      title: `追蹤採購：${purchaseTitle(row)}`,
+      type: '採購追蹤',
+      lane: '處理中',
+      priority: amount.taxedTotal >= 50000 ? '高' : '中',
+      channel: '採購管理',
+      relation: row.id,
+      requester: row.requester || '未指定',
+      owner: 'Kyle',
+      due: row.arrivalDueDate || row.paymentDueDate || addDaysDate(3),
+      note: `${row.department || '未指定單位'} / ${row.vendor || '未指定廠商'} / ${formatMoney(amount.taxedTotal)}`,
+      tags: ['採購', row.paymentStatus || '未付款', row.arrivalStatus || '未到貨'].filter(Boolean),
+    })
+  }
+
+  function createReminderFromPurchase(row, type = '追蹤') {
+    if (!row || typeof onCreateReminder !== 'function') return null
+    const dueDate = type === '付款'
+      ? (row.paymentDueDate || addDaysDate(3))
+      : type === '到貨'
+        ? (row.arrivalDueDate || addDaysDate(3))
+        : type === '驗收'
+          ? (row.acceptanceDate || row.arrivalDueDate || addDaysDate(5))
+          : addDaysDate(3)
+    return onCreateReminder({
+      title: `${type}提醒：${purchaseTitle(row)}`,
+      type: `${type}提醒`,
+      priority: type === '付款' || type === '到貨' ? '高' : '中',
+      dueDate,
+      sourceType: '採購管理',
+      sourceTitle: `${row.id} ${purchaseTitle(row)}`,
+      note: `${row.department || '未指定單位'} / ${row.requester || '未指定申請人'} / ${row.vendor || '未指定廠商'}`,
+    })
+  }
+
   function deletePurchase(targetRow) {
     const target = typeof targetRow === 'object' ? targetRow : purchases.find((row) => row.id === targetRow)
     if (!target) return
@@ -2582,9 +2621,11 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                 onClose={closePurchaseDetailDialogV78}
                 onEdit={() => setEditingPurchase(detailDialogPurchaseV78)}
                 onDelete={() => deletePurchase(detailDialogPurchaseV78)}
+                onAdvance={() => advancePurchase(detailDialogPurchaseV78)}
+                onComplete={() => completePurchase(detailDialogPurchaseV78)}
                 onDuplicate={() => duplicatePurchase(detailDialogPurchaseV78)}
                 onCreateTask={() => createTaskFromPurchase(detailDialogPurchaseV78)}
-                onCreateReminder={() => createReminderFromPurchase(detailDialogPurchaseV78)}
+                onCreateReminder={(type) => createReminderFromPurchase(detailDialogPurchaseV78, type)}
                 onUpdateMeta={(patch, message) => updatePurchase(detailDialogPurchaseV78.id, patch, message)}
               />
             ) : null}
@@ -6220,7 +6261,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.78 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.79 加入採購明細分頁、歸檔資料整理與彈窗內容放大優化，採購資訊更清楚但不破壞既有流程。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -7053,12 +7094,20 @@ function PurchaseDetailModalV76({
   onClose,
   onEdit,
   onDelete,
+  onAdvance,
+  onComplete,
   onDuplicate,
   onCreateTask,
   onCreateReminder,
   onUpdateMeta,
 }) {
+  const [activeTab, setActiveTab] = useState('基本資料')
   if (!row) return null
+
+  const amount = calculatePurchase(row)
+  const items = getPurchaseItems(row)
+  const archiveStatus = purchaseArchiveStatusV72(row)
+  const activeTabs = ['基本資料', '品項明細', '歸檔資料', '歷程紀錄']
 
   const closeDialog = () => {
     if (typeof onClose === 'function') onClose()
@@ -7084,14 +7133,14 @@ function PurchaseDetailModalV76({
       }}
     >
       <section
-        className="fd76-purchase-modal-shell"
+        className="fd76-purchase-modal-shell fd79-purchase-modal-shell"
         role="dialog"
         aria-modal="true"
         aria-label="採購明細"
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="fd76-purchase-modal-head">
+        <header className="fd76-purchase-modal-head fd79-purchase-modal-head">
           <div>
             <p className="eyebrow">採購明細</p>
             <h3>{row.id} · {purchaseTitle(row)}</h3>
@@ -7114,15 +7163,38 @@ function PurchaseDetailModalV76({
           >關閉</button>
         </header>
 
-        <div className="fd76-purchase-modal-content">
+        <section className="fd79-purchase-modal-summary" aria-label="採購重點摘要">
+          <article><span>使用單位</span><strong>{row.department || '未指定'}</strong></article>
+          <article><span>申請人 / 使用人</span><strong>{row.requester || '—'} / {row.user || row.usedBy || row.requester || '—'}</strong></article>
+          <article><span>目前狀態</span><strong>{row.status || '未設定'}</strong></article>
+          <article><span>品項</span><strong>{items.length} 項</strong></article>
+          <article><span>含稅金額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
+          <article><span>歸檔</span><strong>{archiveStatus}</strong></article>
+        </section>
+
+        <nav className="fd79-purchase-detail-tabs" aria-label="採購明細分頁">
+          {activeTabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={activeTab === tab ? 'active' : ''}
+              onClick={() => setActiveTab(tab)}
+            >{tab}</button>
+          ))}
+        </nav>
+
+        <div className="fd76-purchase-modal-content fd79-purchase-modal-content">
           <section className="fd76-purchase-modal-main">
             <PurchaseDetail
               row={row}
               stages={stages}
               relatedTasks={[]}
               history={purchaseHistory}
+              activeTab={activeTab}
               onEdit={onEdit}
               onDelete={onDelete}
+              onAdvance={onAdvance}
+              onComplete={onComplete}
               onDuplicate={onDuplicate}
               onCreateTask={onCreateTask}
               onCreateReminder={onCreateReminder}
@@ -7130,11 +7202,21 @@ function PurchaseDetailModalV76({
             />
           </section>
 
-          <aside className="fd76-purchase-modal-side">
-            <section className="fd76-purchase-side-card">
+          <aside className="fd76-purchase-modal-side fd79-purchase-modal-side">
+            <section className="fd76-purchase-side-card fd79-purchase-side-card">
+              <PanelTitle eyebrow="操作焦點" title="下一步處理" />
+              <div className="fd79-side-action-list">
+                <button type="button" onClick={onEdit}>編輯採購資料</button>
+                <button type="button" onClick={onAdvance}>推進下一流程</button>
+                <button type="button" onClick={onComplete}>視為完成</button>
+                <button type="button" onClick={onCreateTask}>建立追蹤工作</button>
+              </div>
+            </section>
+
+            <section className="fd76-purchase-side-card fd79-purchase-side-card">
               <PanelTitle eyebrow="狀態歷程" title="最近變更" />
-              <div className="history-list">
-                {purchaseHistory.length ? purchaseHistory.slice(0, 12).map((entry, index) => (
+              <div className="history-list fd79-history-compact">
+                {purchaseHistory.length ? purchaseHistory.slice(0, 8).map((entry, index) => (
                   <article key={`${entry.time || 'time'}-${index}`}>
                     <span>{entry.message}</span>
                     <small>{entry.time}</small>
@@ -7143,10 +7225,10 @@ function PurchaseDetailModalV76({
               </div>
             </section>
 
-            <section className="fd76-purchase-side-card">
+            <section className="fd76-purchase-side-card fd79-purchase-side-card">
               <PanelTitle eyebrow="廠商統計" title="採購金額排行" />
               <div className="purchase-vendor-rank">
-                {vendorSpendRanking.length ? vendorSpendRanking.slice(0, 8).map((vendor) => (
+                {vendorSpendRanking.length ? vendorSpendRanking.slice(0, 6).map((vendor) => (
                   <article key={vendor.vendor}>
                     <div><strong>{vendor.vendor}</strong><span>{vendor.count} 筆</span></div>
                     <b>{formatMoney(vendor.amount)}</b>
@@ -7162,7 +7244,7 @@ function PurchaseDetailModalV76({
 }
 
 
-function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder, onUpdateMeta }) {
+function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTab = '基本資料', onEdit, onDelete, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder, onUpdateMeta }) {
   const amount = calculatePurchase(row)
   const items = getPurchaseItems(row)
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -7170,9 +7252,95 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
   const diff = quoteAmount ? amount.taxedTotal - quoteAmount : 0
   const budgetAmount = Number(row.budgetAmount || 0)
   const budgetDiff = budgetAmount ? amount.taxedTotal - budgetAmount : 0
+  const archiveStatus = purchaseArchiveStatusV72(row)
+  const suggestedArchiveName = buildArchiveFolderNameV67({ type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate })
+
+  const moneySummary = (
+    <div className="detail-money-summary fd79-money-summary">
+      <article>
+        <span>含稅總額</span>
+        <strong>{formatMoney(amount.taxedTotal)}</strong>
+      </article>
+      <article>
+        <span>未稅 / 稅額</span>
+        <strong>{formatMoney(amount.untaxedAmount)}</strong>
+        <small>{formatMoney(amount.taxAmount)}</small>
+      </article>
+      <article>
+        <span>報價差額</span>
+        <strong className={Math.abs(diff) > 1 ? 'has-diff' : ''}>{quoteAmount ? formatMoney(diff) : '—'}</strong>
+      </article>
+      <article>
+        <span>預算差異</span>
+        <strong className={budgetDiff > 0 ? 'has-diff' : ''}>{budgetAmount ? formatMoney(budgetDiff) : '—'}</strong>
+      </article>
+    </div>
+  )
+
+  const detailGrid = (
+    <div className="purchase-detail-grid fd79-purchase-detail-grid">
+      <span>編號<b>{row.id}</b></span>
+      <span>報價單號<b>{row.quoteNo || '—'}</b></span>
+      <span>PO 單號<b>{row.poNo || '—'}</b></span>
+      <span>發票號碼<b>{row.invoiceNo || '—'}</b></span>
+      <span>廠商<b>{row.vendor || '—'}</b></span>
+      <span>品項數<b>{items.length} 項 / {totalQuantity} 件</b></span>
+      <span>稅別<b>{row.taxMode || '未稅'} / {Number(row.taxRate || 0)}%</b></span>
+      <span>付款<b>{row.paymentStatus || '未付款'}</b></span>
+      <span>到貨<b>{row.arrivalStatus || '未到貨'}</b></span>
+      <span>驗收<b>{row.acceptanceStatus || '未驗收'}</b></span>
+      <span>歸檔<b>{archiveStatus}</b></span>
+      <span>申請日<b>{row.requestDate || '—'}</b></span>
+      <span>下單日<b>{row.orderDate || '—'}</b></span>
+      <span>付款期限<b>{row.paymentDueDate || '—'}</b></span>
+      <span>預計到貨<b>{row.arrivalDueDate || '—'}</b></span>
+      <span>到貨日<b>{row.arrivalDate || '—'}</b></span>
+      <span>驗收日<b>{row.acceptanceDate || '—'}</b></span>
+    </div>
+  )
+
+  const lineItems = (
+    <div className="purchase-line-detail fd79-line-detail">
+      <div className="line-detail-head"><strong>品項明細</strong><span>{items.length} 項 · 共 {totalQuantity} 件</span></div>
+      {items.map((item, index) => (
+        <article key={item.id}>
+          <span>{index + 1}</span>
+          <div><b>{item.name || '未命名品項'}</b><small>{item.note || '—'}</small></div>
+          <em>{item.quantity} × {formatMoney(item.unitPrice)}</em>
+          <strong>{formatMoney(Number(item.quantity || 0) * Number(item.unitPrice || 0))}</strong>
+        </article>
+      ))}
+      {!items.length && <p>尚未建立品項明細。</p>}
+    </div>
+  )
+
+  const relatedFlow = (
+    <div className="purchase-related-flow fd79-related-flow">
+      <div className="line-detail-head"><strong>相關任務與下一步</strong><span>{relatedTasks.length} 筆</span></div>
+      {relatedTasks.length ? relatedTasks.map((task) => (
+        <article key={task.id}>
+          <div><b>{task.title}</b><small>{task.status} · {task.relatedVendor || row.vendor || '未指定廠商'}</small></div>
+          <p>{task.next}</p>
+        </article>
+      )) : <p>目前沒有關聯任務，可於工作事項建立採購、廠商或專案關聯。</p>}
+    </div>
+  )
+
+  const historyTimeline = (
+    <div className="purchase-history-timeline fd79-history-timeline">
+      <div className="line-detail-head"><strong>採購歷程時間軸</strong><span>{history.length} 筆</span></div>
+      {history.length ? history.map((entry) => (
+        <article key={entry.id || `${entry.time}-${entry.message}`}>
+          <i />
+          <div><strong>{entry.title || purchaseTitle(row)}</strong><span>{entry.message}</span><small>{entry.time}</small></div>
+        </article>
+      )) : <p>尚無此採購單的歷程紀錄。</p>}
+    </div>
+  )
+
   return (
-    <div className="purchase-detail-stack enhanced-detail">
-      <div className="detail-status-strip">
+    <div className="purchase-detail-stack enhanced-detail fd79-purchase-detail">
+      <div className="detail-status-strip fd79-status-strip">
         <StageBadge value={row.status} stages={stages} />
         <span>{row.department || '未填部門'}</span>
         <span>{row.requester || '未填申請人'}</span>
@@ -7181,117 +7349,80 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
         <span>{row.arrivalStatus || '未到貨'}</span>
         <span>{row.acceptanceStatus || '未驗收'}</span>
       </div>
-      <div className="purchase-detail-identity">
+      <div className="purchase-detail-identity fd79-detail-identity">
         <div>
           <span>目前選取</span>
           <strong>{row.id} · {purchaseTitle(row)}</strong>
         </div>
         <small>{row.vendor || '未指定廠商'} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
       </div>
-      <ArchiveFolderPanelV67
-        title="採購歸檔資料夾"
-        folder={row.archiveFolder}
-        suggestedName={buildArchiveFolderNameV67({ type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate })}
-        compact
-      />
-      <PurchaseArchiveHintV72 row={row} />
 
-      <div className="purchase-detail-actions">
+      <div className="purchase-detail-actions fd79-detail-actions">
         <button type="button" onClick={onEdit}>編輯採購</button>
         <button type="button" onClick={onAdvance}>下一流程</button>
         <button type="button" onClick={onComplete}>視為完成</button>
         <button type="button" onClick={onCreateTask}>建立追蹤工作</button>
-        <button type="button" onClick={() => onCreateReminder?.('追蹤')}>建立追蹤提醒</button>
+        <button type="button" onClick={() => onCreateReminder?.('追蹤')}>追蹤提醒</button>
         <button type="button" onClick={() => onCreateReminder?.('付款')}>付款提醒</button>
         <button type="button" onClick={() => onCreateReminder?.('到貨')}>到貨提醒</button>
         <button type="button" onClick={() => onCreateReminder?.('驗收')}>驗收提醒</button>
         <button type="button" onClick={onDuplicate}>複製採購</button>
+        <button type="button" className="danger" onClick={onDelete}>刪除</button>
       </div>
 
-      <div className="purchase-progress-actions">
+      <div className="purchase-progress-actions fd79-progress-actions">
         <button type="button" className={(row.paymentStatus || '未付款') === '已付款' ? 'active' : ''} onClick={() => onUpdateMeta?.({ paymentStatus: (row.paymentStatus || '未付款') === '已付款' ? '未付款' : '已付款' }, (row.paymentStatus || '未付款') === '已付款' ? '付款狀態改為未付款。' : '付款狀態改為已付款。')}>付款完成</button>
         <button type="button" className={(row.arrivalStatus || '未到貨') === '已到貨' ? 'active' : ''} onClick={() => onUpdateMeta?.({ arrivalStatus: (row.arrivalStatus || '未到貨') === '已到貨' ? '未到貨' : '已到貨', arrivalDate: (row.arrivalStatus || '未到貨') === '已到貨' ? row.arrivalDate : (row.arrivalDate || todayDate()) }, (row.arrivalStatus || '未到貨') === '已到貨' ? '到貨狀態改為未到貨。' : '到貨狀態改為已到貨。')}>到貨完成</button>
         <button type="button" className={(row.acceptanceStatus || '未驗收') === '已驗收' ? 'active' : ''} onClick={() => onUpdateMeta?.({ acceptanceStatus: (row.acceptanceStatus || '未驗收') === '已驗收' ? '未驗收' : '已驗收' }, (row.acceptanceStatus || '未驗收') === '已驗收' ? '驗收狀態改為未驗收。' : '驗收狀態改為已驗收。')}>驗收完成</button>
       </div>
 
-      <div className="detail-money-summary">
-        <article>
-          <span>含稅總額</span>
-          <strong>{formatMoney(amount.taxedTotal)}</strong>
-        </article>
-        <article>
-          <span>未稅 / 稅額</span>
-          <strong>{formatMoney(amount.untaxedAmount)}</strong>
-          <small>{formatMoney(amount.taxAmount)}</small>
-        </article>
-        <article>
-          <span>報價差額</span>
-          <strong className={Math.abs(diff) > 1 ? 'has-diff' : ''}>{quoteAmount ? formatMoney(diff) : '—'}</strong>
-        </article>
-        <article>
-          <span>預算差異</span>
-          <strong className={budgetDiff > 0 ? 'has-diff' : ''}>{budgetAmount ? formatMoney(budgetDiff) : '—'}</strong>
-        </article>
-      </div>
+      {activeTab === '基本資料' && (
+        <section className="fd79-tab-panel">
+          {moneySummary}
+          {detailGrid}
+          {relatedFlow}
+          <div className="detail-note-box fd79-note-box">
+            <span>備註</span>
+            <p>{row.note || '尚未填寫備註。'}</p>
+          </div>
+        </section>
+      )}
 
-      <div className="purchase-detail-grid">
-        <span>編號<b>{row.id}</b></span>
-        <span>報價單號<b>{row.quoteNo || '—'}</b></span>
-        <span>PO 單號<b>{row.poNo || '—'}</b></span>
-        <span>發票號碼<b>{row.invoiceNo || '—'}</b></span>
-        <span>廠商<b>{row.vendor || '—'}</b></span>
-        <span>品項數<b>{items.length} 項 / {totalQuantity} 件</b></span>
-        <span>稅別<b>{row.taxMode || '未稅'} / {Number(row.taxRate || 0)}%</b></span>
-        <span>付款<b>{row.paymentStatus || '未付款'}</b></span>
-        <span>到貨<b>{row.arrivalStatus || '未到貨'}</b></span>
-        <span>驗收<b>{row.acceptanceStatus || '未驗收'}</b></span>
-        <span>申請日<b>{row.requestDate || '—'}</b></span>
-        <span>下單日<b>{row.orderDate || '—'}</b></span>
-        <span>付款期限<b>{row.paymentDueDate || '—'}</b></span>
-        <span>預計到貨<b>{row.arrivalDueDate || '—'}</b></span>
-        <span>到貨日<b>{row.arrivalDate || '—'}</b></span>
-        <span>驗收日<b>{row.acceptanceDate || '—'}</b></span>
-      </div>
+      {activeTab === '品項明細' && (
+        <section className="fd79-tab-panel">
+          {moneySummary}
+          {lineItems}
+        </section>
+      )}
 
-      <div className="purchase-line-detail">
-        <div className="line-detail-head"><strong>品項明細</strong><span>{items.length} 項 · 共 {totalQuantity} 件</span></div>
-        {items.map((item, index) => (
-          <article key={item.id}>
-            <span>{index + 1}</span>
-            <div><b>{item.name || '未命名品項'}</b><small>{item.note || '—'}</small></div>
-            <em>{item.quantity} × {formatMoney(item.unitPrice)}</em>
-            <strong>{formatMoney(Number(item.quantity || 0) * Number(item.unitPrice || 0))}</strong>
-          </article>
-        ))}
-      </div>
+      {activeTab === '歸檔資料' && (
+        <section className="fd79-tab-panel fd79-archive-tab-panel">
+          <ArchiveFolderPanelV67
+            title="採購歸檔資料夾"
+            folder={row.archiveFolder}
+            suggestedName={suggestedArchiveName}
+            compact
+            onChange={(folder) => onUpdateMeta?.({ archiveFolder: folder }, `更新歸檔資料夾狀態為「${folder.status || '已建立'}」。`)}
+          />
+          <PurchaseArchiveHintV72 row={row} />
+          <div className="fd79-archive-checklist">
+            <article><span>01</span><strong>建立資料夾</strong><small>複製建議名稱後，到雲端硬碟建立資料夾。</small></article>
+            <article><span>02</span><strong>貼回連結</strong><small>將資料夾分享連結貼回 FlowDesk，後續查找不用翻信箱。</small></article>
+            <article><span>03</span><strong>集中存放文件</strong><small>報價單、PO、發票、驗收資料與截圖全部放入同一資料夾。</small></article>
+          </div>
+        </section>
+      )}
 
-      <div className="purchase-related-flow">
-        <div className="line-detail-head"><strong>相關任務與下一步</strong><span>{relatedTasks.length} 筆</span></div>
-        {relatedTasks.length ? relatedTasks.map((task) => (
-          <article key={task.id}>
-            <div><b>{task.title}</b><small>{task.status} · {task.relatedVendor || row.vendor || '未指定廠商'}</small></div>
-            <p>{task.next}</p>
-          </article>
-        )) : <p>目前沒有關聯任務，可於任務追蹤建立採購、廠商或專案關聯。</p>}
-      </div>
-
-      <div className="purchase-history-timeline">
-        <div className="line-detail-head"><strong>採購歷程時間軸</strong><span>{history.length} 筆</span></div>
-        {history.length ? history.map((entry) => (
-          <article key={entry.id}>
-            <i />
-            <div><strong>{entry.title}</strong><span>{entry.message}</span><small>{entry.time}</small></div>
-          </article>
-        )) : <p>尚無此採購單的歷程紀錄。</p>}
-      </div>
-
-      <div className="detail-note-box">
-        <span>備註</span>
-        <p>{row.note || '尚未填寫備註。'}</p>
-      </div>
+      {activeTab === '歷程紀錄' && (
+        <section className="fd79-tab-panel">
+          {historyTimeline}
+          {relatedFlow}
+        </section>
+      )}
     </div>
   )
 }
+
 
 function ScrollTopButton() {
   const [visible, setVisible] = useState(false)

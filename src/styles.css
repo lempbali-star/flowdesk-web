@@ -20622,3 +20622,367 @@ html[data-flowdesk-appearance="dark"] .fd76-purchase-modal-head span {
   background: rgba(var(--fd31-primary-rgb), .14) !important;
   transform: translateY(-1px);
 }
+
+/* FlowDesk v20.3.79 採購明細彈窗分頁與內容整理 */
+.fd79-purchase-modal-shell {
+  width: min(1480px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+}
+
+.fd79-purchase-modal-head {
+  padding: 22px 24px 16px;
+}
+
+.fd79-purchase-modal-head h3 {
+  max-width: min(980px, 72vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fd79-purchase-modal-summary {
+  display: grid;
+  grid-template-columns: 1.15fr 1.35fr .85fr .65fr .9fr .65fr;
+  gap: 10px;
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, .14);
+  background: linear-gradient(180deg, rgba(248,250,252,.88), rgba(255,255,255,.92));
+}
+
+.fd79-purchase-modal-summary article {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 18px;
+  background: rgba(255,255,255,.78);
+  box-shadow: 0 12px 26px rgba(44,65,110,.06);
+}
+
+.fd79-purchase-modal-summary span,
+.fd79-purchase-detail-tabs button,
+.fd79-detail-identity span,
+.fd79-purchase-detail-grid span,
+.fd79-note-box span {
+  letter-spacing: .05em;
+}
+
+.fd79-purchase-modal-summary span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.fd79-purchase-modal-summary strong {
+  display: block;
+  min-width: 0;
+  margin-top: 4px;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fd79-purchase-detail-tabs {
+  position: sticky;
+  top: 82px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(148, 163, 184, .14);
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(12px);
+}
+
+.fd79-purchase-detail-tabs button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 999px;
+  background: rgba(248,250,252,.92);
+  color: #475569;
+  font-size: 13px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.fd79-purchase-detail-tabs button.active {
+  border-color: rgba(var(--fd31-primary-rgb), .22);
+  background: rgba(var(--fd31-primary-rgb), .12);
+  color: var(--theme-primary-strong);
+  box-shadow: 0 10px 22px rgba(var(--fd31-primary-rgb), .10);
+}
+
+.fd79-purchase-modal-content {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  padding: 18px 24px 24px;
+}
+
+.fd79-purchase-detail {
+  gap: 16px;
+}
+
+.fd79-status-strip {
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 20px;
+  background: rgba(248,250,252,.8);
+}
+
+.fd79-detail-identity {
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(248,250,252,.84));
+  box-shadow: 0 16px 34px rgba(44,65,110,.07);
+}
+
+.fd79-detail-actions,
+.fd79-progress-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 20px;
+  background: rgba(255,255,255,.72);
+}
+
+.fd79-detail-actions button,
+.fd79-progress-actions button,
+.fd79-side-action-list button {
+  min-height: 36px;
+  border-radius: 12px;
+  font-weight: 900;
+}
+
+.fd79-detail-actions button.danger {
+  border-color: rgba(239,68,68,.18);
+  background: rgba(254,242,242,.88);
+  color: #b91c1c;
+}
+
+.fd79-tab-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.fd79-money-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fd79-purchase-detail-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fd79-purchase-detail-grid span {
+  padding: 12px 13px;
+  border: 1px solid rgba(148, 163, 184, .12);
+  background: #f8fafc;
+}
+
+.fd79-purchase-detail-grid b {
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fd79-line-detail article {
+  grid-template-columns: 38px minmax(0, 1fr) 190px 150px;
+  gap: 12px;
+  align-items: center;
+}
+
+.fd79-line-detail article > div,
+.fd79-line-detail article b,
+.fd79-line-detail article small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fd79-archive-tab-panel .fd67-archive-folder.compact {
+  border-radius: 24px;
+  box-shadow: 0 16px 36px rgba(44,65,110,.08);
+}
+
+.fd79-archive-checklist {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fd79-archive-checklist article {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 20px;
+  background: rgba(255,255,255,.8);
+}
+
+.fd79-archive-checklist span {
+  width: max-content;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(var(--fd31-primary-rgb), .1);
+  color: var(--theme-primary-strong);
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.fd79-archive-checklist strong {
+  color: #172033;
+  font-weight: 950;
+}
+
+.fd79-archive-checklist small {
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.fd79-side-action-list {
+  display: grid;
+  gap: 8px;
+}
+
+.fd79-side-action-list button {
+  width: 100%;
+  border: 1px solid rgba(var(--fd31-primary-rgb), .16);
+  background: rgba(var(--fd31-primary-rgb), .08);
+  color: var(--theme-primary-strong);
+  text-align: left;
+}
+
+.fd79-history-compact {
+  max-height: 320px;
+  overflow: auto;
+}
+
+.fd79-purchase-side-card {
+  background: rgba(255,255,255,.86);
+}
+
+.fd79-note-box {
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, .14);
+  background: rgba(255,255,255,.78);
+}
+
+/* FlowDesk v20.3.79 採購卡片資訊微調 */
+.purchase-card-row.purchase-card-compact {
+  border-color: rgba(148, 163, 184, .18);
+}
+
+.purchase-card-row.purchase-card-compact.active {
+  box-shadow: 0 18px 42px rgba(var(--fd31-primary-rgb), .12);
+}
+
+.purchase-card-row .purchase-card-money {
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(var(--fd31-primary-rgb), .08), rgba(255,255,255,.82));
+}
+
+.fd74-purchase-focus {
+  gap: 10px !important;
+  padding: 12px !important;
+}
+
+.fd74-purchase-unit strong,
+.fd74-purchase-item strong,
+.fd74-purchase-money strong {
+  line-height: 1.25;
+}
+
+html[data-flowdesk-appearance="dark"] .fd79-purchase-modal-summary,
+html[data-flowdesk-appearance="dark"] .fd79-purchase-detail-tabs {
+  background: rgba(15,23,42,.94);
+  border-color: rgba(148,163,184,.18);
+}
+
+html[data-flowdesk-appearance="dark"] .fd79-purchase-modal-summary article,
+html[data-flowdesk-appearance="dark"] .fd79-detail-identity,
+html[data-flowdesk-appearance="dark"] .fd79-detail-actions,
+html[data-flowdesk-appearance="dark"] .fd79-progress-actions,
+html[data-flowdesk-appearance="dark"] .fd79-purchase-detail-grid span,
+html[data-flowdesk-appearance="dark"] .fd79-archive-checklist article,
+html[data-flowdesk-appearance="dark"] .fd79-note-box {
+  background: rgba(15,23,42,.72);
+  border-color: rgba(148,163,184,.18);
+}
+
+html[data-flowdesk-appearance="dark"] .fd79-purchase-modal-summary strong,
+html[data-flowdesk-appearance="dark"] .fd79-archive-checklist strong {
+  color: #f8fafc;
+}
+
+html[data-flowdesk-appearance="dark"] .fd79-purchase-modal-summary span,
+html[data-flowdesk-appearance="dark"] .fd79-archive-checklist small {
+  color: #b6c7dd;
+}
+
+@media (max-width: 1240px) {
+  .fd79-purchase-modal-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .fd79-purchase-modal-content {
+    grid-template-columns: 1fr;
+  }
+
+  .fd79-purchase-modal-side {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 920px) {
+  .fd79-purchase-modal-summary,
+  .fd79-purchase-detail-grid,
+  .fd79-money-summary,
+  .fd79-archive-checklist,
+  .fd79-purchase-modal-side {
+    grid-template-columns: 1fr;
+  }
+
+  .fd79-line-detail article {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .fd79-line-detail article em,
+  .fd79-line-detail article strong {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 720px) {
+  .fd79-purchase-modal-shell {
+    width: calc(100vw - 10px);
+    max-height: calc(100vh - 10px);
+  }
+
+  .fd79-purchase-modal-head h3 {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .fd79-purchase-modal-summary,
+  .fd79-purchase-detail-tabs,
+  .fd79-purchase-modal-content {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .fd79-purchase-detail-tabs {
+    top: 74px;
+    overflow-x: auto;
+  }
+
+  .fd79-purchase-detail-tabs button {
+    flex: 0 0 auto;
+  }
+}
