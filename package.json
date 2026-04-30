@@ -1,7 +1,7 @@
 {
-  "name": "flowdesk-product-v20-3-69",
+  "name": "flowdesk-product-v20-3-70",
   "private": true,
-  "version": "20.3.69",
+  "version": "20.3.70",
   "type": "module",
   "scripts": {
     "dev": "vite",

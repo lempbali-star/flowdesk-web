@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.69'
+const FLOWDESK_APP_VERSION = '20.3.70'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1897,6 +1897,10 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     return purchasePageSizeOptions.includes(saved) ? saved : 10
   })
   const [selectedPurchase, setSelectedPurchase] = useState(null)
+  const [draggingPurchaseId, setDraggingPurchaseId] = useState(null)
+  const [dropPurchaseId, setDropPurchaseId] = useState(null)
+  const draggingPurchaseIdRef = useRef(null)
+  const purchaseDragMovedRef = useRef(false)
   const [collectionViews, setCollectionViews] = useState(() => {
     if (typeof window === 'undefined') return {}
     try {
@@ -2030,6 +2034,73 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     .filter((item) => item.reasons.length)
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
+
+  function reorderPurchases(dragKey, targetKey) {
+    if (!dragKey || !targetKey || dragKey === targetKey) return
+    setPurchases((rows) => {
+      const next = [...rows]
+      const fromIndex = next.findIndex((item) => getPurchaseKey(item) === dragKey)
+      const toIndex = next.findIndex((item) => getPurchaseKey(item) === targetKey)
+      if (fromIndex === -1 || toIndex === -1) return rows
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+  }
+
+  function getPurchaseDragProps(row) {
+    const rowKey = getPurchaseKey(row)
+    return {
+      draggable: true,
+      onDragStart: (event) => {
+        draggingPurchaseIdRef.current = rowKey
+        purchaseDragMovedRef.current = false
+        setDraggingPurchaseId(rowKey)
+        setDropPurchaseId(null)
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move'
+          event.dataTransfer.setData('text/plain', rowKey)
+        }
+      },
+      onDragEnd: () => {
+        draggingPurchaseIdRef.current = null
+        window.setTimeout(() => {
+          purchaseDragMovedRef.current = false
+        }, 0)
+        setDraggingPurchaseId(null)
+        setDropPurchaseId(null)
+      },
+      onDragOver: (event) => {
+        event.preventDefault()
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+        const dragKey = draggingPurchaseIdRef.current || draggingPurchaseId
+        if (dragKey && dragKey !== rowKey) {
+          purchaseDragMovedRef.current = true
+          setDropPurchaseId(rowKey)
+        }
+      },
+      onDrop: (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        const dragKey = draggingPurchaseIdRef.current || event.dataTransfer?.getData('text/plain') || draggingPurchaseId
+        if (dragKey && dragKey !== rowKey) {
+          purchaseDragMovedRef.current = true
+          reorderPurchases(dragKey, rowKey)
+        }
+        draggingPurchaseIdRef.current = null
+        setDraggingPurchaseId(null)
+        setDropPurchaseId(null)
+      },
+    }
+  }
+
+  function handlePurchaseCardClick(row) {
+    if (purchaseDragMovedRef.current) {
+      purchaseDragMovedRef.current = false
+      return
+    }
+    setSelectedPurchase(row)
+  }
 
   function getPurchaseRelatedTasks(row) {
     if (!row) return []
@@ -2462,7 +2533,18 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                     const quoteAmount = Number(row.quoteAmount || 0)
                     const diff = quoteAmount ? amount.taxedTotal - quoteAmount : 0
                     return (
-                      <article className={isSamePurchase(selectedPurchase, row) ? 'purchase-card-row purchase-card-compact active' : 'purchase-card-row purchase-card-compact'} key={getPurchaseKey(row)} onClick={() => setSelectedPurchase(row)}>
+                      <article
+                        {...getPurchaseDragProps(row)}
+                        className={[
+                          'purchase-card-row purchase-card-compact',
+                          isSamePurchase(selectedPurchase, row) ? 'active' : '',
+                          draggingPurchaseId === getPurchaseKey(row) ? 'dragging' : '',
+                          dropPurchaseId === getPurchaseKey(row) ? 'drop-target' : '',
+                        ].filter(Boolean).join(' ')}
+                        key={getPurchaseKey(row)}
+                        onClick={() => handlePurchaseCardClick(row)}
+                        title="點擊查看採購明細；拖曳可調整卡片順序"
+                      >
                         <div className="purchase-card-main">
                           <div className="purchase-card-topline">
                             <span className="record-id">{row.id}</span>
@@ -3093,6 +3175,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   })
   const [draggingProjectId, setDraggingProjectId] = useState(null)
   const [dropProjectId, setDropProjectId] = useState(null)
+  const draggingProjectIdRef = useRef(null)
+  const projectDragMovedRef = useRef(false)
   const [manualRecordText, setManualRecordText] = useState('')
   const [ganttDragRange, setGanttDragRange] = useState(null)
   const [ganttDragPreview, setGanttDragPreview] = useState(null)
@@ -3820,6 +3904,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
   function reorderProjects(dragId, targetId) {
     if (!dragId || !targetId || dragId === targetId) return
+    setProjectSortMode('手動排序')
     setProjects((rows) => {
       const next = [...rows]
       const fromIndex = next.findIndex((item) => item.id === dragId)
@@ -3847,22 +3932,56 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function getProjectDragProps(projectId) {
     return {
       draggable: true,
-      onDragStart: () => setDraggingProjectId(projectId),
+      onDragStart: (event) => {
+        draggingProjectIdRef.current = projectId
+        projectDragMovedRef.current = false
+        setDraggingProjectId(projectId)
+        setDropProjectId(null)
+        setProjectSortMode('手動排序')
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move'
+          event.dataTransfer.setData('text/plain', projectId)
+        }
+      },
       onDragEnd: () => {
+        draggingProjectIdRef.current = null
+        window.setTimeout(() => {
+          projectDragMovedRef.current = false
+        }, 0)
         setDraggingProjectId(null)
         setDropProjectId(null)
       },
       onDragOver: (event) => {
         event.preventDefault()
-        if (draggingProjectId && draggingProjectId !== projectId) setDropProjectId(projectId)
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+        const dragId = draggingProjectIdRef.current || draggingProjectId
+        if (dragId && dragId !== projectId) {
+          projectDragMovedRef.current = true
+          setDropProjectId(projectId)
+        }
       },
       onDrop: (event) => {
         event.preventDefault()
-        reorderProjects(draggingProjectId, projectId)
+        event.stopPropagation()
+        const dragId = draggingProjectIdRef.current || event.dataTransfer?.getData('text/plain') || draggingProjectId
+        if (dragId && dragId !== projectId) {
+          projectDragMovedRef.current = true
+          reorderProjects(dragId, projectId)
+          setProjectSortMode('手動排序')
+        }
+        draggingProjectIdRef.current = null
         setDraggingProjectId(null)
         setDropProjectId(null)
       },
     }
+  }
+
+  function handleProjectClick(projectId) {
+    if (projectDragMovedRef.current) {
+      projectDragMovedRef.current = false
+      return
+    }
+    openProject(projectId)
   }
 
   function handleProjectKeyDown(projectId, event) {
@@ -4319,7 +4438,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             draggingProjectId === project.id ? 'dragging' : '',
             dropProjectId === project.id ? 'drop-target' : '',
           ].filter(Boolean).join(' ')}
-          onClick={() => openProject(project.id)}
+          onClick={() => handleProjectClick(project.id)}
           onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
           title="點擊開啟專案彈窗；拖曳調整順序"
         >
@@ -4378,7 +4497,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             draggingProjectId === project.id ? 'dragging' : '',
             dropProjectId === project.id ? 'drop-target' : '',
           ].filter(Boolean).join(' ')}
-          onClick={() => openProject(project.id)}
+          onClick={() => handleProjectClick(project.id)}
           onKeyDown={(event) => handleProjectKeyDown(project.id, event)}
           title="點擊開啟專案彈窗；拖曳調整順序"
         >
@@ -6047,7 +6166,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.69 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.70 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
