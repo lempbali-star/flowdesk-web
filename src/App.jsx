@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.85'
+const FLOWDESK_APP_VERSION = '20.3.86'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2196,6 +2196,18 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     .sort((a, b) => b.score - a.score || getPurchasePriorityWeight(a.row.priority) - getPurchasePriorityWeight(b.row.priority))
     .slice(0, 5)
 
+  const activePurchaseFilterLabels = [
+    statusFilter !== '全部' ? `狀態：${statusFilter}` : '',
+    purchasePriorityFilter !== '全部' ? `優先：${purchasePriorityFilter}` : '',
+    paymentFilter !== '全部' ? `付款：${paymentFilter}` : '',
+    arrivalFilter !== '全部' ? `到貨：${arrivalFilter}` : '',
+    acceptanceFilter !== '全部' ? `驗收：${acceptanceFilter}` : '',
+    archiveFilter !== '全部' ? `歸檔：${archiveFilter}` : '',
+    vendorFilter !== '全部' ? `廠商：${vendorFilter}` : '',
+    monthFilter !== '全部' ? `月份：${monthFilter}` : '',
+    purchaseKeyword.trim() ? `搜尋：${purchaseKeyword.trim()}` : '',
+  ].filter(Boolean)
+
   function reorderPurchases(dragKey, targetKey) {
     if (!dragKey || !targetKey || dragKey === targetKey) return
     setPurchases((rows) => {
@@ -2490,10 +2502,12 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
         }
         return true
       })
-      const nextSelected = selectedPurchase && !isSamePurchase(selectedPurchase, target)
-        ? nextRows.find((row) => isSamePurchase(row, selectedPurchase)) || nextRows[0] || null
-        : nextRows[0] || null
-      setSelectedPurchase(nextSelected)
+      if (selectedPurchase && isSamePurchase(selectedPurchase, target)) {
+        setSelectedPurchase(null)
+      }
+      if (purchaseDetailOpenId && (purchaseDetailOpenId === getPurchaseKey(target) || purchaseDetailOpenId === target.id)) {
+        setPurchaseDetailOpenId(null)
+      }
       return nextRows
     })
     writeHistory(target.id, purchaseTitle(target), '刪除採購紀錄。')
@@ -2794,9 +2808,16 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                     </div>
                   </div>
                 </div>
-                <div className="purchase-selection-status">
-                  <span>目前顯示 <b>{pagedPurchases.length}</b> 筆 / 篩選 <b>{filteredPurchases.length}</b> 筆</span>
-                  <span>目前選取：<b>{stableSelectedPurchase ? `${stableSelectedPurchase.id} ${purchaseTitle(stableSelectedPurchase)}` : '尚未選取'}</b></span><span>點選列或卡片可開啟詳細彈窗</span>
+                <div className="purchase-selection-status fd86-purchase-list-brief">
+                  <div className="fd86-list-count">
+                    <strong>共 {filteredPurchases.length} 筆採購</strong>
+                    <span>本頁 {pagedPurchases.length} 筆 · 點選列可開啟明細</span>
+                  </div>
+                  <div className="fd86-list-filter-chips" aria-label="目前採購篩選條件">
+                    {activePurchaseFilterLabels.length ? activePurchaseFilterLabels.slice(0, 5).map((label) => <span key={label}>{label}</span>) : <span>全部採購</span>}
+                    {activePurchaseFilterLabels.length > 5 && <span>+{activePurchaseFilterLabels.length - 5}</span>}
+                    {detailDialogPurchaseV78 && <b>正在查看：{detailDialogPurchaseV78.id}</b>}
+                  </div>
                 </div>
                 <div className={collectionView === 'card' ? 'purchase-card-list purchase-card-grid' : 'purchase-card-list purchase-list-mode'}>
                   {pagedPurchases.map((row) => {
@@ -2809,7 +2830,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                         className={[
                           'purchase-card-row purchase-card-compact',
                           'priority-' + getPurchasePriorityMeta(row.priority).tone,
-                          isSamePurchase(selectedPurchase, row) ? 'active' : '',
+                          purchaseDetailOpenId && (purchaseDetailOpenId === getPurchaseKey(row) || purchaseDetailOpenId === row.id) ? 'active' : '',
                           draggingPurchaseId === getPurchaseKey(row) ? 'dragging' : '',
                           dropPurchaseId === getPurchaseKey(row) ? 'drop-target' : '',
                         ].filter(Boolean).join(' ')}
@@ -2858,12 +2879,15 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                           <small>未稅 {formatMoney(amount.untaxedAmount)} · 稅額 {formatMoney(amount.taxAmount)}</small>
                           {quoteAmount > 0 && <em className={Math.abs(diff) > 1 ? 'has-diff' : ''}>報價差額 {formatMoney(diff)}</em>}
                         </div>
-                        <div className="purchase-actions compact-actions" onClick={(event) => event.stopPropagation()}>
-                          <button type="button" className="sort-action" onClick={() => movePurchaseByStep(row, -1)}>上移</button>
-                          <button type="button" className="sort-action" onClick={() => movePurchaseByStep(row, 1)}>下移</button>
-                          <button type="button" onClick={() => setEditingPurchase(row)}>編輯</button>
-                          <button type="button" onClick={() => cancelPurchase(row)}>取消</button>
-                          <button type="button" className="danger" onClick={() => deletePurchase(row)}>刪除</button>
+                        <div className="purchase-actions compact-actions fd86-row-actions" onClick={(event) => event.stopPropagation()}>
+                          <button type="button" className="fd86-view-action" onClick={() => openPurchaseDetailDialogV78(row)}>查看</button>
+                          <div className="fd86-secondary-actions">
+                            <button type="button" className="sort-action" onClick={() => movePurchaseByStep(row, -1)}>上移</button>
+                            <button type="button" className="sort-action" onClick={() => movePurchaseByStep(row, 1)}>下移</button>
+                            <button type="button" onClick={() => setEditingPurchase(row)}>編輯</button>
+                            <button type="button" onClick={() => cancelPurchase(row)}>取消</button>
+                            <button type="button" className="danger" onClick={() => deletePurchase(row)}>刪除</button>
+                          </div>
                         </div>
                       </article>
                     )
