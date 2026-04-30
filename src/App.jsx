@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.60'
+const FLOWDESK_APP_VERSION = '20.3.61'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -471,7 +471,7 @@ function FlowDeskShell({ authSession, onLogout }) {
     return initialModules.some((item) => item.id === saved) ? saved : 'home'
   })
   const [query, setQuery] = useState('')
-  const [view, setView] = useState('看板')
+  const [view, setView] = useState('清單')
   const [selected, setSelected] = useState(null)
   const [showLauncher, setShowLauncher] = useState(false)
   const [showAppearanceQuick, setShowAppearanceQuick] = useState(false)
@@ -1664,7 +1664,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         </div>
         <div className="board-toolbar-actions">
           <div className="segmented board-view-switch">
-            {['看板', '表格', '卡片'].map((name) => (
+            {['清單', '表格', '卡片', '看板'].map((name) => (
               <button key={name} className={view === name ? 'active' : ''} type="button" onClick={() => setView(name)}>{name}</button>
             ))}
           </div>
@@ -1730,6 +1730,19 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
       )}
 
       {selected && <BoardFloatingPreview selected={selected} />}
+
+      {view === '清單' && (
+        <WorkItemDailyList
+          items={scopedItems}
+          selected={selected}
+          setSelected={setSelected}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelectedId}
+          onUpdateItem={onUpdateItem}
+          onDuplicateItem={onDuplicateItem}
+          onDeleteItem={onDeleteItem}
+        />
+      )}
 
       {view === '看板' && (
         <section className="kanban board-kanban-view">
@@ -5966,7 +5979,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.60 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.61 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -6910,6 +6923,82 @@ function ScrollTopButton() {
     </button>
   )
 }
+
+
+function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onToggleSelect, onUpdateItem, onDuplicateItem, onDeleteItem }) {
+  const quickLanes = ['處理中', '等待回覆', '已完成']
+  if (!items.length) {
+    return (
+      <section className="fd61-work-list-empty">
+        <strong>目前沒有符合條件的工作事項</strong>
+        <span>可以切換篩選，或新增一筆日常 Case。</span>
+      </section>
+    )
+  }
+  return (
+    <section className="fd61-work-list" aria-label="工作事項清單">
+      <div className="fd61-work-list-head">
+        <span>工作事項</span>
+        <span>狀態</span>
+        <span>優先</span>
+        <span>到期 / 負責</span>
+        <span>快速處理</span>
+      </div>
+      {items.map((item) => {
+        const isSelected = selected?.id === item.id
+        return (
+          <article className={isSelected ? 'fd61-work-row selected' : 'fd61-work-row'} key={item.id}>
+            <label className="fd61-work-check" onClick={(event) => event.stopPropagation()}>
+              <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => onToggleSelect?.(item.id)} />
+            </label>
+            <button className="fd61-work-main" type="button" onClick={() => setSelected(item)}>
+              <span>{item.id}</span>
+              <strong>{item.title}</strong>
+              <small>{item.note || '尚無處理紀錄'}</small>
+              <div>{(Array.isArray(item.tags) ? item.tags : []).slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}</div>
+            </button>
+            <div className="fd61-work-status"><Badge value={item.lane} /></div>
+            <div className="fd61-work-priority"><Badge value={item.priority} /></div>
+            <div className="fd61-work-meta">
+              <strong>{item.due || '未設定'}</strong>
+              <span>{item.owner || '未指定'}</span>
+              <small>{item.channel || item.relation || '一般'}</small>
+            </div>
+            <div className="fd61-work-actions">
+              {quickLanes.map((lane) => (
+                <button
+                  key={lane}
+                  type="button"
+                  className={item.lane === lane ? 'active' : ''}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onUpdateItem?.(item.id, { lane })
+                  }}
+                >
+                  {lane}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  const nextPriority = item.priority === '緊急' ? '高' : item.priority === '高' ? '中' : '高'
+                  onUpdateItem?.(item.id, { priority: nextPriority })
+                }}
+              >
+                優先
+              </button>
+              <button type="button" onClick={(event) => { event.stopPropagation(); onDuplicateItem?.(item.id) }}>複製</button>
+              <button type="button" className="danger" onClick={(event) => { event.stopPropagation(); onDeleteItem?.(item.id) }}>刪除</button>
+            </div>
+            {isSelected && <BoardInlinePreview selected={item} />}
+          </article>
+        )
+      })}
+    </section>
+  )
+}
+
 
 function WorkCard({ item, onSelect, selected, selectable = false, checked = false, onToggleSelect }) {
   const isSelected = selected?.id === item.id
