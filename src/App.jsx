@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.93'
+const FLOWDESK_APP_VERSION = '20.3.94'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5439,11 +5439,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               folder={project.archiveFolder}
               suggestedName={buildArchiveFolderNameV67({ type: '專案', id: project.id, title: project.name, department: project.owner, date: project.startDate })}
               onChange={(next) => updateProject(project.id, { archiveFolder: next }, '更新專案歸檔資料夾。')}
-            />
-            <AttachmentLinksPanelV66
-              title="專案附件"
-              attachments={project.attachments}
-              onChange={(next) => updateProject(project.id, { attachments: next }, '更新專案附件。')}
             />
           </>
         )}
