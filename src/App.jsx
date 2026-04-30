@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.71'
+const FLOWDESK_APP_VERSION = '20.3.72'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1887,6 +1887,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const [paymentFilter, setPaymentFilter] = useState('全部')
   const [arrivalFilter, setArrivalFilter] = useState('全部')
   const [acceptanceFilter, setAcceptanceFilter] = useState('全部')
+  const [archiveFilter, setArchiveFilter] = useState('全部')
   const [vendorFilter, setVendorFilter] = useState('全部')
   const [monthFilter, setMonthFilter] = useState('全部')
   const [purchaseKeyword, setPurchaseKeyword] = useState('')
@@ -1991,9 +1992,10 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     const byPayment = paymentFilter === '全部' || (row.paymentStatus || '未付款') === paymentFilter
     const byArrival = arrivalFilter === '全部' || (row.arrivalStatus || '未到貨') === arrivalFilter
     const byAcceptance = acceptanceFilter === '全部' || (row.acceptanceStatus || '未驗收') === acceptanceFilter
+    const byArchive = archiveFilter === '全部' || purchaseArchiveStatusV72(row) === archiveFilter
     const byVendor = vendorFilter === '全部' || row.vendor === vendorFilter
     const byMonth = monthFilter === '全部' || (row.requestDate || '').startsWith(monthFilter)
-    return byKeyword && byStatus && byPayment && byArrival && byAcceptance && byVendor && byMonth
+    return byKeyword && byStatus && byPayment && byArrival && byAcceptance && byArchive && byVendor && byMonth
   })
   const purchasePageCount = Math.max(1, Math.ceil(filteredPurchases.length / purchasePageSize))
   const safePurchasePage = Math.min(purchasePage, purchasePageCount)
@@ -2008,6 +2010,11 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const paymentPending = purchases.filter((row) => (row.paymentStatus || '未付款') !== '已付款' && !doneStages.includes(row.status)).length
   const acceptancePending = purchases.filter((row) => (row.acceptanceStatus || '未驗收') !== '已驗收' && !doneStages.includes(row.status)).length
   const completedPurchases = purchases.filter((row) => doneStages.includes(row.status)).length
+  const archiveSummaryV72 = purchases.reduce((summary, row) => {
+    const status = purchaseArchiveStatusV72(row)
+    summary[status] = (summary[status] || 0) + 1
+    return summary
+  }, { 未建立: 0, 已建立: 0, 已歸檔: 0 })
   const currentMonthKey = todayDate().slice(0, 7)
   const thisMonthTotal = purchases
     .filter((row) => (row.requestDate || '').startsWith(currentMonthKey))
@@ -2170,7 +2177,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   useEffect(() => {
     setPurchasePage(1)
-  }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
+  }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, archiveFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
 
   useEffect(() => {
     if (activeTable !== '採購紀錄') return
@@ -2492,16 +2499,28 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <label>付款<select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}><option value="全部">全部</option>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>到貨<select value={arrivalFilter} onChange={(event) => setArrivalFilter(event.target.value)}><option value="全部">全部</option>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>驗收<select value={acceptanceFilter} onChange={(event) => setAcceptanceFilter(event.target.value)}><option value="全部">全部</option>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>歸檔<select value={archiveFilter} onChange={(event) => setArchiveFilter(event.target.value)}>{['全部', '未建立', '已建立', '已歸檔'].map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>廠商<select value={vendorFilter} onChange={(event) => setVendorFilter(event.target.value)}>{vendors.map((vendor) => <option key={vendor} value={vendor}>{vendor}</option>)}</select></label>
               <label>月份<select value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)}>{months.map((month) => <option key={month} value={month}>{month}</option>)}</select></label>
-              <button type="button" className="ghost-btn" onClick={() => { setPurchaseKeyword(''); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setVendorFilter('全部'); setMonthFilter('全部') }}>清除篩選</button>
+              <button type="button" className="ghost-btn" onClick={() => { setPurchaseKeyword(''); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setVendorFilter('全部'); setMonthFilter('全部') }}>清除篩選</button>
             </div>
             <div className="purchase-quick-filters">
-              <button type="button" className={statusFilter === '全部' && paymentFilter === '全部' && arrivalFilter === '全部' && acceptanceFilter === '全部' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部') }}>全部</button>
-              <button type="button" className={arrivalFilter === '未到貨' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setArrivalFilter('未到貨'); setPaymentFilter('全部'); setAcceptanceFilter('全部') }}>未到貨</button>
-              <button type="button" className={paymentFilter === '未付款' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('未付款'); setArrivalFilter('全部'); setAcceptanceFilter('全部') }}>未付款</button>
-              <button type="button" className={acceptanceFilter === '未驗收' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setAcceptanceFilter('未驗收'); setPaymentFilter('全部'); setArrivalFilter('全部') }}>未驗收</button>
-              <button type="button" className={statusFilter === '已完成' ? 'active' : ''} onClick={() => { setStatusFilter('已完成'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部') }}>已完成</button>
+              <button type="button" className={statusFilter === '全部' && paymentFilter === '全部' && arrivalFilter === '全部' && acceptanceFilter === '全部' && archiveFilter === '全部' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>全部</button>
+              <button type="button" className={arrivalFilter === '未到貨' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setArrivalFilter('未到貨'); setPaymentFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>未到貨</button>
+              <button type="button" className={paymentFilter === '未付款' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('未付款'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>未付款</button>
+              <button type="button" className={acceptanceFilter === '未驗收' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setAcceptanceFilter('未驗收'); setPaymentFilter('全部'); setArrivalFilter('全部'); setArchiveFilter('全部') }}>未驗收</button>
+              <button type="button" className={statusFilter === '已完成' ? 'active' : ''} onClick={() => { setStatusFilter('已完成'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>已完成</button>
+              <button type="button" className={archiveFilter === '未建立' ? 'active' : ''} onClick={() => setArchiveFilter('未建立')}>未建資料夾</button>
+              <button type="button" className={archiveFilter === '已建立' ? 'active' : ''} onClick={() => setArchiveFilter('已建立')}>待確認歸檔</button>
+              <button type="button" className={archiveFilter === '已歸檔' ? 'active' : ''} onClick={() => setArchiveFilter('已歸檔')}>已歸檔</button>
+            </div>
+            <div className="fd72-archive-summary">
+              {['未建立', '已建立', '已歸檔'].map((status) => (
+                <button key={status} type="button" className={archiveFilter === status ? 'active' : ''} onClick={() => setArchiveFilter(status)}>
+                  <span>{status === '未建立' ? '未建資料夾' : status === '已建立' ? '待確認文件' : '完成歸檔'}</span>
+                  <strong>{archiveSummaryV72[status] || 0}</strong>
+                </button>
+              ))}
             </div>
             <div className="purchase-v15-status-row purchase-v1974-status-row">
               <article><span>等待報價</span><strong>{waitingQuote}</strong></article>
@@ -2585,7 +2604,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                             <span>廠商<b>{row.vendor || '—'}</b></span>
                             <span>申請人<b>{row.requester || '—'}</b></span>
                             <span>品項<b>{purchaseTitle(row)}</b></span>
-                            <span>歸檔<b>{row.archiveFolder?.url ? '已建立' : '未建立'}</b></span>
+                            <span>歸檔<b className={`fd72-archive-status ${purchaseArchiveStatusV72(row)}`}>{purchaseArchiveStatusV72(row)}</b></span>
                             <span>附件<b>{normalizeAttachmentList(row.attachments).length} 件</b></span>
                             <span>日期<b>{row.requestDate || '未填日期'}</b></span>
                             <span>品項<b>{getPurchaseItems(row).length} 項</b></span>
@@ -6198,7 +6217,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.71 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.72 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -7054,6 +7073,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
         suggestedName={buildArchiveFolderNameV67({ type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate })}
         compact
       />
+      <PurchaseArchiveHintV72 row={row} />
 
       <div className="purchase-detail-actions">
         <button type="button" onClick={onEdit}>編輯採購</button>
@@ -7366,6 +7386,42 @@ function normalizeArchiveFolderV67(value = {}, fallback = {}) {
   }
 }
 
+function purchaseArchiveStatusV72(row = {}) {
+  const folder = normalizeArchiveFolderV67(row.archiveFolder, { type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate })
+  if (folder.status === '已歸檔') return '已歸檔'
+  if (folder.url) return folder.status && folder.status !== '未建立' ? folder.status : '已建立'
+  return '未建立'
+}
+
+function PurchaseArchiveHintV72({ row }) {
+  const status = purchaseArchiveStatusV72(row)
+  const messages = {
+    未建立: {
+      title: '尚未建立歸檔資料夾',
+      detail: '請先複製建議資料夾名稱，到 OneDrive / SharePoint / Google Drive 建立資料夾，再把資料夾連結貼回 FlowDesk。',
+    },
+    已建立: {
+      title: '資料夾已建立，待確認文件',
+      detail: '請確認報價單、PO、發票、驗收資料或 Mail 截圖都已放入雲端資料夾；確認後可把狀態改為已歸檔。',
+    },
+    已歸檔: {
+      title: '此採購已完成歸檔',
+      detail: '後續查詢文件時，直接從 FlowDesk 開啟雲端資料夾即可。',
+    },
+  }
+  const message = messages[status] || messages.未建立
+  return (
+    <section className={`fd72-archive-hint ${status === '已歸檔' ? 'done' : status === '已建立' ? 'ready' : 'empty'}`}>
+      <div>
+        <span>歸檔提醒</span>
+        <strong>{message.title}</strong>
+        <small>{message.detail}</small>
+      </div>
+      <em>{status}</em>
+    </section>
+  )
+}
+
 function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedName, onChange, compact = false }) {
   const safeFolder = normalizeArchiveFolderV67(folder, { title: suggestedName })
   const [draft, setDraft] = useState(() => ({
@@ -7435,7 +7491,7 @@ function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedNam
         </div>
         <div className="fd67-archive-actions">
           <button type="button" onClick={copyName}>複製名稱</button>
-          {draft.url ? <a href={draft.url} target="_blank" rel="noreferrer">開啟資料夾</a> : <button type="button" disabled>尚無連結</button>}
+          {draft.url ? <a href={draft.url} target="_blank" rel="noreferrer">開啟雲端資料夾</a> : <button type="button" disabled>尚無雲端連結</button>}
           {draft.url ? <button type="button" onClick={copyLink}>複製連結</button> : null}
         </div>
       </div>
@@ -7456,7 +7512,7 @@ function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedNam
           <label>備註
             <input value={draft.note} onChange={(event) => updateDraft('note', event.target.value)} placeholder="例如 權限、資料夾位置或歸檔規則" />
           </label>
-          <button type="button" onClick={saveFolder}>儲存歸檔資料夾</button>
+          <button type="button" onClick={saveFolder}>儲存歸檔設定</button>
         </div>
       ) : null}
     </section>
