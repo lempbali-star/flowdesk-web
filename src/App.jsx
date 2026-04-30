@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.87'
+const FLOWDESK_APP_VERSION = '20.3.88'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -2016,6 +2016,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const [acceptanceFilter, setAcceptanceFilter] = useState('全部')
   const [archiveFilter, setArchiveFilter] = useState('全部')
   const [purchasePriorityFilter, setPurchasePriorityFilter] = useState('全部')
+  const [purchaseCaseFilter, setPurchaseCaseFilter] = useState('進行中')
   const [vendorFilter, setVendorFilter] = useState('全部')
   const [monthFilter, setMonthFilter] = useState('全部')
   const [purchaseKeyword, setPurchaseKeyword] = useState('')
@@ -2119,21 +2120,46 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       ...getPurchaseItems(row).flatMap((item) => [item.name, item.note]),
     ].join(' ').toLowerCase()
     const byKeyword = !keyword || searchText.includes(keyword)
+    const rowStatusText = String(row.status || '')
+    const rowIsDone = doneStages.includes(row.status) || rowStatusText.includes('完成')
+    const rowIsCanceled = rowStatusText.includes('取消')
+    const rowArchiveStatus = purchaseArchiveStatusV72(row)
+    const explicitStatusOrArchive = statusFilter !== '全部' || archiveFilter !== '全部'
+    const byCase = explicitStatusOrArchive
+      || purchaseCaseFilter === '全部'
+      || (purchaseCaseFilter === '進行中' && !rowIsDone && !rowIsCanceled)
+      || (purchaseCaseFilter === '已完成' && rowIsDone && !rowIsCanceled)
+      || (purchaseCaseFilter === '已歸檔' && rowArchiveStatus === '已歸檔')
+      || (purchaseCaseFilter === '已取消' && rowIsCanceled)
     const byStatus = statusFilter === '全部' || row.status === statusFilter
     const byPayment = paymentFilter === '全部' || (row.paymentStatus || '未付款') === paymentFilter
     const byArrival = arrivalFilter === '全部' || (row.arrivalStatus || '未到貨') === arrivalFilter
     const byAcceptance = acceptanceFilter === '全部' || (row.acceptanceStatus || '未驗收') === acceptanceFilter
-    const byArchive = archiveFilter === '全部' || purchaseArchiveStatusV72(row) === archiveFilter
+    const byArchive = archiveFilter === '全部' || rowArchiveStatus === archiveFilter
     const byPriority = purchasePriorityFilter === '全部' || normalizePurchasePriority(row.priority) === purchasePriorityFilter
     const byVendor = vendorFilter === '全部' || row.vendor === vendorFilter
     const byMonth = monthFilter === '全部' || (row.requestDate || '').startsWith(monthFilter)
-    return byKeyword && byStatus && byPayment && byArrival && byAcceptance && byArchive && byPriority && byVendor && byMonth
+    return byKeyword && byCase && byStatus && byPayment && byArrival && byAcceptance && byArchive && byPriority && byVendor && byMonth
   })
   const purchasePageCount = Math.max(1, Math.ceil(filteredPurchases.length / purchasePageSize))
   const safePurchasePage = Math.min(purchasePage, purchasePageCount)
   const pagedPurchases = filteredPurchases.slice((safePurchasePage - 1) * purchasePageSize, safePurchasePage * purchasePageSize)
   const stableSelectedPurchase = selectedPurchase ? purchases.find((row) => isSamePurchase(row, selectedPurchase)) || null : null
   const detailDialogPurchaseV78 = purchaseDetailOpenId ? purchases.find((row) => getPurchaseKey(row) === purchaseDetailOpenId || row.id === purchaseDetailOpenId) || null : null
+  const purchaseCaseCounts = useMemo(() => {
+    return purchases.reduce((summary, row) => {
+      const status = String(row.status || '')
+      const isDone = doneStages.includes(row.status) || status.includes('完成')
+      const isCanceled = status.includes('取消')
+      const archiveStatus = purchaseArchiveStatusV72(row)
+      if (!isDone && !isCanceled) summary.open += 1
+      if (isDone) summary.done += 1
+      if (isCanceled) summary.cancelled += 1
+      if (archiveStatus === '已歸檔') summary.archived += 1
+      summary.all += 1
+      return summary
+    }, { open: 0, done: 0, archived: 0, cancelled: 0, all: 0 })
+  }, [purchases, doneStages])
 
   function openPurchaseDetailDialogV78(row) {
     if (!row) return
@@ -2197,6 +2223,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     .slice(0, 5)
 
   const activePurchaseFilterLabels = [
+    purchaseCaseFilter !== '全部' ? `案件：${purchaseCaseFilter}` : '',
     statusFilter !== '全部' ? `狀態：${statusFilter}` : '',
     purchasePriorityFilter !== '全部' ? `優先：${purchasePriorityFilter}` : '',
     paymentFilter !== '全部' ? `付款：${paymentFilter}` : '',
@@ -2343,7 +2370,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   useEffect(() => {
     setPurchasePage(1)
-  }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, archiveFilter, purchasePriorityFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
+  }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, archiveFilter, purchasePriorityFilter, purchaseCaseFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
 
   useEffect(() => {
     if (activeTable !== '採購紀錄') return
@@ -2707,7 +2734,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
             </div>
             <div className="purchase-filter-bar">
               <label className="purchase-search-field">搜尋<input value={purchaseKeyword} onChange={(event) => setPurchaseKeyword(event.target.value)} placeholder="編號、品項、廠商、申請人、使用人..." /></label>
-              <label>流程<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="全部">全部</option>{activeStages.map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+              <label>流程<select value={statusFilter} onChange={(event) => { const nextStatus = event.target.value; setStatusFilter(nextStatus); if (nextStatus !== '全部') setPurchaseCaseFilter('全部') }}><option value="全部">全部</option>{activeStages.map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
               <label>優先等級<select value={purchasePriorityFilter} onChange={(event) => setPurchasePriorityFilter(event.target.value)}><option value="全部">全部</option>{purchasePriorityOptions.map((priority) => <option key={priority.id} value={priority.id}>{priority.label}</option>)}</select></label>
               <label>付款<select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}><option value="全部">全部</option>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>到貨<select value={arrivalFilter} onChange={(event) => setArrivalFilter(event.target.value)}><option value="全部">全部</option>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
@@ -2715,27 +2742,31 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <label>歸檔<select value={archiveFilter} onChange={(event) => setArchiveFilter(event.target.value)}>{['全部', '未建立', '已建立', '已歸檔'].map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>廠商<select value={vendorFilter} onChange={(event) => setVendorFilter(event.target.value)}>{vendors.map((vendor) => <option key={vendor} value={vendor}>{vendor}</option>)}</select></label>
               <label>月份<select value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)}>{months.map((month) => <option key={month} value={month}>{month}</option>)}</select></label>
-              <button type="button" className="ghost-btn" onClick={() => { setPurchaseKeyword(''); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部'); setVendorFilter('全部'); setMonthFilter('全部') }}>清除篩選</button>
+              <button type="button" className="ghost-btn" onClick={() => { setPurchaseKeyword(''); setPurchaseCaseFilter('進行中'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部'); setVendorFilter('全部'); setMonthFilter('全部') }}>清除篩選</button>
             </div>
-            <div className="purchase-quick-filters">
-              <button type="button" className={statusFilter === '全部' && paymentFilter === '全部' && arrivalFilter === '全部' && acceptanceFilter === '全部' && archiveFilter === '全部' && purchasePriorityFilter === '全部' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>全部</button>
-              <button type="button" className={purchasePriorityFilter === '緊急' ? 'active urgent' : ''} onClick={() => { setPurchasePriorityFilter('緊急'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>緊急</button>
-              <button type="button" className={purchasePriorityFilter === '高' ? 'active' : ''} onClick={() => { setPurchasePriorityFilter('高'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>高優先</button>
-              <button type="button" className={arrivalFilter === '未到貨' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setArrivalFilter('未到貨'); setPaymentFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未到貨</button>
-              <button type="button" className={paymentFilter === '未付款' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('未付款'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未付款</button>
-              <button type="button" className={acceptanceFilter === '未驗收' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setAcceptanceFilter('未驗收'); setPaymentFilter('全部'); setArrivalFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未驗收</button>
-              <button type="button" className={statusFilter === '已完成' ? 'active' : ''} onClick={() => { setStatusFilter('已完成'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>已完成</button>
-              <button type="button" className={archiveFilter === '未建立' ? 'active' : ''} onClick={() => { setArchiveFilter('未建立'); setPurchasePriorityFilter('全部') }}>未建資料夾</button>
-              <button type="button" className={archiveFilter === '已建立' ? 'active' : ''} onClick={() => { setArchiveFilter('已建立'); setPurchasePriorityFilter('全部') }}>待確認歸檔</button>
-              <button type="button" className={archiveFilter === '已歸檔' ? 'active' : ''} onClick={() => { setArchiveFilter('已歸檔'); setPurchasePriorityFilter('全部') }}>已歸檔</button>
+            <div className="purchase-quick-filters fd88-case-filter-bar">
+              <button type="button" className={purchaseCaseFilter === '進行中' && statusFilter === '全部' && archiveFilter === '全部' ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('進行中'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>進行中 <small>{purchaseCaseCounts.open}</small></button>
+              <button type="button" className={purchaseCaseFilter === '已完成' ? 'active done' : ''} onClick={() => { setPurchaseCaseFilter('已完成'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>已完成 <small>{purchaseCaseCounts.done}</small></button>
+              <button type="button" className={purchaseCaseFilter === '已歸檔' || archiveFilter === '已歸檔' ? 'active archived' : ''} onClick={() => { setPurchaseCaseFilter('已歸檔'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('已歸檔'); setPurchasePriorityFilter('全部') }}>已歸檔 <small>{purchaseCaseCounts.archived}</small></button>
+              <button type="button" className={purchaseCaseFilter === '已取消' ? 'active muted' : ''} onClick={() => { setPurchaseCaseFilter('已取消'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>已取消 <small>{purchaseCaseCounts.cancelled}</small></button>
+              <button type="button" className={purchaseCaseFilter === '全部' && statusFilter === '全部' && paymentFilter === '全部' && arrivalFilter === '全部' && acceptanceFilter === '全部' && archiveFilter === '全部' && purchasePriorityFilter === '全部' ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('全部'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>全部 <small>{purchaseCaseCounts.all}</small></button>
+              <span className="fd88-case-divider" />
+              <button type="button" className={purchasePriorityFilter === '緊急' ? 'active urgent' : ''} onClick={() => { setPurchasePriorityFilter('緊急'); setPurchaseCaseFilter('進行中'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>緊急</button>
+              <button type="button" className={purchasePriorityFilter === '高' ? 'active' : ''} onClick={() => { setPurchasePriorityFilter('高'); setPurchaseCaseFilter('進行中'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>高優先</button>
+              <button type="button" className={arrivalFilter === '未到貨' ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('進行中'); setStatusFilter('全部'); setArrivalFilter('未到貨'); setPaymentFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未到貨</button>
+              <button type="button" className={paymentFilter === '未付款' ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('進行中'); setStatusFilter('全部'); setPaymentFilter('未付款'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未付款</button>
+              <button type="button" className={acceptanceFilter === '未驗收' ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('進行中'); setStatusFilter('全部'); setAcceptanceFilter('未驗收'); setPaymentFilter('全部'); setArrivalFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未驗收</button>
+              <button type="button" className={archiveFilter === '未建立' ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('進行中'); setArchiveFilter('未建立'); setPurchasePriorityFilter('全部') }}>未建資料夾</button>
+              <button type="button" className={archiveFilter === '已建立' ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('進行中'); setArchiveFilter('已建立'); setPurchasePriorityFilter('全部') }}>待確認歸檔</button>
             </div>
-            <div className="fd72-archive-summary">
+            <div className="fd72-archive-summary fd88-completion-summary">
               {['未建立', '已建立', '已歸檔'].map((status) => (
-                <button key={status} type="button" className={archiveFilter === status ? 'active' : ''} onClick={() => setArchiveFilter(status)}>
+                <button key={status} type="button" className={archiveFilter === status ? 'active' : ''} onClick={() => { setArchiveFilter(status); if (status === '已歸檔') setPurchaseCaseFilter('已歸檔') }}>
                   <span>{status === '未建立' ? '未建資料夾' : status === '已建立' ? '待確認文件' : '完成歸檔'}</span>
                   <strong>{archiveSummaryV72[status] || 0}</strong>
                 </button>
               ))}
+              <article className="fd88-completion-note"><strong>已完成不刪除</strong><span>主清單預設看進行中，完成、取消與歸檔案件改由上方案件篩選或分析摘要查詢。</span></article>
             </div>
             <div className="purchase-v15-status-row purchase-v1974-status-row">
               <article><span>等待報價</span><strong>{waitingQuote}</strong></article>
@@ -3117,13 +3148,13 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
   })
   const [tasksCloudReady, setTasksCloudReady] = useState(!flowdeskCloud)
   const tasksCloudSaveTimer = useRef(null)
-  const [filter, setFilter] = useState('全部')
+  const [filter, setFilter] = useState('未完成')
   const [keyword, setKeyword] = useState('')
   const [selectedId, setSelectedId] = useState(sourceTasks[0]?.id)
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
-  const statusOptions = ['全部', '待跟進', '跟進中', '等回覆', '卡關', '已收斂']
-  const taskStatusOptions = statusOptions.filter((item) => item !== '全部')
+  const statusOptions = ['未完成', '全部', '待跟進', '跟進中', '等回覆', '卡關', '已收斂']
+  const taskStatusOptions = statusOptions.filter((item) => !['全部', '未完成'].includes(item))
 
   useEffect(() => {
     let cancelled = false
@@ -3168,7 +3199,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
 
   const selectedTask = tasks.find((task) => task.id === selectedId) || tasks[0]
   const visibleTasks = tasks.filter((task) => {
-    const statusMatched = filter === '全部' || task.status === filter
+    const statusMatched = filter === '全部' || (filter === '未完成' ? task.status !== '已收斂' : task.status === filter)
     const q = keyword.trim().toLowerCase()
     const text = [task.id, task.title, task.source, task.category, task.status, task.priority, task.owner, task.next, task.relatedPurchase, task.relatedVendor, task.relatedProject, ...(Array.isArray(task.tags) ? task.tags : [])].join(' ').toLowerCase()
     return statusMatched && (!q || text.includes(q))
@@ -3219,7 +3250,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
   }
 
   function statusCount(status) {
-    return status === '全部' ? tasks.length : tasks.filter((task) => task.status === status).length
+    return status === '全部' ? tasks.length : status === '未完成' ? tasks.filter((task) => task.status !== '已收斂').length : tasks.filter((task) => task.status === status).length
   }
 
   return (
@@ -3232,7 +3263,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
         </div>
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">等待 / 卡關 {waitingCount}</span>
-          <button className="ghost-btn" type="button" onClick={() => { setFilter('全部'); setKeyword('') }}>整理視圖</button>
+          <button className="ghost-btn" type="button" onClick={() => { setFilter('未完成'); setKeyword('') }}>回到未完成</button>
           <button className="primary-btn" type="button" onClick={() => setShowTaskForm(true)}>新增任務</button>
         </div>
       </section>
@@ -3430,6 +3461,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
   const [projectHealthFilter, setProjectHealthFilter] = useState('全部')
   const [projectPriorityFilter, setProjectPriorityFilter] = useState('全部')
+  const [projectCaseFilter, setProjectCaseFilter] = useState('進行中')
   const [projectSortMode, setProjectSortMode] = useState(() => {
     if (typeof window === 'undefined') return '優先順序'
     const saved = window.localStorage.getItem('flowdesk-project-sort-mode-v20322')
@@ -4278,6 +4310,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const keyword = projectKeyword.trim().toLowerCase()
     return projects
       .map(normalizeProject)
+      .filter((project) => {
+        const phaseText = String(project.phase || '')
+        const isDone = phaseText.includes('完成') || Number(project.progress || 0) >= 100
+        const isCanceled = phaseText.includes('取消') || phaseText.includes('暫緩')
+        return projectCaseFilter === '全部'
+          || (projectCaseFilter === '進行中' && !isDone && !isCanceled)
+          || (projectCaseFilter === '已完成' && isDone)
+          || (projectCaseFilter === '已取消' && isCanceled)
+      })
       .filter((project) => projectPhaseFilter === '全部' || project.phase === projectPhaseFilter)
       .filter((project) => projectHealthFilter === '全部' || project.health === projectHealthFilter)
       .filter((project) => projectPriorityFilter === '全部' || project.priority === projectPriorityFilter || getProjectPriorityMeta(project).label === projectPriorityFilter)
@@ -4299,7 +4340,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         ].join(' ').toLowerCase().includes(keyword)
       })
       .sort(compareProjectsBySort)
-  }, [projects, projectKeyword, projectPhaseFilter, projectHealthFilter, projectPriorityFilter, projectSortMode])
+  }, [projects, projectKeyword, projectCaseFilter, projectPhaseFilter, projectHealthFilter, projectPriorityFilter, projectSortMode])
 
   const projectPhaseOptions = useMemo(() => ['全部', ...Array.from(new Set([...PROJECT_PHASE_OPTIONS, ...projects.map((project) => project.phase)].filter(Boolean)))], [projects])
   const projectHealthOptions = useMemo(() => ['全部', ...Array.from(new Set([...PROJECT_HEALTH_OPTIONS, ...projects.map((project) => project.health)].filter(Boolean)))], [projects])
@@ -4310,6 +4351,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const riskCount = projects.filter((project) => project.tone === 'red' || String(project.health || '').includes('待') || String(project.health || '').includes('卡') || String(project.health || '').includes('風險')).length
   const overdueProjects = projects.filter((project) => project.endDate && project.endDate < todayDate() && Number(project.progress || 0) < 100).length
   const highPriorityProjects = projects.map(normalizeProject).filter((project) => getProjectPriorityMeta(project).score >= 62 && clampPercent(project.progress) < 100).length
+  const projectCaseCounts = projects.map(normalizeProject).reduce((summary, project) => {
+    const phaseText = String(project.phase || '')
+    const isDone = phaseText.includes('完成') || Number(project.progress || 0) >= 100
+    const isCanceled = phaseText.includes('取消') || phaseText.includes('暫緩')
+    if (!isDone && !isCanceled) summary.open += 1
+    if (isDone) summary.done += 1
+    if (isCanceled) summary.cancelled += 1
+    summary.all += 1
+    return summary
+  }, { open: 0, done: 0, cancelled: 0, all: 0 })
   const projectPageTotal = Math.max(1, Math.ceil(filteredProjects.length / projectPageSize))
   const safeProjectPage = Math.min(projectPage, projectPageTotal)
   const projectPageStart = (safeProjectPage - 1) * projectPageSize
@@ -5260,6 +5311,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <article><span>同步狀態</span><strong>{flowdeskCloud ? (projectsCloudReady ? '雲端模式' : '同步中') : '本機備援'}</strong></article>
       </section>
 
+      <section className="fd88-case-filter-bar project-case-bar">
+        <button type="button" className={projectCaseFilter === '進行中' ? 'active' : ''} onClick={() => setProjectCaseFilter('進行中')}>進行中 <small>{projectCaseCounts.open}</small></button>
+        <button type="button" className={projectCaseFilter === '已完成' ? 'active done' : ''} onClick={() => setProjectCaseFilter('已完成')}>已完成 <small>{projectCaseCounts.done}</small></button>
+        <button type="button" className={projectCaseFilter === '已取消' ? 'active muted' : ''} onClick={() => setProjectCaseFilter('已取消')}>已取消 / 暫緩 <small>{projectCaseCounts.cancelled}</small></button>
+        <button type="button" className={projectCaseFilter === '全部' ? 'active' : ''} onClick={() => setProjectCaseFilter('全部')}>全部 <small>{projectCaseCounts.all}</small></button>
+      </section>
+
       <section className="fd203-attention-panel">
         <div>
           <p className="eyebrow">TODAY FOCUS</p>
@@ -5531,10 +5589,41 @@ function FlowPage({ rules }) {
   )
 }
 
+
+function getCaseCompletionDate(row = {}) {
+  return row.completedAt || row.completedDate || row.doneDate || row.acceptanceDate || row.arrivalDate || row.updatedAt || row.dueDate || row.due || row.endDate || row.requestDate || todayDate()
+}
+
+function isClosedCaseStatus(value) {
+  const text = String(value || '')
+  return text.includes('已完成') || text.includes('完成') || text.includes('已收斂') || text.includes('已取消') || text.includes('取消') || text.includes('關閉') || text.includes('結案')
+}
+
+function buildCompletedCaseRows(data = {}) {
+  const workRows = (data.workItems || [])
+    .filter((row) => isClosedCaseStatus(row.lane || row.status))
+    .map((row) => ({ id: row.id || '', type: '工作事項', title: row.title || '未命名工作', status: row.lane || row.status || '已完成', owner: row.owner || row.requester || '未指定', date: getCaseCompletionDate(row), meta: [row.type, row.channel, row.relation].filter(Boolean).join('｜') }))
+  const taskRows = (data.tasks || [])
+    .filter((row) => isClosedCaseStatus(row.status))
+    .map((row) => ({ id: row.id || '', type: '任務追蹤', title: row.title || '未命名任務', status: row.status || '已收斂', owner: row.owner || '未指定', date: getCaseCompletionDate(row), meta: [row.category, row.relatedPurchase, row.relatedVendor].filter(Boolean).join('｜') }))
+  const purchaseRows = (data.purchases || [])
+    .filter((row) => isClosedCaseStatus(row.status) || purchaseArchiveStatusV72(row) === '已歸檔')
+    .map((row) => ({ id: row.id || '', type: '採購', title: purchaseTitle(row), status: purchaseArchiveStatusV72(row) === '已歸檔' ? '已歸檔' : (row.status || '已完成'), owner: row.requester || row.department || '未指定', date: getCaseCompletionDate(row), amount: calculatePurchase(row).taxedTotal, meta: [row.vendor, row.department, row.user || row.usedBy].filter(Boolean).join('｜') }))
+  const projectRows = (data.projects || [])
+    .filter((row) => isClosedCaseStatus(row.phase) || Number(row.progress || 0) >= 100)
+    .map((row) => ({ id: row.id || '', type: '專案', title: row.name || '未命名專案', status: row.phase || '已完成', owner: row.owner || '未指定', date: getCaseCompletionDate(row), progress: row.progress || 100, meta: [row.health, row.priority].filter(Boolean).join('｜') }))
+  const reminderRows = (data.reminders || [])
+    .filter((row) => row.status === '已完成')
+    .map((row) => ({ id: row.id || '', type: '提醒', title: row.title || '未命名提醒', status: row.status || '已完成', owner: row.sourceType || '一般', date: getCaseCompletionDate(row), meta: [row.type, row.priority, row.sourceTitle].filter(Boolean).join('｜') }))
+  return [...workRows, ...taskRows, ...purchaseRows, ...projectRows, ...reminderRows].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+}
+
 function InsightPage({ metrics, records, tickets }) {
   const [reportScope, setReportScope] = useState('本月')
   const [reportTab, setReportTab] = useState('總覽')
   const [reportSearch, setReportSearch] = useState('')
+  const [completedCaseType, setCompletedCaseType] = useState('全部')
+  const [completedCaseSearch, setCompletedCaseSearch] = useState('')
   const [cloudStatus, setCloudStatus] = useState(flowdeskCloud ? '同步中' : '本機資料')
   const [reportData, setReportData] = useState(() => ({
     workItems: readFlowdeskLocalArray('flowdesk-work-items-v196'),
@@ -5614,6 +5703,17 @@ function InsightPage({ metrics, records, tickets }) {
     .filter((row) => row.status !== '已完成')
     .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
     .slice(0, 5)
+  const completedCaseRows = buildCompletedCaseRows(reportData)
+  const completedCaseKeyword = completedCaseSearch.trim().toLowerCase()
+  const visibleCompletedCaseRows = completedCaseRows
+    .filter((row) => completedCaseType === '全部' || row.type === completedCaseType)
+    .filter((row) => !completedCaseKeyword || [row.id, row.type, row.title, row.status, row.owner, row.meta].join(' ').toLowerCase().includes(completedCaseKeyword))
+    .slice(0, 20)
+  const completedCaseTypeOptions = ['全部', '工作事項', '任務追蹤', '採購', '專案', '提醒']
+  const completedCaseSummary = completedCaseRows.reduce((summary, row) => {
+    summary[row.type] = (summary[row.type] || 0) + 1
+    return summary
+  }, {})
 
   const focusRows = [
     ...scopedPurchases
@@ -5638,13 +5738,18 @@ function InsightPage({ metrics, records, tickets }) {
     const snapshot = {
       exportedAt: new Date().toISOString(),
       scope: reportScope,
-      summary: { purchaseTotal, purchaseOpen, taskOpen, taskWaiting, projectRisk, reminders: reminderSummary },
+      summary: { purchaseTotal, purchaseOpen, taskOpen, taskWaiting, projectRisk, reminders: reminderSummary, completedCases: completedCaseRows.length },
       focusRows,
       vendorRanking,
       purchaseStatusRows,
       taskStatusRows,
     }
     downloadFlowdeskText(`flowdesk_report_snapshot_${todayDate()}.json`, JSON.stringify(snapshot, null, 2), 'application/json;charset=utf-8')
+  }
+
+  function exportCompletedCases() {
+    const rows = visibleCompletedCaseRows.map((row) => ({ 類型: row.type, 編號: row.id, 標題: row.title, 狀態: row.status, 負責或來源: row.owner, 完成或歸檔日期: row.date, 備註: row.meta || '', 金額: row.amount || '' }))
+    downloadFlowdeskText(`flowdesk_completed_cases_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
   }
 
   return (
@@ -5682,6 +5787,40 @@ function InsightPage({ metrics, records, tickets }) {
               <small>{card.note}</small>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="panel wide fd88-completed-center">
+        <div className="fd88-completed-head">
+          <div>
+            <p className="eyebrow">完成紀錄中心</p>
+            <h3>已完成 / 已取消 / 已歸檔案件</h3>
+            <span>主清單預設保持乾淨，歷史案件集中在這裡查詢與匯出。</span>
+          </div>
+          <div className="fd88-completed-actions">
+            <input value={completedCaseSearch} onChange={(event) => setCompletedCaseSearch(event.target.value)} placeholder="搜尋完成案件..." />
+            <button type="button" className="ghost-btn" onClick={exportCompletedCases}>匯出完成紀錄</button>
+          </div>
+        </div>
+        <div className="fd88-completed-tabs">
+          {completedCaseTypeOptions.map((type) => (
+            <button key={type} type="button" className={completedCaseType === type ? 'active' : ''} onClick={() => setCompletedCaseType(type)}>
+              <span>{type}</span><strong>{type === '全部' ? completedCaseRows.length : completedCaseSummary[type] || 0}</strong>
+            </button>
+          ))}
+        </div>
+        <div className="fd88-completed-table">
+          <div className="fd88-completed-table-head"><span>類型 / 案件</span><span>狀態</span><span>負責 / 來源</span><span>完成日期</span><span>備註</span></div>
+          {visibleCompletedCaseRows.map((row) => (
+            <article key={`${row.type}-${row.id}-${row.title}`}>
+              <div><Badge value={row.type} /><strong>{row.title}</strong><small>{row.id || '未編號'}</small></div>
+              <span>{row.status}</span>
+              <span>{row.owner || '未指定'}</span>
+              <span>{row.date || '未設定'}</span>
+              <small>{row.amount ? formatMoney(row.amount) : row.meta || '—'}</small>
+            </article>
+          ))}
+          {!visibleCompletedCaseRows.length && <div className="flow-empty-card">目前沒有符合條件的完成紀錄。</div>}
         </div>
       </section>
 
@@ -5919,11 +6058,13 @@ function createEmptyReminder() {
 function RemindersPage({ reminders, setReminders, onNavigateSource }) {
   const [keyword, setKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState('全部')
+  const [caseFilter, setCaseFilter] = useState('未完成')
   const [typeFilter, setTypeFilter] = useState('全部')
   const [showForm, setShowForm] = useState(false)
   const [draft, setDraft] = useState(createEmptyReminder())
   const summary = getReminderSummary(reminders)
   const filtered = reminders
+    .filter((item) => caseFilter === '全部' || (caseFilter === '未完成' ? item.status !== '已完成' : item.status === '已完成'))
     .filter((item) => statusFilter === '全部' || item.status === statusFilter)
     .filter((item) => typeFilter === '全部' || item.type === typeFilter)
     .filter((item) => {
@@ -6016,14 +6157,19 @@ function RemindersPage({ reminders, setReminders, onNavigateSource }) {
       )}
 
       <section className="panel wide reminder-list-panel">
+        <div className="fd88-case-filter-bar reminder-case-bar">
+          <button type="button" className={caseFilter === '未完成' ? 'active' : ''} onClick={() => { setCaseFilter('未完成'); setStatusFilter('全部') }}>未完成 <small>{reminders.filter((item) => item.status !== '已完成').length}</small></button>
+          <button type="button" className={caseFilter === '已完成' ? 'active done' : ''} onClick={() => { setCaseFilter('已完成'); setStatusFilter('全部') }}>已完成 <small>{reminders.filter((item) => item.status === '已完成').length}</small></button>
+          <button type="button" className={caseFilter === '全部' ? 'active' : ''} onClick={() => { setCaseFilter('全部'); setStatusFilter('全部') }}>全部 <small>{reminders.length}</small></button>
+        </div>
         <div className="purchase-filter-bar reminder-filter-bar">
           <label className="purchase-search-field">搜尋<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="標題、關聯來源、備註..." /></label>
-          <label>狀態<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="全部">全部</option>{reminderStatusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label>狀態<select value={statusFilter} onChange={(event) => { const nextStatus = event.target.value; setStatusFilter(nextStatus); if (nextStatus === '已完成') setCaseFilter('全部') }}><option value="全部">全部</option>{reminderStatusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <label>類型<select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="全部">全部</option>{reminderTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <button className="ghost-btn" type="button" onClick={() => { setKeyword(''); setStatusFilter('全部'); setTypeFilter('全部') }}>清除篩選</button>
+          <button className="ghost-btn" type="button" onClick={() => { setKeyword(''); setCaseFilter('未完成'); setStatusFilter('全部'); setTypeFilter('全部') }}>清除篩選</button>
         </div>
         <div className="reminder-bulk-actions">
-          <button type="button" onClick={() => { setStatusFilter('全部'); setTypeFilter('全部'); setKeyword('') }}>全部提醒</button>
+          <button type="button" onClick={() => { setCaseFilter('全部'); setStatusFilter('全部'); setTypeFilter('全部'); setKeyword('') }}>全部提醒</button>
           <button type="button" onClick={completeAllOverdue} disabled={!summary.overdue}>逾期全部完成</button>
         </div>
         <div className="reminder-card-list reminder-grouped-list">
