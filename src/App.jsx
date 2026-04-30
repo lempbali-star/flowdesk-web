@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.80'
+const FLOWDESK_APP_VERSION = '20.3.81'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -436,6 +436,32 @@ const purchasePageSizeOptions = [5, 10, 20, 40]
 const purchasePaymentStatusOptions = ['未付款', '請款中', '已付款']
 const purchaseArrivalStatusOptions = ['未到貨', '部分到貨', '已到貨']
 const purchaseAcceptanceStatusOptions = ['未驗收', '驗收中', '已驗收']
+const purchasePriorityOptions = [
+  { id: '緊急', label: '緊急', tone: 'red', weight: 0, hint: '停線、設備故障、主管急件，需優先插隊處理。' },
+  { id: '高', label: '高', tone: 'orange', weight: 1, hint: '有明確期限，會影響部門作業或使用者進度。' },
+  { id: '一般', label: '一般', tone: 'blue', weight: 2, hint: '正常採購流程，依狀態與到期日追蹤。' },
+  { id: '低', label: '低', tone: 'slate', weight: 3, hint: '備品、汰換、非立即需求，可排在後面處理。' },
+]
+const purchasePriorityValues = purchasePriorityOptions.map((item) => item.id)
+
+function normalizePurchasePriority(value) {
+  if (value === '中') return '一般'
+  return purchasePriorityValues.includes(value) ? value : '一般'
+}
+
+function getPurchasePriorityMeta(value) {
+  const priority = normalizePurchasePriority(value)
+  return purchasePriorityOptions.find((item) => item.id === priority) || purchasePriorityOptions[2]
+}
+
+function getPurchasePriorityWeight(value) {
+  return getPurchasePriorityMeta(value).weight
+}
+
+function PurchasePriorityBadge({ value, compact = false }) {
+  const meta = getPurchasePriorityMeta(value)
+  return <span className={'purchase-priority-badge ' + meta.tone + (compact ? ' compact' : '')}>{meta.label}</span>
+}
 
 const tickets = []
 
@@ -1888,6 +1914,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const [arrivalFilter, setArrivalFilter] = useState('全部')
   const [acceptanceFilter, setAcceptanceFilter] = useState('全部')
   const [archiveFilter, setArchiveFilter] = useState('全部')
+  const [purchasePriorityFilter, setPurchasePriorityFilter] = useState('全部')
   const [vendorFilter, setVendorFilter] = useState('全部')
   const [monthFilter, setMonthFilter] = useState('全部')
   const [purchaseKeyword, setPurchaseKeyword] = useState('')
@@ -1983,6 +2010,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       row.requester,
       row.vendor,
       row.status,
+      row.priority,
       row.paymentStatus,
       row.arrivalStatus,
       row.acceptanceStatus,
@@ -1995,9 +2023,10 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     const byArrival = arrivalFilter === '全部' || (row.arrivalStatus || '未到貨') === arrivalFilter
     const byAcceptance = acceptanceFilter === '全部' || (row.acceptanceStatus || '未驗收') === acceptanceFilter
     const byArchive = archiveFilter === '全部' || purchaseArchiveStatusV72(row) === archiveFilter
+    const byPriority = purchasePriorityFilter === '全部' || normalizePurchasePriority(row.priority) === purchasePriorityFilter
     const byVendor = vendorFilter === '全部' || row.vendor === vendorFilter
     const byMonth = monthFilter === '全部' || (row.requestDate || '').startsWith(monthFilter)
-    return byKeyword && byStatus && byPayment && byArrival && byAcceptance && byArchive && byVendor && byMonth
+    return byKeyword && byStatus && byPayment && byArrival && byAcceptance && byArchive && byPriority && byVendor && byMonth
   })
   const purchasePageCount = Math.max(1, Math.ceil(filteredPurchases.length / purchasePageSize))
   const safePurchasePage = Math.min(purchasePage, purchasePageCount)
@@ -2028,6 +2057,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const paymentPending = purchases.filter((row) => (row.paymentStatus || '未付款') !== '已付款' && !doneStages.includes(row.status)).length
   const acceptancePending = purchases.filter((row) => (row.acceptanceStatus || '未驗收') !== '已驗收' && !doneStages.includes(row.status)).length
   const completedPurchases = purchases.filter((row) => doneStages.includes(row.status)).length
+  const urgentPurchases = purchases.filter((row) => normalizePurchasePriority(row.priority) === '緊急' && !doneStages.includes(row.status)).length
+  const highPriorityPurchases = purchases.filter((row) => ['緊急', '高'].includes(normalizePurchasePriority(row.priority)) && !doneStages.includes(row.status)).length
   const archiveSummaryV72 = purchases.reduce((summary, row) => {
     const status = purchaseArchiveStatusV72(row)
     summary[status] = (summary[status] || 0) + 1
@@ -2053,11 +2084,15 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       if ((row.paymentStatus || '未付款') !== '已付款' && !doneStages.includes(row.status)) reasons.push('付款')
       if ((row.acceptanceStatus || '未驗收') !== '已驗收' && !doneStages.includes(row.status)) reasons.push('驗收')
       if (row.status.includes('詢價') || row.status.includes('報價')) reasons.push('報價')
-      const score = reasons.length * 10 + Math.min(50, Math.round(amount / 10000))
-      return { row, score, reasons, amount }
+      const priority = normalizePurchasePriority(row.priority)
+      if (priority === '緊急') reasons.unshift('緊急')
+      if (priority === '高') reasons.unshift('高優先')
+      const priorityBoost = priority === '緊急' ? 80 : priority === '高' ? 48 : priority === '一般' ? 16 : 0
+      const score = priorityBoost + reasons.length * 10 + Math.min(50, Math.round(amount / 10000))
+      return { row, score, reasons, amount, priority }
     })
     .filter((item) => item.reasons.length)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score || getPurchasePriorityWeight(a.row.priority) - getPurchasePriorityWeight(b.row.priority))
     .slice(0, 5)
 
   function reorderPurchases(dragKey, targetKey) {
@@ -2195,7 +2230,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   useEffect(() => {
     setPurchasePage(1)
-  }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, archiveFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
+  }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, archiveFilter, purchasePriorityFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
 
   useEffect(() => {
     if (activeTable !== '採購紀錄') return
@@ -2305,7 +2340,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       title: `追蹤採購：${purchaseTitle(row)}`,
       type: '採購追蹤',
       lane: '處理中',
-      priority: amount.taxedTotal >= 50000 ? '高' : '中',
+      priority: normalizePurchasePriority(row.priority) === '緊急' ? '緊急' : normalizePurchasePriority(row.priority) === '高' ? '高' : amount.taxedTotal >= 50000 ? '高' : '中',
       channel: '採購管理',
       relation: row.id,
       requester: row.requester || '未指定',
@@ -2328,7 +2363,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     return onCreateReminder({
       title: `${type}提醒：${purchaseTitle(row)}`,
       type: `${type}提醒`,
-      priority: type === '付款' || type === '到貨' ? '高' : '中',
+      priority: normalizePurchasePriority(row.priority) === '緊急' ? '緊急' : normalizePurchasePriority(row.priority) === '高' || type === '付款' || type === '到貨' ? '高' : '中',
       dueDate,
       sourceType: '採購管理',
       sourceTitle: `${row.id} ${purchaseTitle(row)}`,
@@ -2384,7 +2419,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       title: `追蹤 ${purchaseTitle(row)}`,
       type: '採購追蹤',
       lane: doneStages.includes(row.status) ? '已完成' : '待分類',
-      priority: row.status?.includes('簽核') || row.status?.includes('確認') ? '高' : '中',
+      priority: normalizePurchasePriority(row.priority) === '緊急' ? '緊急' : normalizePurchasePriority(row.priority) === '高' || row.status?.includes('簽核') || row.status?.includes('確認') ? '高' : '中',
       channel: '採購管理',
       relation: row.id,
       requester: row.requester || 'Kyle',
@@ -2409,7 +2444,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     onCreateReminder({
       title: `${reminderKind} ${purchaseTitle(row)}`,
       type: typeMap[reminderKind] || '追蹤提醒',
-      priority: reminderKind === '付款' || row.status?.includes('簽核') || row.status?.includes('確認') ? '高' : '中',
+      priority: normalizePurchasePriority(row.priority) === '緊急' ? '緊急' : normalizePurchasePriority(row.priority) === '高' || reminderKind === '付款' || row.status?.includes('簽核') || row.status?.includes('確認') ? '高' : '中',
       dueDate: dueMap[reminderKind] || addDaysDate(3),
       sourceType: '採購',
       sourceTitle: `${row.id} ${purchaseTitle(row)}`,
@@ -2419,11 +2454,11 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   }
 
   function exportFilteredPurchases() {
-    const headers = ['編號', '品項', '廠商', '部門', '申請人', '使用人', '流程狀態', '付款狀態', '到貨狀態', '驗收狀態', '報價單號', 'PO單號', '發票號碼', '申請日', '下單日', '預計到貨', '到貨日', '付款期限', '驗收日', '預算', '報價金額', '未稅', '稅額', '含稅', '預算差異', '品項明細', '備註']
+    const headers = ['編號', '品項', '優先等級', '廠商', '部門', '申請人', '使用人', '流程狀態', '付款狀態', '到貨狀態', '驗收狀態', '報價單號', 'PO單號', '發票號碼', '申請日', '下單日', '預計到貨', '到貨日', '付款期限', '驗收日', '預算', '報價金額', '未稅', '稅額', '含稅', '預算差異', '品項明細', '備註']
     const rows = filteredPurchases.map((row) => {
       const amount = calculatePurchase(row)
       const itemsText = getPurchaseItems(row).map((item) => `${item.name || '未命名'} x ${item.quantity || 0} @ ${item.unitPrice || 0}`).join('；')
-      return [row.id, purchaseTitle(row), row.vendor, row.department, row.requester, row.user || row.usedBy, row.status, row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', row.acceptanceStatus || '未驗收', row.quoteNo, row.poNo, row.invoiceNo, row.requestDate, row.orderDate, row.arrivalDueDate, row.arrivalDate, row.paymentDueDate, row.acceptanceDate, row.budgetAmount || 0, row.quoteAmount || 0, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, Number(row.budgetAmount || 0) ? amount.taxedTotal - Number(row.budgetAmount || 0) : '', itemsText, row.note]
+      return [row.id, purchaseTitle(row), normalizePurchasePriority(row.priority), row.vendor, row.department, row.requester, row.user || row.usedBy, row.status, row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', row.acceptanceStatus || '未驗收', row.quoteNo, row.poNo, row.invoiceNo, row.requestDate, row.orderDate, row.arrivalDueDate, row.arrivalDate, row.paymentDueDate, row.acceptanceDate, row.budgetAmount || 0, row.quoteAmount || 0, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, Number(row.budgetAmount || 0) ? amount.taxedTotal - Number(row.budgetAmount || 0) : '', itemsText, row.note]
     })
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
     const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
@@ -2553,23 +2588,26 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
             <div className="purchase-filter-bar">
               <label className="purchase-search-field">搜尋<input value={purchaseKeyword} onChange={(event) => setPurchaseKeyword(event.target.value)} placeholder="編號、品項、廠商、申請人、使用人..." /></label>
               <label>流程<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="全部">全部</option>{activeStages.map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+              <label>優先等級<select value={purchasePriorityFilter} onChange={(event) => setPurchasePriorityFilter(event.target.value)}><option value="全部">全部</option>{purchasePriorityOptions.map((priority) => <option key={priority.id} value={priority.id}>{priority.label}</option>)}</select></label>
               <label>付款<select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}><option value="全部">全部</option>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>到貨<select value={arrivalFilter} onChange={(event) => setArrivalFilter(event.target.value)}><option value="全部">全部</option>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>驗收<select value={acceptanceFilter} onChange={(event) => setAcceptanceFilter(event.target.value)}><option value="全部">全部</option>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>歸檔<select value={archiveFilter} onChange={(event) => setArchiveFilter(event.target.value)}>{['全部', '未建立', '已建立', '已歸檔'].map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>廠商<select value={vendorFilter} onChange={(event) => setVendorFilter(event.target.value)}>{vendors.map((vendor) => <option key={vendor} value={vendor}>{vendor}</option>)}</select></label>
               <label>月份<select value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)}>{months.map((month) => <option key={month} value={month}>{month}</option>)}</select></label>
-              <button type="button" className="ghost-btn" onClick={() => { setPurchaseKeyword(''); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setVendorFilter('全部'); setMonthFilter('全部') }}>清除篩選</button>
+              <button type="button" className="ghost-btn" onClick={() => { setPurchaseKeyword(''); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部'); setVendorFilter('全部'); setMonthFilter('全部') }}>清除篩選</button>
             </div>
             <div className="purchase-quick-filters">
-              <button type="button" className={statusFilter === '全部' && paymentFilter === '全部' && arrivalFilter === '全部' && acceptanceFilter === '全部' && archiveFilter === '全部' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>全部</button>
-              <button type="button" className={arrivalFilter === '未到貨' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setArrivalFilter('未到貨'); setPaymentFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>未到貨</button>
-              <button type="button" className={paymentFilter === '未付款' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('未付款'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>未付款</button>
-              <button type="button" className={acceptanceFilter === '未驗收' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setAcceptanceFilter('未驗收'); setPaymentFilter('全部'); setArrivalFilter('全部'); setArchiveFilter('全部') }}>未驗收</button>
-              <button type="button" className={statusFilter === '已完成' ? 'active' : ''} onClick={() => { setStatusFilter('已完成'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>已完成</button>
-              <button type="button" className={archiveFilter === '未建立' ? 'active' : ''} onClick={() => setArchiveFilter('未建立')}>未建資料夾</button>
-              <button type="button" className={archiveFilter === '已建立' ? 'active' : ''} onClick={() => setArchiveFilter('已建立')}>待確認歸檔</button>
-              <button type="button" className={archiveFilter === '已歸檔' ? 'active' : ''} onClick={() => setArchiveFilter('已歸檔')}>已歸檔</button>
+              <button type="button" className={statusFilter === '全部' && paymentFilter === '全部' && arrivalFilter === '全部' && acceptanceFilter === '全部' && archiveFilter === '全部' && purchasePriorityFilter === '全部' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>全部</button>
+              <button type="button" className={purchasePriorityFilter === '緊急' ? 'active urgent' : ''} onClick={() => { setPurchasePriorityFilter('緊急'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>緊急</button>
+              <button type="button" className={purchasePriorityFilter === '高' ? 'active' : ''} onClick={() => { setPurchasePriorityFilter('高'); setStatusFilter('全部'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部') }}>高優先</button>
+              <button type="button" className={arrivalFilter === '未到貨' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setArrivalFilter('未到貨'); setPaymentFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未到貨</button>
+              <button type="button" className={paymentFilter === '未付款' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setPaymentFilter('未付款'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未付款</button>
+              <button type="button" className={acceptanceFilter === '未驗收' ? 'active' : ''} onClick={() => { setStatusFilter('全部'); setAcceptanceFilter('未驗收'); setPaymentFilter('全部'); setArrivalFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>未驗收</button>
+              <button type="button" className={statusFilter === '已完成' ? 'active' : ''} onClick={() => { setStatusFilter('已完成'); setPaymentFilter('全部'); setArrivalFilter('全部'); setAcceptanceFilter('全部'); setArchiveFilter('全部'); setPurchasePriorityFilter('全部') }}>已完成</button>
+              <button type="button" className={archiveFilter === '未建立' ? 'active' : ''} onClick={() => { setArchiveFilter('未建立'); setPurchasePriorityFilter('全部') }}>未建資料夾</button>
+              <button type="button" className={archiveFilter === '已建立' ? 'active' : ''} onClick={() => { setArchiveFilter('已建立'); setPurchasePriorityFilter('全部') }}>待確認歸檔</button>
+              <button type="button" className={archiveFilter === '已歸檔' ? 'active' : ''} onClick={() => { setArchiveFilter('已歸檔'); setPurchasePriorityFilter('全部') }}>已歸檔</button>
             </div>
             <div className="fd72-archive-summary">
               {['未建立', '已建立', '已歸檔'].map((status) => (
@@ -2586,6 +2624,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <article><span>未付款</span><strong>{paymentPending}</strong></article>
               <article><span>未驗收</span><strong>{acceptancePending}</strong></article>
               <article><span>已完成</span><strong>{completedPurchases}</strong></article>
+              <article className="purchase-priority-metric urgent"><span>緊急採購</span><strong>{urgentPurchases}</strong></article>
+              <article className="purchase-priority-metric high"><span>高優先未完成</span><strong>{highPriorityPurchases}</strong></article>
             </div>
             <div className="purchase-insight-strip">
               <article><span>本月採購</span><strong>{formatMoney(thisMonthTotal)}</strong></article>
@@ -2593,11 +2633,11 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <article><span>篩選筆數</span><strong>{filteredPurchases.length}</strong></article>
             </div>
             <div className="purchase-action-board">
-              <div><p className="eyebrow">處理優先序</p><strong>採購待辦焦點</strong><span>依金額與未完成狀態自動排序</span></div>
+              <div><p className="eyebrow">處理優先序</p><strong>採購待辦焦點</strong><span>依優先等級、金額與未完成狀態排序</span></div>
               <div className="purchase-action-list">
                 {purchaseActionRows.length ? purchaseActionRows.map((item) => (
                   <button type="button" key={getPurchaseKey(item.row)} onClick={() => setSelectedPurchase(item.row)}>
-                    <div><strong>{purchaseTitle(item.row)}</strong><small>{item.row.vendor || '未指定廠商'} · {item.reasons.join(' / ')}</small></div>
+                    <div><strong>{purchaseTitle(item.row)}</strong><small><PurchasePriorityBadge value={item.row.priority} compact /> {item.row.vendor || '未指定廠商'} · {item.reasons.join(' / ')}</small></div>
                     <b>{formatMoney(item.amount)}</b>
                   </button>
                 )) : <span className="purchase-action-empty">目前沒有需要優先追蹤的採購。</span>}
@@ -2654,6 +2694,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                         {...getPurchaseDragProps(row)}
                         className={[
                           'purchase-card-row purchase-card-compact',
+                          'priority-' + getPurchasePriorityMeta(row.priority).tone,
                           isSamePurchase(selectedPurchase, row) ? 'active' : '',
                           draggingPurchaseId === getPurchaseKey(row) ? 'dragging' : '',
                           dropPurchaseId === getPurchaseKey(row) ? 'drop-target' : '',
@@ -2673,6 +2714,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                             >⋮⋮</span>
                             <span className="record-id">{row.id}</span>
                             <StageBadge value={row.status} stages={purchaseStages} />
+                            <PurchasePriorityBadge value={row.priority} compact />
                           </div>
                           <strong>{purchaseCardTitle(row)}</strong>
                           <div className="fd74-purchase-context">
@@ -6839,6 +6881,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
     paymentDueDate: initial?.paymentDueDate || '',
     arrivalDueDate: initial?.arrivalDueDate || '',
     acceptanceDate: initial?.acceptanceDate || '',
+    priority: normalizePurchasePriority(initial?.priority),
     status: initial?.status || stages?.[0]?.name || '需求確認',
     paymentStatus: initial?.paymentStatus || '未付款',
     arrivalStatus: initial?.arrivalStatus || '未到貨',
@@ -6925,9 +6968,19 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
             <label>使用人<input value={form.user || ''} onChange={(event) => update('user', event.target.value)} placeholder="實際使用人 / 部門" /></label>
             <label>廠商<input value={form.vendor} onChange={(event) => update('vendor', event.target.value)} /></label>
             <label>流程狀態<select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+            <label>優先等級<select value={form.priority} onChange={(event) => update('priority', event.target.value)}>{purchasePriorityOptions.map((priority) => <option key={priority.id} value={priority.id}>{priority.label}</option>)}</select></label>
             <label>付款狀態<select value={form.paymentStatus} onChange={(event) => update('paymentStatus', event.target.value)}>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
             <label>到貨狀態<select value={form.arrivalStatus} onChange={(event) => update('arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
             <label>驗收狀態<select value={form.acceptanceStatus} onChange={(event) => update('acceptanceStatus', event.target.value)}>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+          </div>
+
+          <div className="purchase-priority-editor" aria-label="採購優先等級說明">
+            {purchasePriorityOptions.map((priority) => (
+              <button key={priority.id} type="button" className={form.priority === priority.id ? 'active ' + priority.tone : priority.tone} onClick={() => update('priority', priority.id)}>
+                <span>{priority.label}</span>
+                <small>{priority.hint}</small>
+              </button>
+            ))}
           </div>
 
           <section className="purchase-items-editor">
@@ -7013,6 +7066,7 @@ function normalizePurchase(row) {
     _purchaseKey: row._purchaseKey || row.uid || row.key || createPurchaseKey(),
     item: title,
     items,
+    priority: normalizePurchasePriority(row.priority),
     user: row.user || row.usedBy || row.requester || '未指定',
     usedBy: row.user || row.usedBy || row.requester || '未指定',
     attachments: normalizeAttachmentList(row.attachments),
@@ -7144,7 +7198,7 @@ function PurchaseDetailModalV76({
           <div>
             <p className="eyebrow">採購明細</p>
             <h3>{row.id} · {purchaseTitle(row)}</h3>
-            <span>{row.department || '未指定單位'} · 申請人：{row.requester || '—'} · 使用人：{row.user || row.usedBy || row.requester || '—'}</span>
+            <span>{row.department || '未指定單位'} · 申請人：{row.requester || '—'} · 使用人：{row.user || row.usedBy || row.requester || '—'} · 優先：{normalizePurchasePriority(row.priority)}</span>
           </div>
           <button
             type="button"
@@ -7167,6 +7221,7 @@ function PurchaseDetailModalV76({
           <article><span>使用單位</span><strong>{row.department || '未指定'}</strong></article>
           <article><span>申請人 / 使用人</span><strong>{row.requester || '—'} / {row.user || row.usedBy || row.requester || '—'}</strong></article>
           <article><span>目前狀態</span><strong>{row.status || '未設定'}</strong></article>
+          <article><span>優先等級</span><strong><PurchasePriorityBadge value={row.priority} /></strong></article>
           <article><span>品項</span><strong>{items.length} 項</strong></article>
           <article><span>含稅金額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
           <article><span>歸檔</span><strong>{archiveStatus}</strong></article>
@@ -7286,6 +7341,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
       <span>廠商<b>{row.vendor || '—'}</b></span>
       <span>品項數<b>{items.length} 項 / {totalQuantity} 件</b></span>
       <span>稅別<b>{row.taxMode || '未稅'} / {Number(row.taxRate || 0)}%</b></span>
+      <span>優先等級<b>{normalizePurchasePriority(row.priority)}</b></span>
       <span>付款<b>{row.paymentStatus || '未付款'}</b></span>
       <span>到貨<b>{row.arrivalStatus || '未到貨'}</b></span>
       <span>驗收<b>{row.acceptanceStatus || '未驗收'}</b></span>
@@ -7342,6 +7398,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
     <div className="purchase-detail-stack enhanced-detail fd79-purchase-detail">
       <div className="detail-status-strip fd79-status-strip">
         <StageBadge value={row.status} stages={stages} />
+        <PurchasePriorityBadge value={row.priority} compact />
         <span>{row.department || '未填部門'}</span>
         <span>{row.requester || '未填申請人'}</span>
         <span>使用人：{row.user || row.usedBy || row.requester || '未指定'}</span>
@@ -7354,7 +7411,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
           <span>目前選取</span>
           <strong>{row.id} · {purchaseTitle(row)}</strong>
         </div>
-        <small>{row.vendor || '未指定廠商'} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
+        <small>{row.vendor || '未指定廠商'} · 優先：{normalizePurchasePriority(row.priority)} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
       </div>
 
       <div className="purchase-detail-actions fd79-detail-actions">
