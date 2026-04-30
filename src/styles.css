@@ -22796,3 +22796,175 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   position: relative;
   z-index: 2;
 }
+
+
+/* FlowDesk v20.3.92 - 專案新增流程重整 */
+.fd392-project-create-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(12px);
+}
+
+.fd392-project-create-modal {
+  width: min(1180px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  border-radius: 30px;
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96));
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.28);
+  padding: 24px;
+}
+
+.fd392-project-create-head,
+.fd392-project-create-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fd392-project-create-head h3 {
+  margin: 2px 0 4px;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.fd392-project-create-head span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.fd392-project-create-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.fd392-project-create-summary article {
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(147, 197, 253, 0.5);
+  background: linear-gradient(135deg, rgba(239,246,255,0.88), rgba(255,255,255,0.95));
+}
+
+.fd392-project-create-summary span,
+.fd392-project-create-card small {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.fd392-project-create-summary strong {
+  display: block;
+  margin-top: 5px;
+  color: #0f172a;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fd392-project-create-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.85fr);
+  gap: 16px;
+}
+
+.fd392-project-create-card {
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  background: rgba(255,255,255,0.86);
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
+}
+
+.fd392-project-create-card.main {
+  grid-row: span 2;
+}
+
+.fd392-project-create-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 14px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fd392-project-create-card label.required::after {
+  content: '必填';
+  width: max-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #b91c1c;
+  background: #fee2e2;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fd392-project-create-card input,
+.fd392-project-create-card textarea,
+.fd392-project-create-card select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 14px;
+  outline: none;
+}
+
+.fd392-project-create-card textarea {
+  min-height: 116px;
+  resize: vertical;
+}
+
+.fd392-project-create-card input:focus,
+.fd392-project-create-card textarea:focus,
+.fd392-project-create-card select:focus {
+  border-color: #60a5fa;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18);
+}
+
+.fd392-create-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fd392-project-create-error {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.fd392-project-create-actions {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(203, 213, 225, 0.72);
+}
+
+@media (max-width: 920px) {
+  .fd392-project-create-backdrop { padding: 16px; }
+  .fd392-project-create-summary,
+  .fd392-project-create-grid,
+  .fd392-create-two-col { grid-template-columns: 1fr; }
+  .fd392-project-create-card.main { grid-row: auto; }
+  .fd392-project-create-head,
+  .fd392-project-create-actions { align-items: stretch; flex-direction: column; }
+}

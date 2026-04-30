@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.91'
+const FLOWDESK_APP_VERSION = '20.3.92'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3468,6 +3468,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   })
   const [projectListExpandAllGantt, setProjectListExpandAllGantt] = useState(false)
   const [newProjectDraftId, setNewProjectDraftId] = useState(null)
+  const [projectCreateOpen, setProjectCreateOpen] = useState(false)
+  const [projectCreateForm, setProjectCreateForm] = useState(() => buildBlankProjectCreateForm())
+  const [projectCreateError, setProjectCreateError] = useState('')
   const [projectKeyword, setProjectKeyword] = useState('')
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
   const [projectHealthFilter, setProjectHealthFilter] = useState('全部')
@@ -3583,11 +3586,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
   useEffect(() => {
     const handleEsc = (event) => {
-      if (event.key === 'Escape') setProjectModalOpen(false)
+      if (event.key !== 'Escape') return
+      if (projectCreateOpen) {
+        cancelCreateProject()
+        return
+      }
+      closeProjectModal()
     }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
-  }, [])
+  }, [projectCreateOpen, newProjectDraftId])
 
   function clampPercent(value) {
     return Math.max(0, Math.min(100, Number(value || 0)))
@@ -3726,6 +3734,26 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     }
   }
 
+  function buildBlankProjectCreateForm() {
+    const today = todayDate()
+    const nextMonth = addDaysDate(30)
+    return {
+      name: '',
+      phase: '規劃中',
+      owner: 'Kyle',
+      startDate: today,
+      endDate: nextMonth,
+      progress: 0,
+      health: '待確認',
+      priority: '中',
+      tone: 'blue',
+      next: '',
+      taskName: '專案啟動',
+      milestoneName: '啟動確認',
+      note: '',
+    }
+  }
+
   function getNextProjectId(current = projects) {
     const maxNumber = current.reduce((max, item) => {
       const matched = String(item.id || '').match(/PRJ-(\d+)/)
@@ -3801,34 +3829,67 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function createProject() {
-    const today = todayDate()
-    const nextMonth = addDaysDate(30)
+    setProjectCreateForm(buildBlankProjectCreateForm())
+    setProjectCreateError('')
+    setNewProjectDraftId(null)
+    setProjectModalOpen(false)
+    setProjectCreateOpen(true)
+  }
+
+  function updateProjectCreateForm(patch = {}) {
+    setProjectCreateForm((form) => ({ ...form, ...patch }))
+    if (projectCreateError) setProjectCreateError('')
+  }
+
+  function cancelCreateProject() {
+    setProjectCreateOpen(false)
+    setProjectCreateError('')
+    setProjectCreateForm(buildBlankProjectCreateForm())
+  }
+
+  function submitCreateProject() {
+    const form = projectCreateForm || buildBlankProjectCreateForm()
+    const name = String(form.name || '').trim()
+    if (!name) {
+      setProjectCreateError('請先輸入專案名稱。新增專案不會再用「未命名專案」自動建立。')
+      return
+    }
+    const startDate = form.startDate || todayDate()
+    const endDate = maxIsoDate(form.endDate || addDaysDate(30), startDate)
+    const projectId = getNextProjectId(projects)
+    const taskName = String(form.taskName || '').trim()
+    const milestoneName = String(form.milestoneName || '').trim()
     const taskId = stableId('task')
+    const nowLabel = new Date().toLocaleString('zh-TW', { hour12: false })
     const next = normalizeProject({
-      id: getNextProjectId(),
-      name: '未命名專案',
-      phase: '規劃中',
-      owner: 'Kyle',
-      startDate: today,
-      endDate: nextMonth,
-      progress: 0,
-      health: '待確認',
-      priority: '中',
-      tone: 'blue',
-      next: '補上專案目標、時程與負責人。',
+      id: projectId,
+      name,
+      phase: form.phase || '規劃中',
+      owner: String(form.owner || '').trim() || '未指定',
+      startDate,
+      endDate,
+      progress: clampPercent(form.progress),
+      health: form.health || '待確認',
+      priority: PROJECT_PRIORITY_OPTIONS.includes(form.priority) ? form.priority : '中',
+      tone: form.tone || 'blue',
+      next: String(form.next || '').trim(),
       related: [],
-      tasks: [{ id: taskId, name: '專案啟動', owner: 'Kyle', start: today, end: nextMonth, progress: 0, done: false, tone: 'blue', subtasks: [] }],
-      milestones: [{ id: stableId('milestone'), name: '啟動確認', date: today, done: false }],
+      tasks: taskName ? [{ id: taskId, name: taskName, owner: String(form.owner || '').trim() || '未指定', start: startDate, end: endDate, progress: 0, done: false, tone: 'blue', subtasks: [] }] : [],
+      milestones: milestoneName ? [{ id: stableId('milestone'), name: milestoneName, date: startDate, done: false }] : [],
       meetings: [],
       decisions: [],
-      records: ['建立專案。'],
+      records: [`${nowLabel}｜建立專案。${form.note ? ` 備註：${String(form.note).trim()}` : ''}`],
     })
     setProjects((rows) => [next, ...rows])
     setSelectedId(next.id)
     setDetailTab('overview')
-    setNewProjectDraftId(next.id)
+    setNewProjectDraftId(null)
+    setProjectCreateOpen(false)
+    setProjectCreateError('')
+    setProjectCreateForm(buildBlankProjectCreateForm())
     setProjectModalOpen(true)
   }
+
 
   function updateProject(projectId, patch, recordText) {
     if (projectId && newProjectDraftId === projectId) setNewProjectDraftId(null)
@@ -5214,7 +5275,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <section className="fd203-editor-card">
               <div className="project-section-head compact"><div><p className="eyebrow">PROJECT PROFILE</p><h3>基本資料</h3></div></div>
               <div className="project-editor-grid fd203-editor-grid">
-                <label>專案名稱<ChineseTextField value={project.name} onCommit={(value) => updateProject(project.id, { name: value || '未命名專案' })} commitOnBlur /></label>
+                <label>專案名稱<ChineseTextField value={project.name === '未命名專案' ? '' : project.name} onCommit={(value) => updateProject(project.id, { name: String(value || '').trim() })} commitOnBlur placeholder="請輸入專案名稱" /></label>
                 <label>階段<select value={project.phase || '規劃中'} onChange={(event) => updateProject(project.id, { phase: event.target.value }, '更新專案階段。')}>{mergeOptionList(PROJECT_PHASE_OPTIONS, project.phase).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
                 <label>專案優先<select value={project.priority || '中'} onChange={(event) => updateProject(project.id, { priority: event.target.value }, `更新專案優先為 ${event.target.value}。`)}>{mergeOptionList(PROJECT_PRIORITY_OPTIONS, project.priority).map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
                 <label>負責人<ChineseTextField value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} commitOnBlur /></label>
@@ -5453,6 +5514,64 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           )}
         </aside>
       </section>
+
+      {projectCreateOpen && (
+        <div className="fd392-project-create-backdrop" role="dialog" aria-modal="true" aria-label="新增專案" onMouseDown={(event) => { if (event.target === event.currentTarget) cancelCreateProject() }}>
+          <section className="fd392-project-create-modal">
+            <header className="fd392-project-create-head">
+              <div>
+                <p className="eyebrow">NEW PROJECT</p>
+                <h3>新增專案</h3>
+                <span>先填寫必要資訊，按「建立專案」後才會真的新增；直接關閉不會產生資料。</span>
+              </div>
+              <button type="button" className="ghost-btn" onClick={cancelCreateProject}>關閉</button>
+            </header>
+
+            <div className="fd392-project-create-summary">
+              <article><span>專案名稱</span><strong>{projectCreateForm.name?.trim() || '尚未輸入'}</strong></article>
+              <article><span>負責人</span><strong>{projectCreateForm.owner || '未指定'}</strong></article>
+              <article><span>期間</span><strong>{projectCreateForm.startDate} → {projectCreateForm.endDate}</strong></article>
+              <article><span>優先</span><strong>{projectCreateForm.priority || '中'}</strong></article>
+            </div>
+
+            <div className="fd392-project-create-grid">
+              <section className="fd392-project-create-card main">
+                <div className="project-section-head compact"><div><p className="eyebrow">BASIC</p><h4>基本資料</h4></div><small>專案名稱為必填</small></div>
+                <label className="required">專案名稱<ChineseTextField value={projectCreateForm.name} onCommit={(value) => updateProjectCreateForm({ name: value })} placeholder="例如：Nutanix 導入評估" autoFocus /></label>
+                <label>下一步<ChineseTextField multiline value={projectCreateForm.next} onCommit={(value) => updateProjectCreateForm({ next: value })} placeholder="例如：整理需求、約廠商 Demo、確認報價基準..." /></label>
+                <label>建立備註<ChineseTextField multiline value={projectCreateForm.note} onCommit={(value) => updateProjectCreateForm({ note: value })} placeholder="可選填，建立後會寫入處理紀錄。" /></label>
+              </section>
+
+              <section className="fd392-project-create-card">
+                <div className="project-section-head compact"><div><p className="eyebrow">OWNER</p><h4>狀態與負責</h4></div></div>
+                <div className="fd392-create-two-col">
+                  <label>階段<select value={projectCreateForm.phase} onChange={(event) => updateProjectCreateForm({ phase: event.target.value })}>{PROJECT_PHASE_OPTIONS.filter((phase) => !['已完成', '已取消'].includes(phase)).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
+                  <label>優先<select value={projectCreateForm.priority} onChange={(event) => updateProjectCreateForm({ priority: event.target.value })}>{PROJECT_PRIORITY_OPTIONS.map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+                  <label>負責人<ChineseTextField value={projectCreateForm.owner} onCommit={(value) => updateProjectCreateForm({ owner: value })} placeholder="負責人" /></label>
+                  <label>健康度<select value={projectCreateForm.health} onChange={(event) => updateProjectCreateForm({ health: event.target.value })}>{PROJECT_HEALTH_OPTIONS.map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
+                </div>
+              </section>
+
+              <section className="fd392-project-create-card">
+                <div className="project-section-head compact"><div><p className="eyebrow">SCHEDULE</p><h4>時程與初始項目</h4></div></div>
+                <div className="fd392-create-two-col">
+                  <label>開始<input type="date" value={projectCreateForm.startDate} onChange={(event) => updateProjectCreateForm({ startDate: minIsoDate(event.target.value, projectCreateForm.endDate), endDate: maxIsoDate(projectCreateForm.endDate, event.target.value) })} /></label>
+                  <label>結束<input type="date" value={projectCreateForm.endDate} onChange={(event) => updateProjectCreateForm({ endDate: maxIsoDate(event.target.value, projectCreateForm.startDate) })} /></label>
+                  <label>初始任務<ChineseTextField value={projectCreateForm.taskName} onCommit={(value) => updateProjectCreateForm({ taskName: value })} placeholder="可留空，建立後再新增任務" /></label>
+                  <label>初始里程碑<ChineseTextField value={projectCreateForm.milestoneName} onCommit={(value) => updateProjectCreateForm({ milestoneName: value })} placeholder="可留空，建立後再新增里程碑" /></label>
+                </div>
+              </section>
+            </div>
+
+            {projectCreateError && <div className="fd392-project-create-error">{projectCreateError}</div>}
+
+            <footer className="fd392-project-create-actions">
+              <button type="button" className="ghost-btn" onClick={cancelCreateProject}>取消，不建立</button>
+              <button type="button" className="primary-btn" onClick={submitCreateProject}>建立專案</button>
+            </footer>
+          </section>
+        </div>
+      )}
 
       {projectModalOpen && hasSelectedProject && (
         <div className="fd203-project-modal-backdrop" role="dialog" aria-modal="true" aria-label="專案工作區" onMouseDown={(event) => { if (event.target === event.currentTarget) closeProjectModal() }}>
