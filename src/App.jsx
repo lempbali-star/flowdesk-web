@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.66'
+const FLOWDESK_APP_VERSION = '20.3.67'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1841,6 +1841,13 @@ function BoardInlinePreview({ selected, onUpdateItem }) {
         <span>健康度 <b>{selected.health}%</b></span>
       </div>
       <div className="tag-list">{(Array.isArray(selected.tags) ? selected.tags : []).map((tag) => <span key={tag}>{tag}</span>)}</div>
+      <ArchiveFolderPanelV67
+        title="工作事項歸檔資料夾"
+        folder={selected.archiveFolder}
+        suggestedName={buildArchiveFolderNameV67({ type: '工作事項', id: selected.id, title: selected.title, department: selected.owner, date: selected.due })}
+        compact
+        onChange={onUpdateItem ? (next) => onUpdateItem(selected.id, { archiveFolder: next }) : undefined}
+      />
       <AttachmentLinksPanelV66
         title="工作事項附件"
         attachments={selected.attachments}
@@ -2467,6 +2474,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                             <span>廠商<b>{row.vendor || '—'}</b></span>
                             <span>申請人<b>{row.requester || '—'}</b></span>
                             <span>品項<b>{purchaseTitle(row)}</b></span>
+                            <span>歸檔<b>{row.archiveFolder?.url ? '已建立' : '未建立'}</b></span>
                             <span>附件<b>{normalizeAttachmentList(row.attachments).length} 件</b></span>
                             <span>日期<b>{row.requestDate || '未填日期'}</b></span>
                             <span>品項<b>{getPurchaseItems(row).length} 項</b></span>
@@ -3341,6 +3349,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       })) : [],
       records: Array.isArray(project.records) ? project.records : [],
       attachments: normalizeAttachmentList(project.attachments),
+      archiveFolder: normalizeArchiveFolderV67(project.archiveFolder, { type: '專案', id: project.id, title: project.name, department: project.owner, date: project.startDate }),
       related: Array.isArray(project.related) ? project.related : [],
     }
     return {
@@ -4793,6 +4802,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         )}
 
         {detailTab === 'records' && (
+          <ArchiveFolderPanelV67
+            title="專案歸檔資料夾"
+            folder={project.archiveFolder}
+            suggestedName={buildArchiveFolderNameV67({ type: '專案', id: project.id, title: project.name, department: project.owner, date: project.startDate })}
+            onChange={(next) => updateProject(project.id, { archiveFolder: next }, '更新專案歸檔資料夾。')}
+          />
           <AttachmentLinksPanelV66
             title="專案附件"
             attachments={project.attachments}
@@ -6031,7 +6046,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="外觀設定" title="主題視覺套組" />
-          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.66 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
+          <p className="settings-note">切換後會立即套用到主要按鈕、標籤、分頁、進度條、卡片重點色、輸入框 focus 色與甘特圖任務條。v20.3.67 加入外觀設定快速導覽、動效安全提醒與手機版收斂補強，外觀功能更多但操作更不亂。</p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">推薦方案</a>
             <a href="#fd40-mode">外觀 / 動效</a>
@@ -6597,6 +6612,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
     requester: initial?.requester || '',
     user: initial?.user || initial?.usedBy || initial?.requester || '',
     attachments: normalizeAttachmentList(initial?.attachments),
+    archiveFolder: normalizeArchiveFolderV67(initial?.archiveFolder, { type: '採購', id: initial?.id, title: purchaseTitle(initial || {}), department: initial?.department, date: initial?.requestDate }),
     vendor: initial?.vendor || '',
     taxMode: initial?.taxMode || '未稅',
     taxRate: initial?.taxRate ?? 5,
@@ -6754,6 +6770,13 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
             <article><span>預算差異</span><strong className={Number(form.budgetAmount || 0) && amount.taxedTotal > Number(form.budgetAmount || 0) ? 'has-diff' : ''}>{Number(form.budgetAmount || 0) ? formatMoney(amount.taxedTotal - Number(form.budgetAmount || 0)) : '—'}</strong></article>
           </div>
 
+          <ArchiveFolderPanelV67
+            title="採購歸檔資料夾"
+            folder={form.archiveFolder}
+            suggestedName={buildArchiveFolderNameV67({ type: '採購', id: form.id, title: purchaseTitle(form), department: form.department, date: form.requestDate })}
+            onChange={(next) => update('archiveFolder', next)}
+          />
+
           <AttachmentLinksPanelV66
             title="採購附件"
             attachments={form.attachments}
@@ -6782,6 +6805,7 @@ function normalizePurchase(row) {
     user: row.user || row.usedBy || row.requester || '未指定',
     usedBy: row.user || row.usedBy || row.requester || '未指定',
     attachments: normalizeAttachmentList(row.attachments),
+    archiveFolder: normalizeArchiveFolderV67(row.archiveFolder, { type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate }),
     quantity: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
     unitPrice: items.length === 1 ? Number(items[0].unitPrice || 0) : 0,
     taxRate: Number(row.taxRate ?? 5),
@@ -6876,6 +6900,12 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], onEdit, 
         </div>
         <small>{row.vendor || '未指定廠商'} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
       </div>
+      <ArchiveFolderPanelV67
+        title="採購歸檔資料夾"
+        folder={row.archiveFolder}
+        suggestedName={buildArchiveFolderNameV67({ type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate })}
+        compact
+      />
       <AttachmentLinksPanelV66 title="採購附件" attachments={row.attachments} compact />
       <div className="purchase-detail-actions">
         <button type="button" onClick={onEdit}>編輯採購</button>
@@ -7156,6 +7186,135 @@ function ModuleScopeBar({ active }) {
 function Metric({ label, value, tone }) {
   return <article className={`metric ${tone}`}><span>{label}</span><strong>{value}</strong></article>
 }
+
+function sanitizeArchiveFolderNameV67(value = '') {
+  return String(value || '')
+    .replace(/[\\/:*?"<>|#%{}~&]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 96)
+    .replace(/^_+|_+$/g, '') || '未命名'
+}
+
+function buildArchiveFolderNameV67({ type = '資料', id = '', title = '', department = '', date = '' } = {}) {
+  const parts = [
+    type,
+    date || todayDate(),
+    id || '',
+    department || '',
+    title || '',
+  ].filter(Boolean)
+  return parts.map(sanitizeArchiveFolderNameV67).filter(Boolean).join('_')
+}
+
+function normalizeArchiveFolderV67(value = {}, fallback = {}) {
+  const next = value && typeof value === 'object' ? value : {}
+  return {
+    name: next.name || buildArchiveFolderNameV67(fallback),
+    url: next.url || next.link || '',
+    status: next.status || (next.url || next.link ? '已建立' : '未建立'),
+    note: next.note || '',
+    updatedAt: next.updatedAt || '',
+  }
+}
+
+function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedName, onChange, compact = false }) {
+  const safeFolder = normalizeArchiveFolderV67(folder, { title: suggestedName })
+  const [draft, setDraft] = useState(() => ({
+    name: safeFolder.name || suggestedName || '',
+    url: safeFolder.url || '',
+    status: safeFolder.status || '未建立',
+    note: safeFolder.note || '',
+  }))
+  const canEdit = typeof onChange === 'function'
+
+  useEffect(() => {
+    setDraft({
+      name: safeFolder.name || suggestedName || '',
+      url: safeFolder.url || '',
+      status: safeFolder.status || '未建立',
+      note: safeFolder.note || '',
+    })
+  }, [safeFolder.name, safeFolder.url, safeFolder.status, safeFolder.note, suggestedName])
+
+  function updateDraft(key, value) {
+    setDraft((current) => ({ ...current, [key]: value }))
+  }
+
+  function saveFolder() {
+    if (!canEdit) return
+    onChange({
+      ...draft,
+      name: draft.name || suggestedName || safeFolder.name,
+      status: draft.url ? '已建立' : draft.status || '未建立',
+      updatedAt: todayDate(),
+    })
+  }
+
+  async function copyName() {
+    const value = draft.name || suggestedName || safeFolder.name
+    try {
+      await navigator.clipboard?.writeText(value)
+    } catch {
+      // clipboard may be blocked; user can still select/copy manually.
+    }
+  }
+
+  async function copyLink() {
+    if (!draft.url) return
+    try {
+      await navigator.clipboard?.writeText(draft.url)
+    } catch {
+      // clipboard may be blocked.
+    }
+  }
+
+  return (
+    <section className={compact ? 'fd67-archive-folder compact' : 'fd67-archive-folder'}>
+      <div className="fd67-archive-head">
+        <div>
+          <span>ARCHIVE FOLDER</span>
+          <strong>{title}</strong>
+          <small>建議以 OneDrive / SharePoint 資料夾為主；後續檔案直接放進資料夾即可。</small>
+        </div>
+        <em className={draft.url ? 'ready' : 'empty'}>{draft.url ? '已連結' : '未建立'}</em>
+      </div>
+
+      <div className="fd67-archive-current">
+        <div>
+          <span>建議資料夾名稱</span>
+          <strong>{draft.name || suggestedName || safeFolder.name}</strong>
+        </div>
+        <div className="fd67-archive-actions">
+          <button type="button" onClick={copyName}>複製名稱</button>
+          {draft.url ? <a href={draft.url} target="_blank" rel="noreferrer">開啟資料夾</a> : <button type="button" disabled>尚無連結</button>}
+          {draft.url ? <button type="button" onClick={copyLink}>複製連結</button> : null}
+        </div>
+      </div>
+
+      {canEdit ? (
+        <div className="fd67-archive-form">
+          <label className="wide">資料夾名稱
+            <input value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} placeholder={suggestedName || safeFolder.name} />
+          </label>
+          <label className="wide">OneDrive / SharePoint 資料夾連結
+            <input value={draft.url} onChange={(event) => updateDraft('url', event.target.value)} placeholder="貼上資料夾分享連結" />
+          </label>
+          <label>歸檔狀態
+            <select value={draft.status} onChange={(event) => updateDraft('status', event.target.value)}>
+              {['未建立', '已建立', '已歸檔'].map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </label>
+          <label>備註
+            <input value={draft.note} onChange={(event) => updateDraft('note', event.target.value)} placeholder="例如 權限、資料夾位置或歸檔規則" />
+          </label>
+          <button type="button" onClick={saveFolder}>儲存歸檔資料夾</button>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 
 function AttachmentLinksPanelV66({ title = '附件連結', attachments = [], onChange, compact = false }) {
   const safeAttachments = normalizeAttachmentList(attachments)
