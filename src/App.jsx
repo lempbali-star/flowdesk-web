@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.3.92'
+const FLOWDESK_APP_VERSION = '20.3.93'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5225,6 +5225,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <span>{project.id} · {project.phase} · {formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
           </div>
           <div className="fd203-workspace-actions">
+            <button type="button" className="fd203-primary-action" onClick={() => setDetailTab('edit')}>編輯專案</button>
             <button type="button" onClick={() => duplicateProject(project)}>複製</button>
             <button className="danger" type="button" onClick={() => deleteProject(project.id)}>刪除</button>
             <button type="button" onClick={closeProjectModal}>關閉</button>
@@ -5242,6 +5243,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
         <div className="project-segmented-tabs fd203-tabs">
           <button type="button" className={detailTab === 'overview' ? 'active' : ''} onClick={() => setDetailTab('overview')}>總覽</button>
+          <button type="button" className={detailTab === 'edit' ? 'active' : ''} onClick={() => setDetailTab('edit')}>編輯</button>
           <button type="button" className={detailTab === 'gantt' ? 'active' : ''} onClick={() => setDetailTab('gantt')}>甘特圖</button>
           <button type="button" className={detailTab === 'tasks' ? 'active' : ''} onClick={() => setDetailTab('tasks')}>任務</button>
           <button type="button" className={detailTab === 'milestones' ? 'active' : ''} onClick={() => setDetailTab('milestones')}>里程碑</button>
@@ -5272,18 +5274,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </div>
             </section>
 
-            <section className="fd203-editor-card">
-              <div className="project-section-head compact"><div><p className="eyebrow">PROJECT PROFILE</p><h3>基本資料</h3></div></div>
-              <div className="project-editor-grid fd203-editor-grid">
-                <label>專案名稱<ChineseTextField value={project.name === '未命名專案' ? '' : project.name} onCommit={(value) => updateProject(project.id, { name: String(value || '').trim() })} commitOnBlur placeholder="請輸入專案名稱" /></label>
-                <label>階段<select value={project.phase || '規劃中'} onChange={(event) => updateProject(project.id, { phase: event.target.value }, '更新專案階段。')}>{mergeOptionList(PROJECT_PHASE_OPTIONS, project.phase).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
-                <label>專案優先<select value={project.priority || '中'} onChange={(event) => updateProject(project.id, { priority: event.target.value }, `更新專案優先為 ${event.target.value}。`)}>{mergeOptionList(PROJECT_PRIORITY_OPTIONS, project.priority).map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
-                <label>負責人<ChineseTextField value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} commitOnBlur /></label>
-                <label>健康度<select value={project.health || '待確認'} onChange={(event) => updateProject(project.id, { health: event.target.value }, '更新健康度。')}>{mergeOptionList(PROJECT_HEALTH_OPTIONS, project.health).map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
-                <label>開始<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.startDate} onChange={(event) => updateProject(project.id, { startDate: minIsoDate(event.target.value, project.endDate) }, '更新開始日期。')} /></label>
-                <label>結束<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.endDate} onChange={(event) => updateProject(project.id, { endDate: maxIsoDate(event.target.value, project.startDate) }, '更新結束日期。')} /></label>
-                <label>進度 %<input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} /><small>{project.progress}%</small></label>
-                <label className="wide-field">下一步<ChineseTextField multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} commitOnBlur /></label>
+            <section className="fd203-editor-card fd203-focus-card">
+              <div className="project-section-head compact"><div><p className="eyebrow">PROJECT FOCUS</p><h3>專案重點</h3></div><button type="button" className="ghost-btn" onClick={() => setDetailTab('edit')}>前往專屬編輯畫面</button></div>
+              <div className="fd203-focus-summary-grid">
+                <article><span>專案名稱</span><strong>{project.name}</strong></article>
+                <article><span>負責人</span><strong>{project.owner || '未指定'}</strong></article>
+                <article><span>開始</span><strong>{project.startDate}</strong></article>
+                <article><span>結束</span><strong>{project.endDate}</strong></article>
+                <article><span>階段</span><strong>{project.phase || '規劃中'}</strong></article>
+                <article><span>健康度</span><strong>{project.health || '待確認'}</strong></article>
+                <article><span>優先</span><strong>{project.priority || '中'}</strong></article>
+                <article><span>下一步</span><strong>{project.next || '尚未設定'}</strong></article>
+              </div>
+              <div className="fd203-focus-note">
+                <strong>編輯說明</strong>
+                <span>目前總覽只顯示重點摘要；若要修改專案資料，請切換到「編輯」分頁，使用獨立編輯畫面。</span>
               </div>
             </section>
 
@@ -5294,6 +5299,58 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </div>
             </section>
           </div>
+        )}
+
+        {detailTab === 'edit' && (
+          <section className="detail-block fd203-tab-panel fd203-edit-panel">
+            <div className="fd203-edit-hero">
+              <div>
+                <p className="eyebrow">PROJECT EDITOR</p>
+                <h3>專案編輯畫面</h3>
+                <span>這裡是專案主資料的專屬編輯區，欄位會在離開輸入框後自動儲存。</span>
+              </div>
+              <div className="fd203-edit-hero-actions">
+                <button type="button" className="ghost-btn" onClick={autoEstimateSelectedProject}>依任務估進度</button>
+                <button type="button" className="ghost-btn" onClick={() => setDetailTab('overview')}>回到總覽</button>
+              </div>
+            </div>
+
+            <div className="fd203-edit-layout">
+              <section className="fd203-edit-section">
+                <div className="project-section-head compact"><div><p className="eyebrow">BASIC</p><h3>基本資料</h3></div><small>專案主檔與整體狀態</small></div>
+                <div className="project-editor-grid fd203-editor-grid fd203-edit-grid">
+                  <label className="wide-field">專案名稱<ChineseTextField value={project.name === '未命名專案' ? '' : project.name} onCommit={(value) => updateProject(project.id, { name: String(value || '').trim() })} commitOnBlur placeholder="請輸入專案名稱" /></label>
+                  <label>階段<select value={project.phase || '規劃中'} onChange={(event) => updateProject(project.id, { phase: event.target.value }, '更新專案階段。')}>{mergeOptionList(PROJECT_PHASE_OPTIONS, project.phase).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
+                  <label>健康度<select value={project.health || '待確認'} onChange={(event) => updateProject(project.id, { health: event.target.value }, '更新健康度。')}>{mergeOptionList(PROJECT_HEALTH_OPTIONS, project.health).map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
+                  <label>專案優先<select value={project.priority || '中'} onChange={(event) => updateProject(project.id, { priority: event.target.value }, `更新專案優先為 ${event.target.value}。`)}>{mergeOptionList(PROJECT_PRIORITY_OPTIONS, project.priority).map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+                  <label>負責人<ChineseTextField value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} commitOnBlur /></label>
+                </div>
+              </section>
+
+              <section className="fd203-edit-section">
+                <div className="project-section-head compact"><div><p className="eyebrow">SCHEDULE</p><h3>時程與進度</h3></div><small>日期與進度控制</small></div>
+                <div className="project-editor-grid fd203-editor-grid fd203-edit-grid">
+                  <label>開始<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.startDate} onChange={(event) => updateProject(project.id, { startDate: minIsoDate(event.target.value, project.endDate) }, '更新開始日期。')} /></label>
+                  <label>結束<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.endDate} onChange={(event) => updateProject(project.id, { endDate: maxIsoDate(event.target.value, project.startDate) }, '更新結束日期。')} /></label>
+                  <label className="wide-field">進度 %<input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} /></label>
+                  <div className="fd203-progress-readout"><strong>{project.progress}%</strong><span>目前專案進度</span></div>
+                  <div className="fd203-edit-kpi-strip">
+                    <article><span>天數</span><strong>{daysBetween(project.startDate, project.endDate) + 1} 天</strong></article>
+                    <article><span>任務</span><strong>{project.tasks?.length || 0}</strong></article>
+                    <article><span>里程碑</span><strong>{doneMilestones}/{project.milestones?.length || 0}</strong></article>
+                    <article><span>估算進度</span><strong>{estimateProjectProgress(project)}%</strong></article>
+                  </div>
+                </div>
+              </section>
+
+              <section className="fd203-edit-section full-width">
+                <div className="project-section-head compact"><div><p className="eyebrow">NEXT STEP</p><h3>下一步與說明</h3></div><small>這裡可放近期安排、待確認事項與備註</small></div>
+                <div className="project-editor-grid fd203-editor-grid fd203-edit-grid">
+                  <label className="wide-field">下一步<ChineseTextField multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} commitOnBlur placeholder="例如：追廠商回覆、確認預算、安排驗收..." /></label>
+                </div>
+              </section>
+            </div>
+          </section>
         )}
 
         {detailTab === 'gantt' && renderGantt(project)}
