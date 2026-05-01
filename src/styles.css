@@ -25738,3 +25738,54 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 .fd20446-gantt-arrow-head { fill: var(--fd20446-dep-color); }
 .fd20446-gantt-dependency-curve.backward { --fd20446-dep-color: #f97316; }
+
+
+/* FlowDesk v20.4.47 - 甘特圖穩定版：關閉不穩定相依線，保留提示 */
+.fd20446-gantt-dependency-curve,
+.fd20444-gantt-dependency-curve,
+.fd20443-gantt-dependency-curve,
+.fd20442-gantt-dependency-curve,
+.fd20441-gantt-dependency-curve,
+.fd20440-gantt-dependency-curve,
+.fd20439-gantt-dependency-curve,
+.fd20438-gantt-dependency-curve,
+.fd20437-gantt-dependency-curve,
+.fd20436-gantt-dependency-curve,
+.fd20435-gantt-dependency-curve,
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20447-gantt-dependency-pill {
+  position: absolute;
+  right: 8px;
+  top: calc(100% + 6px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: #ffffff;
+  color: #1d4ed8 !important;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.10);
+  pointer-events: none;
+  z-index: 62;
+}
+
+.fd20433-gantt-date-label {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid rgba(15, 23, 42, 0.18) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+  z-index: 60 !important;
+}

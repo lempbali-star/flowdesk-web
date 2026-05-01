@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.46'
+const FLOWDESK_APP_VERSION = '20.4.47'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5194,62 +5194,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function renderGanttDependencyConnector({ project, task, taskIndex = 0, taskStart, displayStart, displayEnd }) {
-    const dependencyMeta = getTaskDependencyMeta(project, task, taskIndex)
-    if (!dependencyMeta.hasDependency) return null
-    const tasks = project.tasks || []
-    const predecessorIndex = tasks.findIndex((item) => item.id === dependencyMeta.predecessor?.id)
-    const predecessorTask = predecessorIndex >= 0 ? tasks[predecessorIndex] : dependencyMeta.predecessor || {}
-    const predecessorStart = predecessorTask.start || displayStart
-    const predecessorEnd = predecessorTask.end || predecessorTask.start || displayStart
-    const currentStart = taskStart || task.start || displayStart
-    const currentEnd = task?.end || currentStart
-    const predecessorBar = ganttStyle(predecessorStart, predecessorEnd, displayStart, displayEnd)
-    const currentBar = ganttStyle(currentStart, currentEnd, displayStart, displayEnd)
-    const predecessorLeft = Number.parseFloat(predecessorBar.left) || 0
-    const predecessorWidth = Number.parseFloat(predecessorBar.width) || 0
-    const currentLeft = Number.parseFloat(currentBar.left) || 0
-    const rowDistance = predecessorIndex >= 0 ? Math.max(1, taskIndex - predecessorIndex) : 1
-    const rowPitch = 92
-    const startY = 15
-    const endY = startY + rowDistance * rowPitch
-    const currentRowCenter = 15
-    const topOffset = Math.max(0, endY - currentRowCenter)
-    const svgHeight = topOffset + currentRowCenter + 20
-    const fromX = Math.round((predecessorLeft + predecessorWidth) * 10) - 2
-    const targetX = Math.round(currentLeft * 10) + 2
-    const isBackward = targetX < fromX
-    const dx = Math.abs(targetX - fromX)
-    const terminalGap = Math.min(12, Math.max(8, Math.round(dx * 0.08)))
-    const curveEndX = isBackward ? targetX + terminalGap : targetX - terminalGap
-    const spread = Math.max(28, Math.min(96, Math.round(dx * 0.4)))
-    const cp1x = isBackward ? fromX + 18 : fromX + spread
-    const cp1y = startY
-    const cp2x = isBackward ? curveEndX - 18 : curveEndX - spread
-    const cp2y = endY
-    const curvePath = `M ${fromX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curveEndX} ${endY}`
-    const terminalPath = `M ${curveEndX} ${endY} L ${targetX} ${endY}`
-    const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDayWeekday(predecessorEnd)} → ${formatMonthDayWeekday(currentStart)}`
-    const safeTaskId = String(task?.id || taskIndex).replace(/[^a-zA-Z0-9_-]/g, '')
-    const markerId = `fd20446-arrow-${safeTaskId}-${taskIndex}`
-    return (
-      <span
-        className={`fd20446-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
-        style={{ top: `-${topOffset}px`, height: `${svgHeight}px` }}
-        title={title}
-        aria-label={title}
-      >
-        <svg viewBox={`0 0 1000 ${svgHeight}`} preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <marker id={markerId} markerWidth="10" markerHeight="10" refX="8.6" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M 0 0.8 L 8.6 5 L 0 9.2 z" className="fd20446-gantt-arrow-head" />
-            </marker>
-          </defs>
-          <path className="fd20446-gantt-curve-line" d={curvePath} />
-          <path className="fd20446-gantt-terminal-line" d={terminalPath} markerEnd={`url(#${markerId})`} />
-          <circle className="fd20446-gantt-curve-start-dot" cx={fromX} cy={startY} r="2.6" />
-        </svg>
-      </span>
-    )
+    return null
   }
 
 
@@ -5269,6 +5214,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       <span className={`fd203-gantt-bar fd20431-gantt-draggable ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={`${title}｜拖曳任務條可平移日期`}>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
         {scope !== 'project' ? <span className="fd20433-gantt-date-label">{`${formatMonthDayWeekday(safeStart)} → ${formatMonthDayWeekday(safeEnd)}`}</span> : null}
+        {scope === 'task' && task?.dependsOnTaskId ? <span className="fd20447-gantt-dependency-pill">依賴前置</span> : null}
         {!activePreview ? (
           <span className="fd20426-gantt-hover-tip" aria-hidden="true">
             <strong>{label}</strong>
