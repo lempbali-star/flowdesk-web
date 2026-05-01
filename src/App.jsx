@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.28'
+const FLOWDESK_APP_VERSION = '20.4.29'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5163,21 +5163,45 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function renderGanttDependencyConnector({ project, task, taskIndex = 0, taskStart, displayStart, displayEnd }) {
     const dependencyMeta = getTaskDependencyMeta(project, task, taskIndex)
     if (!dependencyMeta.hasDependency) return null
+    const tasks = project.tasks || []
+    const predecessorIndex = tasks.findIndex((item) => item.id === dependencyMeta.predecessor?.id)
     const predecessorEnd = dependencyMeta.predecessor?.end || dependencyMeta.predecessor?.start || displayStart
     const currentStart = taskStart || task.start || displayStart
     const fromPoint = Math.max(0, Math.min(100, ganttPoint(predecessorEnd, displayStart, displayEnd)))
     const toPoint = Math.max(0, Math.min(100, ganttPoint(currentStart, displayStart, displayEnd)))
     const isBackward = toPoint < fromPoint
-    const leftPoint = Math.min(fromPoint, toPoint)
-    const widthPoint = Math.max(0.8, Math.abs(toPoint - fromPoint))
+    const rowDistance = predecessorIndex >= 0 ? Math.max(1, taskIndex - predecessorIndex) : 1
+    const linkHeight = Math.max(92, Math.min(360, rowDistance * 132))
+    const elbowPoint = isBackward
+      ? Math.max(1, Math.min(98, fromPoint + Math.min(3.2, Math.max(1.2, (100 - fromPoint) * 0.18))))
+      : Math.max(1, Math.min(98, fromPoint + Math.max(0.8, Math.min(3.2, Math.max(0.8, (toPoint - fromPoint) * 0.55)))))
+    const h1Left = Math.min(fromPoint, elbowPoint)
+    const h1Width = Math.max(0.45, Math.abs(elbowPoint - fromPoint))
+    const h2Left = Math.min(elbowPoint, toPoint)
+    const h2Width = Math.max(0.45, Math.abs(toPoint - elbowPoint))
     const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDay(predecessorEnd)} → ${formatMonthDay(currentStart)}`
     return (
       <span
-        className={`fd20428-gantt-dependency-link${isBackward ? ' backward' : ''}`}
-        style={{ left: `${leftPoint}%`, width: `${widthPoint}%` }}
+        className={`fd20429-gantt-dependency-path${isBackward ? ' backward' : ''}`}
+        style={{
+          '--fd20429-dep-from': `${fromPoint}%`,
+          '--fd20429-dep-to': `${toPoint}%`,
+          '--fd20429-dep-elbow': `${elbowPoint}%`,
+          '--fd20429-dep-height': `${linkHeight}px`,
+          '--fd20429-dep-h1-left': `${h1Left}%`,
+          '--fd20429-dep-h1-width': `${h1Width}%`,
+          '--fd20429-dep-h2-left': `${h2Left}%`,
+          '--fd20429-dep-h2-width': `${h2Width}%`,
+        }}
         title={title}
         aria-label={title}
-      />
+      >
+        <i className="fd20429-dep-h1" aria-hidden="true" />
+        <i className="fd20429-dep-v" aria-hidden="true" />
+        <i className="fd20429-dep-h2" aria-hidden="true" />
+        <i className="fd20429-dep-start" aria-hidden="true" />
+        <i className="fd20429-dep-arrow" aria-hidden="true" />
+      </span>
     )
   }
 
@@ -5194,9 +5218,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const endHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'end', event, subtaskIndex)
     const moveHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'move', event, subtaskIndex)
     return (
-      <span className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={title}>
+      <span className={`fd203-gantt-bar fd20429-gantt-draggable ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={`${title}｜拖曳任務條可平移日期`}>
+        <span className="fd20429-gantt-drag-grip" aria-hidden="true">拖曳移動</span>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
-        {scope !== 'project' ? <span className="fd20428-gantt-bar-range">{formatMonthDay(safeStart)} → {formatMonthDay(safeEnd)}</span> : null}
+        {scope !== 'project' ? <span className="fd20429-gantt-bar-range">{formatMonthDay(safeStart)} → {formatMonthDay(safeEnd)}</span> : null}
         {!activePreview ? (
           <span className="fd20426-gantt-hover-tip" aria-hidden="true">
             <strong>{label}</strong>
