@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.31'
+const FLOWDESK_APP_VERSION = '20.4.30'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4053,7 +4053,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         }
         const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
         const currentStart = task.start || project.startDate
-        if (currentStart === nextStart) return task
+        if (!currentStart || currentStart >= nextStart) return task
         changed = true
         passChanged = true
         return shiftTaskWithSubtasks(task, nextStart)
@@ -5194,39 +5194,39 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const currentStart = taskStart || task.start || displayStart
     const fromPoint = Math.max(0, Math.min(100, ganttPoint(predecessorEnd, displayStart, displayEnd)))
     const toPoint = Math.max(0, Math.min(100, ganttPoint(currentStart, displayStart, displayEnd)))
-    const rowDistance = predecessorIndex >= 0 ? Math.max(1, taskIndex - predecessorIndex) : 1
-    const linkHeight = Math.max(96, Math.min(360, rowDistance * 132))
     const isBackward = toPoint < fromPoint
-    const safeDelta = Math.abs(toPoint - fromPoint)
-    const curveOffset = Math.max(8, Math.min(18, safeDelta * 0.28))
-    const c1x = isBackward ? Math.min(98, fromPoint + curveOffset * 0.4) : Math.min(98, fromPoint + curveOffset)
-    const c2x = isBackward ? Math.max(2, toPoint - curveOffset) : Math.max(2, toPoint - curveOffset * 0.35)
-    const pathD = `M ${fromPoint} 0 C ${c1x} 0, ${c2x} ${linkHeight}, ${toPoint} ${linkHeight}`
+    const rowDistance = predecessorIndex >= 0 ? Math.max(1, taskIndex - predecessorIndex) : 1
+    const linkHeight = Math.max(92, Math.min(360, rowDistance * 132))
+    const elbowPoint = isBackward
+      ? Math.max(1, Math.min(98, fromPoint + Math.min(3.2, Math.max(1.2, (100 - fromPoint) * 0.18))))
+      : Math.max(1, Math.min(98, fromPoint + Math.max(0.8, Math.min(3.2, Math.max(0.8, (toPoint - fromPoint) * 0.55)))))
+    const h1Left = Math.min(fromPoint, elbowPoint)
+    const h1Width = Math.max(0.45, Math.abs(elbowPoint - fromPoint))
+    const h2Left = Math.min(elbowPoint, toPoint)
+    const h2Width = Math.max(0.45, Math.abs(toPoint - elbowPoint))
     const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDay(predecessorEnd)} → ${formatMonthDay(currentStart)}`
     return (
-      <svg
-        className={`fd20431-gantt-dependency-svg${isBackward ? ' backward' : ''}`}
-        viewBox={`0 0 100 ${linkHeight}`}
-        preserveAspectRatio="none"
-        style={{ height: `${linkHeight}px`, top: `calc(50% - ${linkHeight}px)` }}
+      <span
+        className={`fd20430-gantt-dependency-path${isBackward ? ' backward' : ''}`}
+        style={{
+          '--fd20429-dep-from': `${fromPoint}%`,
+          '--fd20429-dep-to': `${toPoint}%`,
+          '--fd20429-dep-elbow': `${elbowPoint}%`,
+          '--fd20429-dep-height': `${linkHeight}px`,
+          '--fd20429-dep-h1-left': `${h1Left}%`,
+          '--fd20429-dep-h1-width': `${h1Width}%`,
+          '--fd20429-dep-h2-left': `${h2Left}%`,
+          '--fd20429-dep-h2-width': `${h2Width}%`,
+        }}
+        title={title}
         aria-label={title}
-        role="img"
       >
-        <defs>
-          <marker id="fd20431-gantt-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" className="fd20431-gantt-arrow-fill" />
-          </marker>
-          <marker id="fd20431-gantt-arrow-backward" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" className="fd20431-gantt-arrow-fill backward" />
-          </marker>
-        </defs>
-        <path
-          className={`fd20431-gantt-dependency-path${isBackward ? ' backward' : ''}`}
-          d={pathD}
-          markerEnd={isBackward ? 'url(#fd20431-gantt-arrow-backward)' : 'url(#fd20431-gantt-arrow)'}
-        />
-        <circle className={`fd20431-gantt-dependency-start${isBackward ? ' backward' : ''}`} cx={fromPoint} cy="0" r="1.2" />
-      </svg>
+        <i className="fd20429-dep-h1" aria-hidden="true" />
+        <i className="fd20429-dep-v" aria-hidden="true" />
+        <i className="fd20429-dep-h2" aria-hidden="true" />
+        <i className="fd20429-dep-start" aria-hidden="true" />
+        <i className="fd20429-dep-arrow" aria-hidden="true" />
+      </span>
     )
   }
 
@@ -5243,9 +5243,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const endHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'end', event, subtaskIndex)
     const moveHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'move', event, subtaskIndex)
     return (
-      <span className={`fd203-gantt-bar fd20431-gantt-draggable ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={`${title}｜拖曳任務條可平移日期`}>
+      <span className={`fd203-gantt-bar fd20429-gantt-draggable ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={`${title}｜拖曳任務條可平移日期`}>
+        <span className="fd20430-gantt-drag-grip" aria-hidden="true"><i /><i /></span>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
-        {scope !== 'project' ? <span className="fd20431-gantt-bar-range"><b>{formatMonthDay(safeStart)}</b><span>→</span><b>{formatMonthDay(safeEnd)}</b></span> : null}
+        {scope !== 'project' ? <span className="fd20430-gantt-bar-range">{formatMonthDay(safeStart)} → {formatMonthDay(safeEnd)}</span> : null}
         {!activePreview ? (
           <span className="fd20426-gantt-hover-tip" aria-hidden="true">
             <strong>{label}</strong>
