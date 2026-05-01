@@ -23628,3 +23628,16 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   border-radius: 999px !important;
   white-space: nowrap;
 }
+
+/* FlowDesk v20.4.19 - 只修甘特圖 1日→ 按鈕 */
+.fd20419-shift-forward {
+  position: relative;
+  z-index: 12;
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+.fd20419-shift-forward:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+}
