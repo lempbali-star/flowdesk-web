@@ -23644,3 +23644,15 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20415-shift-next:hover {
   transform: translateY(-1px);
 }
+
+/* FlowDesk v20.4.16 - 1日右移按鈕真正觸發修正 */
+.fd20416-shift-next {
+  position: relative;
+  z-index: 80 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  user-select: none;
+}
+.fd20416-shift-next:active {
+  transform: translateY(0) scale(.98);
+}
