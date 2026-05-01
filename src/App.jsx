@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.29'
+const FLOWDESK_APP_VERSION = '20.4.30'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4052,9 +4052,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           return { ...task, dependsOnTaskId: '' }
         }
         const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
-        // 前置任務異動後，後續任務要「緊接」前置完成日後一天，
-        // 不只是在早於前置時才往後推，避免 A 往前/往後調整時 B 停在舊日期。
-        if ((task.start || project.startDate) === nextStart) return task
+        const currentStart = task.start || project.startDate
+        if (!currentStart || currentStart >= nextStart) return task
         changed = true
         passChanged = true
         return shiftTaskWithSubtasks(task, nextStart)
@@ -4074,6 +4073,60 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       tasks,
     }
     return { project: nextProject, changed }
+  }
+
+  function shiftTaskByDelta(task = {}, deltaDays = 0, projectStart = todayDate(), projectEnd = projectStart) {
+    const safeDelta = Number(deltaDays) || 0
+    if (!safeDelta) return { ...task, subtasks: (task.subtasks || []).map((subtask) => ({ ...subtask })) }
+    const safeStart = task.start || projectStart
+    return shiftTaskWithSubtasks(task, addDaysToDateValue(safeStart, safeDelta))
+  }
+
+  function cascadeShiftDependentTasks(tasks = [], sourceTaskId, deltaDays, projectStart, projectEnd) {
+    const safeDelta = Number(deltaDays) || 0
+    if (!sourceTaskId || !safeDelta) return tasks
+    let nextTasks = tasks.map((task) => ({ ...task, subtasks: (task.subtasks || []).map((subtask) => ({ ...subtask })) }))
+    const queue = [sourceTaskId]
+    const moved = new Set([sourceTaskId])
+    while (queue.length) {
+      const currentId = queue.shift()
+      nextTasks = nextTasks.map((task) => {
+        if (task.dependsOnTaskId !== currentId || moved.has(task.id)) return task
+        moved.add(task.id)
+        queue.push(task.id)
+        return shiftTaskByDelta(task, safeDelta, projectStart, projectEnd)
+      })
+    }
+    return nextTasks
+  }
+
+  function buildShiftedTaskProject(project = {}, taskId, taskIndex, deltaDays) {
+    const safeProject = normalizeProject(project)
+    const safeDelta = Number(deltaDays) || 0
+    if (!safeDelta) return { project: safeProject, appliedDelta: 0, changedTaskName: '未命名任務', scheduledChanged: false }
+    const tasks = (safeProject.tasks || []).map((task) => ({ ...task, subtasks: (task.subtasks || []).map((subtask) => ({ ...subtask })) }))
+    const targetIndex = tasks.findIndex((task, index) => ((taskId && task.id === taskId) || index === taskIndex))
+    if (targetIndex < 0) return { project: safeProject, appliedDelta: 0, changedTaskName: '未命名任務', scheduledChanged: false }
+    const targetTask = tasks[targetIndex]
+    const taskStart = targetTask.start || safeProject.startDate || todayDate()
+    let nextStart = addDaysToDateValue(taskStart, safeDelta)
+    if (targetTask.dependsOnTaskId) {
+      const predecessor = tasks.find((item) => item.id === targetTask.dependsOnTaskId)
+      if (predecessor) {
+        const minStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
+        if (nextStart < minStart) nextStart = minStart
+      }
+    }
+    const appliedDelta = Math.round((parseDate(nextStart) - parseDate(taskStart)) / 86400000)
+    if (!appliedDelta) {
+      const scheduled = resolveProjectTaskDependencies({ ...safeProject, tasks })
+      return { project: normalizeProject(scheduled.project), appliedDelta: 0, changedTaskName: targetTask.name || '未命名任務', scheduledChanged: scheduled.changed }
+    }
+    let nextTasks = tasks.map((task, index) => index === targetIndex ? shiftTaskWithSubtasks(task, nextStart) : task)
+    nextTasks = cascadeShiftDependentTasks(nextTasks, targetTask.id, appliedDelta, safeProject.startDate, safeProject.endDate)
+    const boundedProject = { ...safeProject, ...getProjectBoundsFromTasks({ ...safeProject, tasks: nextTasks }), tasks: nextTasks }
+    const scheduled = resolveProjectTaskDependencies(boundedProject)
+    return { project: normalizeProject(scheduled.project), appliedDelta, changedTaskName: targetTask.name || '未命名任務', scheduledChanged: scheduled.changed }
   }
 
   function getTaskDependencyMeta(project = {}, task = {}, taskIndex = 0) {
@@ -4149,39 +4202,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       const nextRows = rows.map((project) => {
         if (project.id !== projectId) return project
         const safeProject = normalizeProject(project)
-        let changedTaskName = '未命名任務'
-        let projectChanged = false
-        const tasks = (safeProject.tasks || []).map((task, index) => {
-          const matched = (taskId && task.id === taskId) || index === taskIndex
-          if (!matched) return task
-          projectChanged = true
-          didChange = true
-          changedTaskName = task.name || '未命名任務'
-          const taskStart = task.start || safeProject.startDate || todayDate()
-          const taskEnd = task.end || taskStart
-          const nextStart = addDaysToDateValue(taskStart, safeDelta)
-          const nextEnd = addDaysToDateValue(taskEnd, safeDelta)
-          const shiftedSubtasks = (task.subtasks || []).map((subtask) => {
-            const subStart = subtask.start || taskStart
-            const subEnd = subtask.end || subStart
-            return {
-              ...subtask,
-              start: addDaysToDateValue(subStart, safeDelta),
-              end: addDaysToDateValue(subEnd, safeDelta),
-            }
-          })
-          return { ...task, start: nextStart, end: nextEnd, subtasks: shiftedSubtasks }
-        })
-        if (!projectChanged) return project
-        const scheduled = resolveProjectTaskDependencies({ ...safeProject, ...getProjectBoundsFromTasks({ ...safeProject, tasks }), tasks })
-        const nextProject = normalizeProject(scheduled.project)
-        const bounds = getProjectBoundsFromTasks(nextProject)
-        const scheduleNote = scheduled.changed ? '；依前置相依同步重排後續任務' : ''
+        const shifted = buildShiftedTaskProject(safeProject, taskId, taskIndex, safeDelta)
+        if (!shifted.appliedDelta && !shifted.scheduledChanged) return project
+        didChange = true
+        const bounds = getProjectBoundsFromTasks(shifted.project)
+        const scheduleNote = shifted.scheduledChanged ? '；依前置相依同步校正' : '；相依後續任務同步平移'
         const records = [
-          `${new Date().toLocaleString('zh-TW', { hour12: false })}｜整段平移任務「${changedTaskName}」${getShiftDirectionLabel(safeDelta)} ${getShiftAmountLabel(safeDelta)}${scheduleNote}。`,
+          `${new Date().toLocaleString('zh-TW', { hour12: false })}｜整段平移任務「${shifted.changedTaskName}」${getShiftDirectionLabel(shifted.appliedDelta || safeDelta)} ${getShiftAmountLabel(shifted.appliedDelta || safeDelta)}${scheduleNote}。`,
           ...(safeProject.records || []),
         ].slice(0, 30)
-        return { ...project, ...bounds, tasks: nextProject.tasks, records }
+        return { ...project, ...bounds, tasks: shifted.project.tasks, startDate: shifted.project.startDate, endDate: shifted.project.endDate, records }
       })
       if (didChange) {
         try { window.localStorage.setItem('flowdesk-projects-v1972', JSON.stringify(nextRows)) } catch {}
@@ -4893,15 +4923,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       if (scope === 'task' && originalTask) {
         if (edge === 'move') {
           const safeDelta = clampTaskMoveDelta(deltaDays)
-          const nextStart = addDaysToDateValue(originalTaskStart, safeDelta)
-          const nextEnd = addDaysToDateValue(nextStart, originalTaskDuration)
-          const shiftedSubtasks = (originalTask.subtasks || []).map((subtask) => ({
-            ...subtask,
-            start: addDaysToDateValue(subtask.start || originalTaskStart, safeDelta),
-            end: addDaysToDateValue(subtask.end || originalTaskEnd, safeDelta),
-          }))
-          updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, nextStart, nextEnd, edge)
-          updateProjectTask(safeProject.id, taskIndex, { start: nextStart, end: nextEnd, subtasks: shiftedSubtasks })
+          const shifted = buildShiftedTaskProject(safeProject, originalTask.id, taskIndex, safeDelta)
+          const previewTask = (shifted.project.tasks || [])[taskIndex] || originalTask
+          updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, previewTask.start || originalTaskStart, previewTask.end || originalTaskEnd, edge)
+          updateProject(safeProject.id, { startDate: shifted.project.startDate, endDate: shifted.project.endDate, tasks: shifted.project.tasks })
         } else if (edge === 'start') {
           const nextStart = clampIsoDate(addDaysToDateValue(originalTaskStart, deltaDays), originalProjectStart, originalTaskEnd)
           updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, nextStart, originalTaskEnd, edge)
@@ -5182,7 +5207,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDay(predecessorEnd)} → ${formatMonthDay(currentStart)}`
     return (
       <span
-        className={`fd20429-gantt-dependency-path${isBackward ? ' backward' : ''}`}
+        className={`fd20430-gantt-dependency-path${isBackward ? ' backward' : ''}`}
         style={{
           '--fd20429-dep-from': `${fromPoint}%`,
           '--fd20429-dep-to': `${toPoint}%`,
@@ -5219,9 +5244,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const moveHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'move', event, subtaskIndex)
     return (
       <span className={`fd203-gantt-bar fd20429-gantt-draggable ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={`${title}｜拖曳任務條可平移日期`}>
-        <span className="fd20429-gantt-drag-grip" aria-hidden="true">拖曳移動</span>
+        <span className="fd20430-gantt-drag-grip" aria-hidden="true"><i /><i /></span>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
-        {scope !== 'project' ? <span className="fd20429-gantt-bar-range">{formatMonthDay(safeStart)} → {formatMonthDay(safeEnd)}</span> : null}
+        {scope !== 'project' ? <span className="fd20430-gantt-bar-range">{formatMonthDay(safeStart)} → {formatMonthDay(safeEnd)}</span> : null}
         {!activePreview ? (
           <span className="fd20426-gantt-hover-tip" aria-hidden="true">
             <strong>{label}</strong>
