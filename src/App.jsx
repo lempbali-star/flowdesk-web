@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.07'
+const FLOWDESK_APP_VERSION = '20.4.09'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4619,6 +4619,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function updateGanttDragPreview(projectId, scope, taskIndex, subtaskIndex, start, end, edge) {
+    const duration = daysBetween(start, end) + 1
+    const actionLabel = edge === 'move' ? '移動後日期' : edge === 'start' ? '新的開始日' : edge === 'end' ? '新的結束日' : '目前日期'
     setGanttDragPreview({
       projectId,
       scope,
@@ -4627,7 +4629,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       start,
       end,
       edge,
-      label: dateRangeLabel(start, end),
+      duration,
+      actionLabel,
+      label: `${actionLabel}：${formatMonthDayWeekday(start)} → ${formatMonthDayWeekday(end)}｜共 ${duration} 天`,
     })
   }
 
@@ -5032,13 +5036,23 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const activePreview = ganttDragPreview?.projectId === project.id && ganttDragPreview?.scope === scope && ganttDragPreview?.taskIndex === taskIndex && ganttDragPreview?.subtaskIndex === subtaskIndex ? ganttDragPreview : null
     const activeEditor = ganttProgressEditor?.scope === scope && ganttProgressEditor?.projectId === project.id && ganttProgressEditor?.taskIndex === taskIndex && ganttProgressEditor?.subtaskIndex === subtaskIndex
     const done = scope === 'task' ? Boolean(task?.done) : scope === 'subtask' ? Boolean(subtask?.done) : false
-    const title = `${label}｜${done ? '已完成' : '未完成'}｜${dateRangeLabel(start, end)}｜進度 ${progress}%`
+    const durationDays = Math.max(1, daysBetween(start, end) + 1)
+    const isShortRange = scope !== 'project' && durationDays <= 3
+    const title = `${label}｜${done ? '已完成' : '未完成'}｜${dateRangeLabel(start, end)}｜進度 ${progress}%${isShortRange ? '｜短期任務已加大可拖曳範圍' : ''}`
     const startHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'start', event, subtaskIndex)
     const endHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'end', event, subtaskIndex)
     const moveHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'move', event, subtaskIndex)
     return (
-      <span className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(start, end, displayStart, displayEnd)} onPointerDown={moveHandler} title={title}>
-        {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
+      <span className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''} ${isShortRange ? 'short-range' : ''}`.trim()} style={ganttStyle(start, end, displayStart, displayEnd)} title={title}>
+        <span className="fd20408-gantt-move-pad" onPointerDown={moveHandler} title={`拖移${label}`} aria-hidden="true" />
+        {isShortRange ? <span className="fd20408-short-range-hint">拖移區</span> : null}
+        {activePreview ? (
+          <span className="fd203-gantt-drag-tip fd20409-gantt-date-tip">
+            <b>{activePreview.actionLabel || '拖移日期'}</b>
+            <em>{formatMonthDayWeekday(activePreview.start)} → {formatMonthDayWeekday(activePreview.end)}</em>
+            <small>共 {activePreview.duration || (daysBetween(activePreview.start, activePreview.end) + 1)} 天</small>
+          </span>
+        ) : null}
         {renderGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, label)}
         <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label={`調整${label}開始日`} onPointerDown={startHandler} />
         <button
@@ -5075,6 +5089,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const todayValue = new Date().toISOString().slice(0, 10)
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
     const todayLeft = showToday ? `${ganttPoint(todayValue, displayStart, displayEnd)}%` : null
+    const activeGanttPreview = ganttDragPreview?.projectId === project.id ? ganttDragPreview : null
     return (
       <div className={`fd203-gantt-panel fd203-gantt-fit-${fitMode}${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`} data-week-count={weekCount} data-fit-mode={fitMode}>
         <div className="fd203-gantt-summary">
@@ -5094,6 +5109,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <button type="button" className={ganttShowSubtasks ? 'fd203-gantt-global-toggle open' : 'fd203-gantt-global-toggle closed'} onClick={toggleAllGanttSubtasks}>{ganttShowSubtasks ? '全部收合子任務' : '全部展開子任務'}</button>
           </div>
         </div>
+
+        {activeGanttPreview ? (
+          <div className="fd20409-gantt-drag-status" role="status" aria-live="polite">
+            <strong>{activeGanttPreview.actionLabel || '拖移日期'}</strong>
+            <span>{formatMonthDayWeekday(activeGanttPreview.start)} → {formatMonthDayWeekday(activeGanttPreview.end)}</span>
+            <small>共 {activeGanttPreview.duration || (daysBetween(activeGanttPreview.start, activeGanttPreview.end) + 1)} 天</small>
+          </div>
+        ) : null}
 
         <div className="fd203-gantt-scroll">
           <div className="fd203-gantt-grid fd203-gantt-head" style={{ gridTemplateColumns: gridColumns }}>

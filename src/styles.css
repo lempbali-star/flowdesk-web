@@ -23634,3 +23634,172 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   transform: translateY(-1px);
   box-shadow: 0 8px 16px rgba(37,99,235,.16);
 }
+
+/* FlowDesk v20.4.08 - 甘特圖短任務操作強化 */
+.fd203-gantt-bar {
+  overflow: visible !important;
+}
+
+.fd203-gantt-bar.short-range.task,
+.fd203-gantt-bar.short-range.subtask {
+  min-width: 74px !important;
+}
+
+.fd203-gantt-bar.short-range.task {
+  outline: 1px solid rgba(59, 130, 246, 0.28);
+  outline-offset: 2px;
+}
+
+.fd203-gantt-bar.short-range.subtask {
+  outline: 1px solid rgba(99, 102, 241, 0.22);
+  outline-offset: 2px;
+}
+
+.fd20408-gantt-move-pad {
+  position: absolute;
+  z-index: 2;
+  left: -20px;
+  right: -20px;
+  top: -10px;
+  bottom: -10px;
+  border-radius: 999px;
+  cursor: grab;
+  background: transparent;
+}
+
+.fd20408-gantt-move-pad:active {
+  cursor: grabbing;
+}
+
+.fd203-gantt-bar.short-range .fd20408-gantt-move-pad {
+  left: -34px;
+  right: -34px;
+  top: -14px;
+  bottom: -14px;
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.10) inset;
+}
+
+.fd20408-short-range-hint {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.76);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: .78;
+}
+
+.fd203-gantt-bar .gantt-resize-handle,
+.fd203-gantt-bar .fd203-gantt-progress-trigger,
+.fd203-gantt-bar .fd203-gantt-progress-pop {
+  z-index: 5;
+}
+
+.fd203-gantt-bar.short-range .fd203-gantt-progress-trigger {
+  min-width: 38px;
+}
+
+.fd203-gantt-track {
+  overflow: visible !important;
+}
+
+/* FlowDesk v20.4.08 - 甘特圖短任務操作強化 */
+.fd203-gantt-bar { overflow: visible !important; }
+.fd203-gantt-bar.short-range.task,
+.fd203-gantt-bar.short-range.subtask { min-width: 74px !important; }
+.fd203-gantt-bar.short-range.task { outline: 1px solid rgba(59,130,246,.28); outline-offset: 2px; }
+.fd203-gantt-bar.short-range.subtask { outline: 1px solid rgba(99,102,241,.22); outline-offset: 2px; }
+.fd20408-gantt-move-pad { position:absolute; z-index:2; left:-20px; right:-20px; top:-10px; bottom:-10px; border-radius:999px; cursor:grab; background:transparent; }
+.fd20408-gantt-move-pad:active { cursor:grabbing; }
+.fd203-gantt-bar.short-range .fd20408-gantt-move-pad { left:-34px; right:-34px; top:-14px; bottom:-14px; background:rgba(59,130,246,.05); box-shadow:0 0 0 1px rgba(59,130,246,.10) inset; }
+.fd20408-short-range-hint { position:absolute; z-index:3; left:50%; bottom:calc(100% + 6px); transform:translateX(-50%); padding:2px 7px; border-radius:999px; background:rgba(15,23,42,.76); color:#fff; font-size:10px; font-weight:850; white-space:nowrap; pointer-events:none; opacity:.78; }
+.fd203-gantt-bar .gantt-resize-handle,
+.fd203-gantt-bar .fd203-gantt-progress-trigger,
+.fd203-gantt-bar .fd203-gantt-progress-pop { z-index:5; }
+.fd203-gantt-bar.short-range .fd203-gantt-progress-trigger { min-width:38px; }
+.fd203-gantt-track { overflow:visible !important; }
+
+/* FlowDesk v20.4.09 - 甘特圖拖移日期提示 */
+.fd20409-gantt-drag-status {
+  display: inline-grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: -4px 12px 12px auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.22);
+  background: linear-gradient(135deg, rgba(239,246,255,.98), rgba(255,255,255,.96));
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.14);
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 850;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+}
+
+.fd20409-gantt-drag-status strong {
+  color: #1d4ed8;
+}
+
+.fd20409-gantt-drag-status span {
+  color: #0f172a;
+}
+
+.fd20409-gantt-drag-status small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.fd203-gantt-drag-tip.fd20409-gantt-date-tip {
+  display: grid;
+  gap: 3px;
+  min-width: 176px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  line-height: 1.25;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.94);
+  z-index: 12;
+}
+
+.fd20409-gantt-date-tip b,
+.fd20409-gantt-date-tip em,
+.fd20409-gantt-date-tip small {
+  display: block;
+  font-style: normal;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.fd20409-gantt-date-tip b {
+  font-size: 11px;
+  color: #bfdbfe;
+  letter-spacing: .04em;
+}
+
+.fd20409-gantt-date-tip em {
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.fd20409-gantt-date-tip small {
+  font-size: 10px;
+  color: #cbd5e1;
+  font-weight: 850;
+}
+
+.fd203-gantt-bar.short-range .fd20409-gantt-date-tip {
+  bottom: calc(100% + 18px);
+}
