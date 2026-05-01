@@ -23643,3 +23643,152 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   font-weight: 950 !important;
 }
 .fd20423-forward-button:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(37,99,235,.14); }
+
+/* FlowDesk v20.4.26 - 甘特圖功能回補穩定版 */
+.fd203-gantt-panel {
+  --fd20426-gantt-sticky-bg: rgba(248, 250, 252, 0.98);
+  --fd20426-gantt-sticky-border: rgba(148, 163, 184, 0.24);
+}
+
+.fd203-gantt-scroll {
+  position: relative;
+  overflow: auto;
+  max-width: 100%;
+  overscroll-behavior: contain;
+  scroll-padding-top: 64px;
+}
+
+.fd203-gantt-scroll > .fd203-gantt-grid {
+  width: var(--fd20426-gantt-grid-width, max-content);
+  min-width: var(--fd20426-gantt-grid-width, max-content);
+}
+
+.fd203-gantt-head {
+  position: sticky;
+  top: 0;
+  z-index: 24;
+  background: var(--fd20426-gantt-sticky-bg);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.fd203-gantt-head > span:first-child,
+.fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-label,
+.fd203-gantt-floating-today > span:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 21;
+  background: var(--fd20426-gantt-sticky-bg);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--fd20426-gantt-sticky-border);
+  box-shadow: 10px 0 18px rgba(15, 23, 42, 0.06);
+}
+
+.fd203-gantt-head > span:first-child { z-index: 31; }
+
+.fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-track {
+  min-width: calc(var(--fd20426-gantt-grid-width, 900px) - var(--fd20426-gantt-label-width, 300px));
+}
+
+.fd203-gantt-floating-today {
+  position: sticky;
+  top: 56px;
+  z-index: 19;
+  pointer-events: none;
+}
+
+.fd203-gantt-bar {
+  overflow: visible;
+  isolation: isolate;
+}
+
+.fd20426-gantt-hover-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  transform: translateX(-50%) translateY(4px);
+  display: grid;
+  gap: 3px;
+  min-width: 210px;
+  max-width: 280px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.24);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .16s ease, transform .16s ease, visibility .16s ease;
+  pointer-events: none;
+  white-space: normal;
+  z-index: 40;
+}
+
+.fd20426-gantt-hover-tip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  background: rgba(15, 23, 42, 0.94);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fd20426-gantt-hover-tip strong {
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fd20426-gantt-hover-tip small {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.fd203-gantt-bar:hover .fd20426-gantt-hover-tip,
+.fd203-gantt-bar:focus-within .fd20426-gantt-hover-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.fd20426-gantt-stability-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.24);
+  background: rgba(239, 246, 255, 0.9);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.fd203-gantt-panel.compact .fd20426-gantt-stability-pill { display: none; }
+
+@media (max-width: 760px) {
+  .fd203-gantt-head > span:first-child,
+  .fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-label,
+  .fd203-gantt-floating-today > span:first-child {
+    min-width: min(var(--fd20426-gantt-label-width, 290px), 76vw);
+  }
+
+  .fd20426-gantt-hover-tip {
+    left: 0;
+    transform: translateY(4px);
+  }
+
+  .fd203-gantt-bar:hover .fd20426-gantt-hover-tip,
+  .fd203-gantt-bar:focus-within .fd20426-gantt-hover-tip {
+    transform: translateY(0);
+  }
+}

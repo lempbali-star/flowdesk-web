@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.25'
+const FLOWDESK_APP_VERSION = '20.4.26'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5158,13 +5158,24 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const activePreview = ganttDragPreview?.projectId === project.id && ganttDragPreview?.scope === scope && ganttDragPreview?.taskIndex === taskIndex && ganttDragPreview?.subtaskIndex === subtaskIndex ? ganttDragPreview : null
     const activeEditor = ganttProgressEditor?.scope === scope && ganttProgressEditor?.projectId === project.id && ganttProgressEditor?.taskIndex === taskIndex && ganttProgressEditor?.subtaskIndex === subtaskIndex
     const done = scope === 'task' ? Boolean(task?.done) : scope === 'subtask' ? Boolean(subtask?.done) : false
-    const title = `${label}｜${done ? '已完成' : '未完成'}｜${dateRangeLabel(start, end)}｜進度 ${progress}%`
+    const safeStart = start || displayStart || todayDate()
+    const safeEnd = end || safeStart
+    const dayCount = daysBetween(safeStart, safeEnd) + 1
+    const title = `${label}｜${done ? '已完成' : '未完成'}｜${dateRangeLabel(safeStart, safeEnd)}｜${dayCount} 天｜進度 ${progress}%`
+    const hoverTypeLabel = scope === 'project' ? '專案' : scope === 'subtask' ? '子任務' : '任務'
     const startHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'start', event, subtaskIndex)
     const endHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'end', event, subtaskIndex)
     const moveHandler = (event) => startGanttDateDrag(project, scope, taskIndex, 'move', event, subtaskIndex)
     return (
-      <span className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(start, end, displayStart, displayEnd)} onPointerDown={moveHandler} title={title}>
+      <span className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={title}>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
+        {!activePreview ? (
+          <span className="fd20426-gantt-hover-tip" aria-hidden="true">
+            <strong>{label}</strong>
+            <small>{hoverTypeLabel}｜{formatMonthDayWeekday(safeStart)} → {formatMonthDayWeekday(safeEnd)}</small>
+            <small>{dayCount} 天｜進度 {progress}%｜{done ? '已完成' : '未完成'}</small>
+          </span>
+        ) : null}
         {renderGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, label)}
         <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label={`調整${label}開始日`} onPointerDown={startHandler} />
         <button
@@ -5193,16 +5204,18 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const displayStart = frozenRange?.start || timelineRange.start
     const displayEnd = frozenRange?.end || timelineRange.end
     const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
-    const weekCount = weekTicks.length
+    const safeWeekTicks = weekTicks.length ? weekTicks : [{ key: `${displayStart}_${displayEnd}`, start: displayStart, end: displayEnd, days: 1 }]
+    const weekCount = safeWeekTicks.length
     const fitMode = compact ? 'compact' : weekCount >= 12 ? 'dense' : weekCount >= 9 ? 'fit' : weekCount >= 7 ? 'soft-fit' : 'normal'
     const weekCellWidth = compact ? 124 : weekCount >= 12 ? 96 : weekCount >= 9 ? 108 : weekCount >= 7 ? 118 : 140
     const labelColumnWidth = compact ? 290 : weekCount >= 12 ? 268 : weekCount >= 9 ? 292 : weekCount >= 7 ? 312 : 342
-    const gridColumns = `${labelColumnWidth}px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
+    const ganttGridWidth = labelColumnWidth + (safeWeekTicks.length * weekCellWidth)
+    const gridColumns = `${labelColumnWidth}px repeat(${safeWeekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
     const todayValue = todayDate()
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
     const todayLeft = showToday ? `${ganttPoint(todayValue, displayStart, displayEnd)}%` : null
     return (
-      <div className={`fd203-gantt-panel fd203-gantt-fit-${fitMode}${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`} data-week-count={weekCount} data-fit-mode={fitMode}>
+      <div className={`fd203-gantt-panel fd203-gantt-fit-${fitMode}${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`} data-week-count={weekCount} data-fit-mode={fitMode} style={{ '--fd20426-gantt-grid-width': `${ganttGridWidth}px`, '--fd20426-gantt-label-width': `${labelColumnWidth}px` }}>
         <div className="fd203-gantt-summary">
           <div>
             <p className="eyebrow">PROJECT GANTT</p>
@@ -5216,6 +5229,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} />
               </label>
             )}
+            <span className="fd20426-gantt-stability-pill">凍結表頭 / 左欄</span>
             <button type="button" onClick={() => addProjectTask(project.id)}>新增任務</button>
             <button type="button" className={ganttShowSubtasks ? 'fd203-gantt-global-toggle open' : 'fd203-gantt-global-toggle closed'} onClick={toggleAllGanttSubtasks}>{ganttShowSubtasks ? '全部收合子任務' : '全部展開子任務'}</button>
           </div>
@@ -5224,7 +5238,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <div className="fd203-gantt-scroll">
           <div className="fd203-gantt-grid fd203-gantt-head" style={{ gridTemplateColumns: gridColumns }}>
             <span>項目</span>
-            {weekTicks.map((tick) => (
+            {safeWeekTicks.map((tick) => (
               <span key={tick.key} className="fd203-week-head">
                 <b>{formatWeekRange(tick.start, tick.end)}</b>
                 <small>{tick.days} 天 · {formatWeekSpanLabel(tick.start, tick.end)}</small>
@@ -5235,7 +5249,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           {showToday ? (
             <div className="fd203-gantt-grid fd203-gantt-floating-today" style={{ gridTemplateColumns: gridColumns }} aria-hidden="true">
               <span />
-              <div className="fd203-gantt-floating-track" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+              <div className="fd203-gantt-floating-track" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                 <i style={{ left: todayLeft }}>今天 {formatMonthDay(todayValue)}</i>
               </div>
             </div>
@@ -5246,7 +5260,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <strong>專案總期程</strong>
               <small>{project.phase} · {project.progress}%</small>
             </div>
-            <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+            <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
               {showToday ? <span className="fd203-gantt-today-line subtle fd203-gantt-today-guide" style={{ left: todayLeft }} /> : null}
               {renderGanttBar({ project, scope: 'project', start: project.startDate, end: project.endDate, displayStart, displayEnd, progress: project.progress, label: '專案進度', className: 'project', tone: project.tone || 'blue' })}
               {(project.milestones || []).map((milestone, index) => (
@@ -5325,7 +5339,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       <button type="button" className="fd203-mini-link danger ghost-danger" onClick={() => removeProjectTask(project.id, index)}>刪除</button>
                     </div>
                   </div>
-                  <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+                  <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                     {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
                     {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}
                   </div>
@@ -5336,7 +5350,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       <span>已收合 {subtaskCount} 個子任務</span>
                       <button type="button" className="fd203-mini-link" onClick={() => toggleGanttTaskSubtasks(project, task, index)}>展開</button>
                     </div>
-                    <div className="fd203-gantt-track subtask-collapsed-note-track" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+                    <div className="fd203-gantt-track subtask-collapsed-note-track" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                       <span>子任務目前隱藏，點左側展開查看明細</span>
                     </div>
                   </div>
@@ -5388,7 +5402,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                           <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectSubtask(project.id, index, subIndex)}>刪除</button>
                         </div>
                       </div>
-                      <div className="fd203-gantt-track subtask" style={{ gridColumn: `2 / span ${weekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
+                      <div className="fd203-gantt-track subtask" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                         {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
                         {renderGanttBar({ project, task, taskIndex: index, subtask, subtaskIndex: subIndex, scope: 'subtask', start: subStart, end: subEnd, displayStart, displayEnd, progress: subProgress, label: subtask.name || '子任務進度', className: 'subtask' })}
                       </div>
