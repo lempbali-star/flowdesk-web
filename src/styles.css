@@ -24811,3 +24811,104 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   background: rgba(255,255,255,0.94) !important;
   border-color: rgba(37, 99, 235, 0.16) !important;
 }
+
+
+/* FlowDesk v20.4.35 - 甘特圖相依線重畫、表頭與總期程固定優化 */
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20435-gantt-scroll {
+  scrollbar-gutter: stable both-edges;
+  scroll-padding-top: 132px;
+  padding-bottom: 10px;
+}
+
+.fd20435-gantt-scroll::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+
+.fd20435-gantt-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.58);
+  border-radius: 999px;
+  border: 2px solid rgba(248, 250, 252, 0.92);
+}
+
+.fd20435-gantt-scroll::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.9);
+  border-radius: 999px;
+}
+
+.fd20435-gantt-head {
+  top: 0;
+  z-index: 32;
+}
+
+.fd20435-gantt-project-row {
+  position: sticky !important;
+  top: 72px;
+  z-index: 25;
+}
+
+.fd20435-gantt-project-row > .fd203-gantt-label,
+.fd20435-gantt-project-row > .fd203-gantt-track {
+  background: rgba(248, 250, 252, 0.98) !important;
+  backdrop-filter: blur(16px);
+}
+
+.fd20435-gantt-project-row > .fd203-gantt-track {
+  box-shadow: inset 0 -1px 0 rgba(226, 232, 240, 0.92), 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.fd20435-gantt-dependency-curve {
+  --fd20435-dep-color: #2563eb;
+  --fd20435-dep-shadow: rgba(37, 99, 235, 0.14);
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+
+.fd20435-gantt-dependency-curve svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.fd20435-gantt-curve-shadow {
+  fill: none;
+  stroke: rgba(15, 23, 42, 0.06);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fd20435-gantt-curve-line {
+  fill: none;
+  stroke: var(--fd20435-dep-color);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 6px var(--fd20435-dep-shadow));
+}
+
+.fd20435-gantt-curve-start-dot {
+  fill: #ffffff;
+  stroke: var(--fd20435-dep-color);
+  stroke-width: 2.2;
+}
+
+.fd20435-gantt-arrow-head {
+  fill: var(--fd20435-dep-color);
+  stroke: none;
+}
+
+.fd20435-gantt-dependency-curve.backward {
+  --fd20435-dep-color: #f97316;
+  --fd20435-dep-shadow: rgba(249, 115, 22, 0.16);
+}

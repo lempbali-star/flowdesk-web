@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.34'
+const FLOWDESK_APP_VERSION = '20.4.35'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5203,47 +5203,40 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const fromPoint = Math.max(0, Math.min(100, ganttPoint(predecessorEnd, displayStart, displayEnd)))
     const toPoint = Math.max(0, Math.min(100, ganttPoint(currentStart, displayStart, displayEnd)))
     const rowDistance = predecessorIndex >= 0 ? Math.max(1, taskIndex - predecessorIndex) : 1
-    const laneHeight = 104
-    const topPadding = 22
-    const bottomPadding = 18
-    const startY = topPadding
-    const endY = topPadding + rowDistance * laneHeight
-    const svgHeight = endY + bottomPadding
+    const rowPitch = 112
+    const startY = 24
+    const endY = startY + rowDistance * rowPitch
+    const svgHeight = endY + 18
     const fromX = Math.round(fromPoint * 10)
     const toX = Math.round(toPoint * 10)
-    const isBackward = toX < fromX
-    const direction = isBackward ? -1 : 1
-    const startStub = Math.max(18, Math.min(40, Math.abs(toX - fromX) * 0.12 + 16))
-    const endStub = Math.max(18, Math.min(40, Math.abs(toX - fromX) * 0.12 + 16))
-    const bendX = Math.round((fromX + toX) / 2)
-    const startLeadX = fromX + startStub * direction
-    const endLeadX = toX - endStub * direction
+    const distanceX = toX - fromX
+    const isBackward = distanceX < 0
+    const spread = Math.max(40, Math.min(140, Math.abs(distanceX) * 0.45))
+    const ctrl1X = isBackward ? fromX + 58 : fromX + spread
+    const ctrl2X = isBackward ? toX - 58 : toX - spread
     const path = [
       `M ${fromX} ${startY}`,
-      `L ${startLeadX} ${startY}`,
-      `C ${bendX} ${startY}, ${bendX} ${endY}, ${endLeadX} ${endY}`,
-      `L ${toX} ${endY}`,
+      `C ${ctrl1X} ${startY}, ${ctrl2X} ${endY}, ${toX} ${endY}`,
     ].join(' ')
     const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDayWeekday(predecessorEnd)} → ${formatMonthDayWeekday(currentStart)}`
     const safeTaskId = String(task?.id || taskIndex).replace(/[^a-zA-Z0-9_-]/g, '')
-    const markerId = `fd20433-arrow-${safeTaskId}-${taskIndex}`
+    const markerId = `fd20435-arrow-${safeTaskId}-${taskIndex}`
     return (
       <span
-        className={`fd20433-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
+        className={`fd20435-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
         style={{ top: `-${endY}px`, height: `${svgHeight}px` }}
         title={title}
         aria-label={title}
       >
         <svg viewBox={`0 0 1000 ${svgHeight}`} preserveAspectRatio="none" aria-hidden="true">
           <defs>
-            <marker id={markerId} markerWidth="9" markerHeight="9" refX="7.2" refY="4.5" orient="auto" markerUnits="strokeWidth">
-              <path d="M 0 0.8 L 8 4.5 L 0 8.2 z" className="fd20433-gantt-arrow-head" />
+            <marker id={markerId} markerWidth="10" markerHeight="10" refX="8.2" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M 0 1 L 8.4 5 L 0 9 z" className="fd20435-gantt-arrow-head" />
             </marker>
           </defs>
-          <path className="fd20433-gantt-curve-shadow" d={path} />
-          <path className="fd20433-gantt-curve-line" d={path} markerEnd={`url(#${markerId})`} />
-          <circle className="fd20433-gantt-curve-dot from" cx={fromX} cy={startY} r="4.5" />
-          <circle className="fd20433-gantt-curve-dot to" cx={toX} cy={endY} r="4.5" />
+          <path className="fd20435-gantt-curve-shadow" d={path} />
+          <path className="fd20435-gantt-curve-line" d={path} markerEnd={`url(#${markerId})`} />
+          <circle className="fd20435-gantt-curve-start-dot" cx={fromX} cy={startY} r="4" />
         </svg>
       </span>
     )
@@ -5332,8 +5325,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           </div>
         </div>
 
-        <div className="fd203-gantt-scroll">
-          <div className="fd203-gantt-grid fd203-gantt-head" style={{ gridTemplateColumns: gridColumns }}>
+        <div className="fd203-gantt-scroll fd20435-gantt-scroll">
+          <div className="fd203-gantt-grid fd203-gantt-head fd20435-gantt-head" style={{ gridTemplateColumns: gridColumns }}>
             <span>項目</span>
             {safeWeekTicks.map((tick) => (
               <span key={tick.key} className="fd203-week-head">
@@ -5344,7 +5337,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             ))}
           </div>
 
-          <div className="fd203-gantt-grid fd203-gantt-row" style={{ gridTemplateColumns: gridColumns }}>
+          <div className="fd203-gantt-grid fd203-gantt-row fd20435-gantt-project-row" style={{ gridTemplateColumns: gridColumns }}>
             <div className="fd203-gantt-label" title={dateRangeLabel(project.startDate, project.endDate)}>
               <strong>專案總期程</strong>
               <small>{project.phase} · {project.progress}%</small>
