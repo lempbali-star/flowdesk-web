@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.41'
+const FLOWDESK_APP_VERSION = '20.4.42'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5210,33 +5210,37 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const topOffset = Math.max(0, endY - currentRowCenter)
     const svgHeight = topOffset + currentRowCenter + 20
     const fromX = Math.round(fromPoint * 10) - 2
-    const toX = Math.round(toPoint * 10) + 4
-    const isBackward = toX < fromX
-    const dx = Math.abs(toX - fromX)
+    const targetX = Math.round(toPoint * 10) + 2
+    const isBackward = targetX < fromX
+    const dx = Math.abs(targetX - fromX)
+    const terminalGap = Math.min(12, Math.max(8, Math.round(dx * 0.08)))
+    const curveEndX = isBackward ? targetX + terminalGap : targetX - terminalGap
     const spread = Math.max(24, Math.min(92, Math.round(dx * 0.42)))
     const cp1x = isBackward ? fromX + 22 : fromX + spread
     const cp1y = startY
-    const cp2x = isBackward ? toX - 22 : toX - spread
+    const cp2x = isBackward ? curveEndX - 22 : curveEndX - spread
     const cp2y = endY
-    const path = `M ${fromX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${toX} ${endY}`
+    const curvePath = `M ${fromX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curveEndX} ${endY}`
+    const terminalPath = `M ${curveEndX} ${endY} L ${targetX} ${endY}`
     const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDayWeekday(predecessorEnd)} → ${formatMonthDayWeekday(currentStart)}`
     const safeTaskId = String(task?.id || taskIndex).replace(/[^a-zA-Z0-9_-]/g, '')
-    const markerId = `fd20441-arrow-${safeTaskId}-${taskIndex}`
+    const markerId = `fd20442-arrow-${safeTaskId}-${taskIndex}`
     return (
       <span
-        className={`fd20441-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
+        className={`fd20442-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
         style={{ top: `-${topOffset}px`, height: `${svgHeight}px` }}
         title={title}
         aria-label={title}
       >
         <svg viewBox={`0 0 1000 ${svgHeight}`} preserveAspectRatio="none" aria-hidden="true">
           <defs>
-            <marker id={markerId} markerWidth="8" markerHeight="8" refX="5.6" refY="4" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M 0 0.7 L 6.8 4 L 0 7.3 z" className="fd20441-gantt-arrow-head" />
+            <marker id={markerId} markerWidth="8" markerHeight="8" refX="6.8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M 0 0.7 L 6.8 4 L 0 7.3 z" className="fd20442-gantt-arrow-head" />
             </marker>
           </defs>
-          <path className="fd20441-gantt-curve-line" d={path} markerEnd={`url(#${markerId})`} />
-          <circle className="fd20441-gantt-curve-start-dot" cx={fromX} cy={startY} r="2.7" />
+          <path className="fd20442-gantt-curve-line" d={curvePath} />
+          <path className="fd20442-gantt-terminal-line" d={terminalPath} markerEnd={`url(#${markerId})`} />
+          <circle className="fd20442-gantt-curve-start-dot" cx={fromX} cy={startY} r="2.7" />
         </svg>
       </span>
     )
@@ -5258,7 +5262,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return (
       <span className={`fd203-gantt-bar fd20431-gantt-draggable ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={`${title}｜拖曳任務條可平移日期`}>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
-        {scope !== 'project' ? <span className="fd20433-gantt-date-label"><b>{formatMonthDayWeekday(safeStart)}</b><span>→</span><b>{formatMonthDayWeekday(safeEnd)}</b></span> : null}
+        {scope !== 'project' ? <span className="fd20433-gantt-date-label"><b>{formatMonthDayWeekday(safeStart)}</b><span className="fd20442-gantt-date-sep">→</span><b>{formatMonthDayWeekday(safeEnd)}</b></span> : null}
         {!activePreview ? (
           <span className="fd20426-gantt-hover-tip" aria-hidden="true">
             <strong>{label}</strong>
