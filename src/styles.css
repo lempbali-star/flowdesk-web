@@ -25307,3 +25307,90 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20439-gantt-dependency-curve.backward {
   --fd20439-dep-color: #f97316;
 }
+
+
+/* FlowDesk v20.4.40 - S 曲線相依與總期程列固定 */
+.fd20439-gantt-dependency-curve,
+.fd20438-gantt-dependency-curve,
+.fd20437-gantt-dependency-curve,
+.fd20436-gantt-dependency-curve,
+.fd20435-gantt-dependency-curve,
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20435-gantt-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 32 !important;
+}
+
+.fd20435-gantt-project-row,
+.fd20440-gantt-project-row {
+  position: sticky !important;
+  top: 84px !important;
+  z-index: 26 !important;
+}
+
+.fd20435-gantt-project-row > .fd203-gantt-label,
+.fd20435-gantt-project-row > .fd203-gantt-track,
+.fd20440-gantt-project-row > .fd203-gantt-label,
+.fd20440-gantt-project-row > .fd203-gantt-track {
+  background: rgba(248, 250, 252, 0.995) !important;
+  backdrop-filter: none !important;
+  box-shadow: inset 0 -1px 0 rgba(226,232,240,0.92) !important;
+}
+
+.fd20435-gantt-project-row .fd203-gantt-bar.project,
+.fd20440-gantt-project-row .fd203-gantt-bar.project {
+  height: 14px !important;
+  top: 2px !important;
+}
+
+.fd203-gantt-scroll,
+.fd20435-gantt-scroll {
+  scroll-padding-top: 110px !important;
+  overscroll-behavior: contain;
+}
+
+.fd20440-gantt-dependency-curve {
+  --fd20440-dep-color: #2563eb;
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 8;
+  overflow: visible;
+}
+
+.fd20440-gantt-dependency-curve svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+.fd20440-gantt-curve-line {
+  fill: none;
+  stroke: var(--fd20440-dep-color);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 5 4;
+}
+
+.fd20440-gantt-curve-start-dot {
+  fill: #ffffff;
+  stroke: var(--fd20440-dep-color);
+  stroke-width: 1.55;
+}
+
+.fd20440-gantt-arrow-head {
+  fill: var(--fd20440-dep-color);
+}
+
+.fd20440-gantt-dependency-curve.backward {
+  --fd20440-dep-color: #f97316;
+}
