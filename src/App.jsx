@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.22'
+const FLOWDESK_APP_VERSION = '20.4.23'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3975,68 +3975,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     updateProject(projectId, { ...bounds, tasks }, `整段平移子任務「${targetSubtask.name || '未命名子任務'}」${deltaDays > 0 ? '往後' : '往前'} ${Math.abs(deltaDays)} 天。`)
   }
 
-
-  function runGanttOneDayForward(projectId, taskId, event) {
-    event?.preventDefault?.()
-    event?.stopPropagation?.()
-    if (!projectId || !taskId) return
-    setProjects((rows) => rows.map((project) => {
-      if (project.id !== projectId) return project
-      const safeProject = normalizeProject(project)
-      let movedTaskName = ''
-      const tasks = (safeProject.tasks || []).map((task) => {
-        if (task.id !== taskId) return task
-        const taskStart = task.start || safeProject.startDate || todayDate()
-        const taskEnd = task.end || taskStart
-        const nextStart = addDaysToDateValue(taskStart, 1)
-        const nextEnd = addDaysToDateValue(taskEnd, 1)
-        movedTaskName = task.name || '未命名任務'
-        const shiftedSubtasks = (task.subtasks || []).map((subtask) => {
-          const subStart = subtask.start || taskStart
-          const subEnd = subtask.end || subStart
-          return { ...subtask, start: addDaysToDateValue(subStart, 1), end: addDaysToDateValue(subEnd, 1) }
-        })
-        return { ...task, start: nextStart, end: nextEnd, subtasks: shiftedSubtasks }
-      })
-      if (!movedTaskName) return project
-      const nextEndDate = maxIsoDate(safeProject.endDate || safeProject.startDate, getProjectBoundsFromTasks({ ...safeProject, tasks }).endDate)
-      const nextProject = normalizeProject({ ...safeProject, endDate: nextEndDate, tasks })
-      nextProject.records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜主任務「${movedTaskName}」往後 1 天。`, ...(safeProject.records || [])].slice(0, 30)
-      return nextProject
-    }))
-  }
-
-  function runGanttSubtaskOneDayForward(projectId, taskId, subtaskId, event) {
-    event?.preventDefault?.()
-    event?.stopPropagation?.()
-    if (!projectId || !taskId || !subtaskId) return
-    setProjects((rows) => rows.map((project) => {
-      if (project.id !== projectId) return project
-      const safeProject = normalizeProject(project)
-      let movedSubtaskName = ''
-      const tasks = (safeProject.tasks || []).map((task) => {
-        if (task.id !== taskId) return task
-        let nextTaskEnd = task.end || safeProject.endDate || safeProject.startDate
-        const subtasks = (task.subtasks || []).map((subtask) => {
-          if (subtask.id !== subtaskId) return subtask
-          const subStart = subtask.start || task.start || safeProject.startDate || todayDate()
-          const subEnd = subtask.end || subStart
-          const nextStart = addDaysToDateValue(subStart, 1)
-          const nextEnd = addDaysToDateValue(subEnd, 1)
-          nextTaskEnd = maxIsoDate(nextTaskEnd, nextEnd)
-          movedSubtaskName = subtask.name || '未命名子任務'
-          return { ...subtask, start: nextStart, end: nextEnd }
-        })
-        return { ...task, end: nextTaskEnd, subtasks }
-      })
-      if (!movedSubtaskName) return project
-      const nextEndDate = maxIsoDate(safeProject.endDate || safeProject.startDate, getProjectBoundsFromTasks({ ...safeProject, tasks }).endDate)
-      const nextProject = normalizeProject({ ...safeProject, endDate: nextEndDate, tasks })
-      nextProject.records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜子任務「${movedSubtaskName}」往後 1 天。`, ...(safeProject.records || [])].slice(0, 30)
-      return nextProject
-    }))
-  }
-
   function estimateTaskProgress(task = {}) {
     const subtasks = Array.isArray(task.subtasks) ? task.subtasks : []
     if (!subtasks.length) return clampPercent(task.progress)
@@ -4177,6 +4115,78 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const target = tasks[taskIndex]
     if (!target) return []
     return tasks.filter((task, index) => index !== taskIndex && !hasProjectTaskDependencyCycle(tasks, target.id, task.id))
+  }
+
+  function forceShiftTaskOneDayForward(projectId, taskId, taskIndex, event) {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+    if (!projectId) return
+    setProjects((rows) => {
+      let didChange = false
+      const nextRows = rows.map((project) => {
+        if (project.id !== projectId) return project
+        const baseStart = project.startDate || todayDate()
+        const baseEnd = project.endDate || baseStart
+        const tasks = (project.tasks || []).map((task, index) => {
+          const matched = (taskId && task.id === taskId) || index === taskIndex
+          if (!matched) return task
+          didChange = true
+          const currentStart = task.start || baseStart
+          const currentEnd = task.end || currentStart
+          const nextStart = addDaysToDateValue(currentStart, 1)
+          const nextEnd = addDaysToDateValue(currentEnd, 1)
+          const shiftedSubtasks = (task.subtasks || []).map((subtask) => {
+            const subStart = subtask.start || currentStart
+            const subEnd = subtask.end || subStart
+            return { ...subtask, start: addDaysToDateValue(subStart, 1), end: addDaysToDateValue(subEnd, 1) }
+          })
+          return { ...task, start: nextStart, end: nextEnd, subtasks: shiftedSubtasks }
+        })
+        if (!didChange) return project
+        const latestTaskEnd = tasks.reduce((latest, task) => maxIsoDate(latest, task.end || baseEnd), baseEnd)
+        const records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜主任務往後 1 天。`, ...(project.records || [])].slice(0, 30)
+        return { ...project, endDate: maxIsoDate(baseEnd, latestTaskEnd), tasks, records }
+      })
+      try { window.localStorage.setItem('flowdesk-projects-v1972', JSON.stringify(nextRows)) } catch {}
+      return nextRows
+    })
+  }
+
+  function forceShiftSubtaskOneDayForward(projectId, taskId, taskIndex, subtaskId, subtaskIndex, event) {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+    if (!projectId) return
+    setProjects((rows) => {
+      let didChange = false
+      const nextRows = rows.map((project) => {
+        if (project.id !== projectId) return project
+        const baseStart = project.startDate || todayDate()
+        const baseEnd = project.endDate || baseStart
+        const tasks = (project.tasks || []).map((task, index) => {
+          const taskMatched = (taskId && task.id === taskId) || index === taskIndex
+          if (!taskMatched) return task
+          let nextTaskEnd = task.end || baseEnd
+          const subtasks = (task.subtasks || []).map((subtask, subIndex) => {
+            const subMatched = (subtaskId && subtask.id === subtaskId) || subIndex === subtaskIndex
+            if (!subMatched) return subtask
+            didChange = true
+            const subStart = subtask.start || task.start || baseStart
+            const subEnd = subtask.end || subStart
+            const nextStart = addDaysToDateValue(subStart, 1)
+            const nextEnd = addDaysToDateValue(subEnd, 1)
+            nextTaskEnd = maxIsoDate(nextTaskEnd, nextEnd)
+            return { ...subtask, start: nextStart, end: nextEnd }
+          })
+          return { ...task, end: nextTaskEnd, subtasks }
+        })
+        if (!didChange) return project
+        const latestTaskEnd = tasks.reduce((latest, task) => maxIsoDate(latest, task.end || baseEnd), baseEnd)
+        const records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜子任務往後 1 天。`, ...(project.records || [])].slice(0, 30)
+        return { ...project, endDate: maxIsoDate(baseEnd, latestTaskEnd), tasks, records }
+      })
+      try { window.localStorage.setItem('flowdesk-projects-v1972', JSON.stringify(nextRows)) } catch {}
+      return nextRows
+    })
   }
 
   function updateProjectTask(projectId, taskIndex, patch, recordText) {
@@ -5255,7 +5265,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="fd203-gantt-row-actions compact-v16 fd203-gantt-row-actions-v29">
                       <button type="button" className="fd203-mini-link soft" onClick={(event) => openGanttProgressEditor('task', project.id, index, null, progress, event)}>調整%</button>
                       <button type="button" className="fd203-mini-link fd20414-shift" title="任務整段往前 1 天" onClick={(event) => { event.stopPropagation(); shiftProjectTaskDates(project.id, index, -1) }}>←1日</button>
-                      <button type="button" className="fd203-mini-link fd20414-shift fd20422-forward-button" title="任務整段往後 1 天" onPointerDown={(event) => runGanttOneDayForward(project.id, task.id, event)} onClick={(event) => { event.preventDefault(); event.stopPropagation() }}>1日→</button>
+                      <button type="button" className="fd203-mini-link fd20414-shift fd20423-forward-button" title="任務整段往後 1 天" onPointerDown={(event) => forceShiftTaskOneDayForward(project.id, task.id, index, event)} onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }} onClick={(event) => forceShiftTaskOneDayForward(project.id, task.id, index, event)}>1日→</button>
                       <button type="button" className="fd203-mini-link fd20414-shift week" title="任務整段往前 1 週" onClick={(event) => { event.stopPropagation(); shiftProjectTaskDates(project.id, index, -7) }}>←1週</button>
                       <button type="button" className="fd203-mini-link fd20414-shift week" title="任務整段往後 1 週" onClick={(event) => { event.stopPropagation(); shiftProjectTaskDates(project.id, index, 7) }}>1週→</button>
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>＋子任務</button>
@@ -5323,7 +5333,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                         <div className="fd203-gantt-row-actions compact-v16">
                           <button type="button" className="fd203-mini-link soft" onClick={(event) => openGanttProgressEditor('subtask', project.id, index, subIndex, subProgress, event)}>調整%</button>
                           <button type="button" className="fd203-mini-link fd20414-shift" title="子任務整段往前 1 天" onClick={(event) => { event.stopPropagation(); shiftProjectSubtaskDates(project.id, index, subIndex, -1) }}>←1日</button>
-                          <button type="button" className="fd203-mini-link fd20414-shift fd20422-forward-button" title="子任務整段往後 1 天" onPointerDown={(event) => runGanttSubtaskOneDayForward(project.id, task.id, subtask.id, event)} onClick={(event) => { event.preventDefault(); event.stopPropagation() }}>1日→</button>
+                          <button type="button" className="fd203-mini-link fd20414-shift fd20423-forward-button" title="子任務整段往後 1 天" onPointerDown={(event) => forceShiftSubtaskOneDayForward(project.id, task.id, index, subtask.id, subIndex, event)} onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }} onClick={(event) => forceShiftSubtaskOneDayForward(project.id, task.id, index, subtask.id, subIndex, event)}>1日→</button>
                           <button type="button" className="fd203-mini-link danger" onClick={() => removeProjectSubtask(project.id, index, subIndex)}>刪除</button>
                         </div>
                       </div>
