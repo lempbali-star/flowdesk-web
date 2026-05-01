@@ -25789,3 +25789,44 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   text-shadow: none !important;
   z-index: 60 !important;
 }
+
+
+/* FlowDesk v20.4.48 - 小任務條拖移命中區修正 */
+.fd203-gantt-bar.task,
+.fd203-gantt-bar.subtask {
+  cursor: grab !important;
+}
+
+.fd203-gantt-bar.task:active,
+.fd203-gantt-bar.subtask:active {
+  cursor: grabbing !important;
+}
+
+.fd20448-gantt-progress-drag-zone {
+  cursor: grab !important;
+  touch-action: none;
+  user-select: none;
+}
+
+.fd20448-gantt-progress-drag-zone:active {
+  cursor: grabbing !important;
+}
+
+.fd203-gantt-bar.task .fd203-gantt-progress-trigger,
+.fd203-gantt-bar.subtask .fd203-gantt-progress-trigger {
+  min-width: 34px !important;
+  max-width: calc(100% - 8px);
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  z-index: 24 !important;
+}
+
+.fd203-gantt-bar.task .gantt-resize-handle,
+.fd203-gantt-bar.subtask .gantt-resize-handle {
+  z-index: 34 !important;
+}
+
+.fd203-gantt-bar.task .fd20433-gantt-date-label,
+.fd203-gantt-bar.subtask .fd20433-gantt-date-label {
+  pointer-events: none !important;
+}

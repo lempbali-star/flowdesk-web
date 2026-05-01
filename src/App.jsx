@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.47'
+const FLOWDESK_APP_VERSION = '20.4.48'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5226,16 +5226,22 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label={`調整${label}開始日`} onPointerDown={startHandler} />
         <button
           type="button"
-          className={`fd203-gantt-progress-trigger${activeEditor ? ' active' : ''}`}
+          className={`fd203-gantt-progress-trigger fd20448-gantt-progress-drag-zone${activeEditor ? ' active' : ''}`}
           onPointerDown={(event) => {
+            if (scope === 'task' || scope === 'subtask') {
+              moveHandler(event)
+              return
+            }
             event.preventDefault()
             event.stopPropagation()
           }}
           onMouseDown={(event) => {
+            if (scope === 'task' || scope === 'subtask') return
             event.preventDefault()
             event.stopPropagation()
           }}
           onClick={(event) => openGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, event)}
+          title="拖曳這裡可移動任務；點一下可調整進度"
         >{progress}%</button>
         <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label={`調整${label}結束日`} onPointerDown={endHandler} />
       </span>
