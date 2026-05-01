@@ -23629,15 +23629,19 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   white-space: nowrap;
 }
 
-/* FlowDesk v20.4.21 - 1日→ capture 修正 */
-.fd20421-shift-forward {
+/* FlowDesk v20.4.22 - 甘特圖 1日→ 直接更新按鈕 */
+.fd20422-forward-button {
   position: relative;
   z-index: 10;
   cursor: pointer;
-  pointer-events: auto !important;
   touch-action: manipulation;
+  border-color: rgba(37, 99, 235, .28) !important;
+  background: rgba(239, 246, 255, .94) !important;
+  color: #1d4ed8 !important;
+  font-weight: 900 !important;
 }
 
-.fd20421-shift-forward:hover {
+.fd20422-forward-button:hover {
   transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .12);
 }
