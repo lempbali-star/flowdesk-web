@@ -25830,3 +25830,9 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-bar.subtask .fd20433-gantt-date-label {
   pointer-events: none !important;
 }
+
+
+/* FlowDesk v20.4.49 - 前置任務調整後自動貼齊修正 */
+.fd20449-gantt-dependency-align-note {
+  font-weight: 800;
+}

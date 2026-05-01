@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.48'
+const FLOWDESK_APP_VERSION = '20.4.49'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4037,7 +4037,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return false
   }
 
-  function resolveProjectTaskDependencies(project = {}) {
+  function hasTaskDependencyPathTo(tasks = [], task = {}, sourceIds = new Set()) {
+    if (!task?.dependsOnTaskId || !sourceIds?.size) return false
+    let cursor = task.dependsOnTaskId
+    const visited = new Set()
+    while (cursor) {
+      if (sourceIds.has(cursor)) return true
+      if (visited.has(cursor)) return false
+      visited.add(cursor)
+      const current = tasks.find((item) => item.id === cursor)
+      cursor = current?.dependsOnTaskId || ''
+    }
+    return false
+  }
+
+  function resolveProjectTaskDependencies(project = {}, options = {}) {
     let changed = false
     let tasks = (project.tasks || []).map((task) => ({ ...task, subtasks: (task.subtasks || []).map((subtask) => ({ ...subtask })) }))
     for (let pass = 0; pass < Math.max(tasks.length * 2, 1); pass += 1) {
@@ -4052,7 +4066,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         }
         const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
         const currentStart = task.start || project.startDate
-        if (!currentStart || currentStart >= nextStart) return task
+        const exactSourceIds = new Set(options.exactSourceIds || [])
+        const shouldAlignExact = hasTaskDependencyPathTo(tasks, task, exactSourceIds)
+        if (shouldAlignExact ? currentStart === nextStart : (!currentStart || currentStart >= nextStart)) return task
         changed = true
         passChanged = true
         return shiftTaskWithSubtasks(task, nextStart)
@@ -4327,7 +4343,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         completedAt: nextCompletedAt,
       }, safeProject, index)
     })
-    const scheduled = resolveProjectTaskDependencies({ ...safeProject, tasks })
+    const dependencyAlignSourceIds = (Object.prototype.hasOwnProperty.call(safePatch, 'start') || Object.prototype.hasOwnProperty.call(safePatch, 'end')) && targetTask?.id
+      ? [targetTask.id]
+      : []
+    const scheduled = resolveProjectTaskDependencies({ ...safeProject, tasks }, { exactSourceIds: dependencyAlignSourceIds })
     const nextProject = normalizeProject(scheduled.project)
     const nextRecord = scheduled.changed ? `${recordText ? `${recordText}；` : ''}依前置任務自動重排後續任務。` : recordText
     updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, nextRecord)
