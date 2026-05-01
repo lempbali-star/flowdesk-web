@@ -23616,3 +23616,21 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-row-actions .fd20406-shift {
   min-width: 48px;
 }
+
+/* FlowDesk v20.4.07 - 甘特圖平移按鈕實際位移修正 */
+.fd20406-shift {
+  border-color: rgba(59,130,246,.25) !important;
+  background: linear-gradient(135deg, rgba(239,246,255,.96), rgba(219,234,254,.9)) !important;
+  color: #1d4ed8 !important;
+  font-weight: 900 !important;
+}
+
+.fd20406-shift.week {
+  background: linear-gradient(135deg, rgba(238,242,255,.96), rgba(224,231,255,.9)) !important;
+  color: #4338ca !important;
+}
+
+.fd20406-shift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(37,99,235,.16);
+}
