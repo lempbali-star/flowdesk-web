@@ -24028,3 +24028,85 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20411-shift-button:active {
   transform: translateY(1px) scale(.98) !important;
 }
+
+/* FlowDesk v20.4.13 - 甘特圖穩定化：避免提示撐大捲動範圍，修正平移按鈕 */
+.fd20409-gantt-date-tip,
+.fd20410-gantt-hover-date-tip,
+.fd20408-short-range-hint {
+  display: none !important;
+}
+
+.fd20408-gantt-move-pad,
+.fd203-gantt-bar.short-range .fd20408-gantt-move-pad {
+  left: 0 !important;
+  right: 0 !important;
+  top: -8px !important;
+  bottom: -8px !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.fd203-gantt-bar.short-range.task,
+.fd203-gantt-bar.short-range.subtask {
+  min-width: 64px !important;
+}
+
+.fd203-gantt-scroll {
+  overflow: auto !important;
+  overflow-anchor: none !important;
+  overscroll-behavior: contain;
+  scroll-padding-top: 132px !important;
+}
+
+.fd20411-sticky-summary {
+  position: relative !important;
+  top: auto !important;
+  z-index: 12 !important;
+}
+
+.fd20411-sticky-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 62 !important;
+  background: rgba(248,250,252,.99) !important;
+}
+
+.fd20411-sticky-project-row {
+  position: sticky !important;
+  top: 62px !important;
+  z-index: 54 !important;
+  background: rgba(255,255,255,.99) !important;
+}
+
+.fd20411-sticky-head > span:first-child,
+.fd20411-sticky-project-row > .fd203-gantt-label,
+.fd203-gantt-grid.fd203-gantt-row.task > .fd203-gantt-label,
+.fd203-gantt-grid.fd203-gantt-row.subtask > .fd203-gantt-label,
+.fd203-gantt-grid.fd203-gantt-row.subtask-collapsed-note > .fd203-gantt-label {
+  position: sticky !important;
+  left: 0 !important;
+}
+
+.fd20411-sticky-head > span:first-child {
+  z-index: 70 !important;
+}
+
+.fd20411-sticky-project-row > .fd203-gantt-label {
+  z-index: 66 !important;
+}
+
+.fd20411-shift-button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+.fd20411-shift-button:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.fd20411-shift-button:active {
+  transform: translateY(1px) scale(.98) !important;
+}
