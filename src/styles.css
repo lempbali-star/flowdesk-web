@@ -23597,3 +23597,22 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     gap: 8px;
   }
 }
+
+/* FlowDesk v20.4.06 - 甘特圖任務穩定平移按鈕 */
+.fd20406-shift {
+  border-color: rgba(14, 165, 233, 0.28) !important;
+  background: rgba(240, 249, 255, 0.92) !important;
+  color: #0369a1 !important;
+  font-weight: 900 !important;
+}
+
+.fd20406-shift.week {
+  border-color: rgba(99, 102, 241, 0.26) !important;
+  background: rgba(238, 242, 255, 0.94) !important;
+  color: #4338ca !important;
+}
+
+.fd203-gantt-row-actions-v29 .fd20406-shift,
+.fd203-gantt-row-actions .fd20406-shift {
+  min-width: 48px;
+}
