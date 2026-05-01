@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.09'
+const FLOWDESK_APP_VERSION = '20.4.10'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5052,7 +5052,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <em>{formatMonthDayWeekday(activePreview.start)} → {formatMonthDayWeekday(activePreview.end)}</em>
             <small>共 {activePreview.duration || (daysBetween(activePreview.start, activePreview.end) + 1)} 天</small>
           </span>
-        ) : null}
+        ) : (
+          <span className="fd20410-gantt-hover-date-tip">
+            <b>{label}</b>
+            <em>{formatMonthDayWeekday(start)} → {formatMonthDayWeekday(end)}</em>
+            <small>共 {durationDays} 天 · 進度 {progress}%</small>
+          </span>
+        )}
         {renderGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, label)}
         <i className="gantt-resize-handle start" role="button" tabIndex={0} aria-label={`調整${label}開始日`} onPointerDown={startHandler} />
         <button

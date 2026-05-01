@@ -23803,3 +23803,85 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-bar.short-range .fd20409-gantt-date-tip {
   bottom: calc(100% + 18px);
 }
+
+/* FlowDesk v20.4.10 - 甘特圖任務條全域 Hover 日期提示 */
+.fd20410-gantt-hover-date-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(4px);
+  z-index: 16;
+  display: grid;
+  gap: 2px;
+  min-width: max-content;
+  max-width: 260px;
+  padding: 8px 11px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.22);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .14s ease, transform .14s ease, visibility .14s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.fd20410-gantt-hover-date-tip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid rgba(15, 23, 42, 0.94);
+}
+
+.fd20410-gantt-hover-date-tip b,
+.fd20410-gantt-hover-date-tip em,
+.fd20410-gantt-hover-date-tip small {
+  display: block;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.fd20410-gantt-hover-date-tip b {
+  font-size: 11px;
+  font-weight: 900;
+  color: #dbeafe;
+}
+
+.fd20410-gantt-hover-date-tip em {
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.fd20410-gantt-hover-date-tip small {
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(226, 232, 240, .9);
+}
+
+.fd203-gantt-bar:hover .fd20410-gantt-hover-date-tip,
+.fd203-gantt-bar:focus-within .fd20410-gantt-hover-date-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.fd203-gantt-bar.short-range .fd20410-gantt-hover-date-tip {
+  bottom: calc(100% + 16px);
+}
+
+.fd203-gantt-track,
+.fd203-gantt-row,
+.fd203-gantt-grid {
+  overflow: visible !important;
+}
+
+.fd203-gantt-head {
+  overflow: hidden !important;
+}
