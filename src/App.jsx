@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.33'
+const FLOWDESK_APP_VERSION = '20.4.34'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4052,7 +4052,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         }
         const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
         const currentStart = task.start || project.startDate
-        if (currentStart === nextStart) return task
+        if (!currentStart || currentStart >= nextStart) return task
         changed = true
         passChanged = true
         return shiftTaskWithSubtasks(task, nextStart)
@@ -5236,8 +5236,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       >
         <svg viewBox={`0 0 1000 ${svgHeight}`} preserveAspectRatio="none" aria-hidden="true">
           <defs>
-            <marker id={markerId} markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-              <path d="M 0 1 L 11 6 L 0 11 z" className="fd20433-gantt-arrow-head" />
+            <marker id={markerId} markerWidth="9" markerHeight="9" refX="7.2" refY="4.5" orient="auto" markerUnits="strokeWidth">
+              <path d="M 0 0.8 L 8 4.5 L 0 8.2 z" className="fd20433-gantt-arrow-head" />
             </marker>
           </defs>
           <path className="fd20433-gantt-curve-shadow" d={path} />

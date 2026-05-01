@@ -24794,3 +24794,20 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     padding: 3px 8px;
   }
 }
+
+
+/* FlowDesk v20.4.34 - 後續任務按鈕可用修正與相依箭頭微調 */
+.fd20433-gantt-curve-line {
+  stroke-width: 2.4 !important;
+  stroke-dasharray: 6 6 !important;
+}
+
+.fd20433-gantt-curve-shadow {
+  stroke-width: 5 !important;
+  stroke: rgba(15, 23, 42, 0.05) !important;
+}
+
+.fd20433-gantt-date-label {
+  background: rgba(255,255,255,0.94) !important;
+  border-color: rgba(37, 99, 235, 0.16) !important;
+}
