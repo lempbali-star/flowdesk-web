@@ -23641,3 +23641,10 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   transform: translateY(-1px);
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
 }
+
+/* FlowDesk v20.4.20 - 1日→ 按鈕直接觸發修正 */
+.fd20420-shift-forward {
+  position: relative;
+  z-index: 20 !important;
+  pointer-events: auto !important;
+}
