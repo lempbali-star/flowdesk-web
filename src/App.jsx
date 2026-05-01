@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.23'
+const FLOWDESK_APP_VERSION = '20.4.24'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3084,14 +3084,22 @@ function PurchaseStageSettings({ stages, stageDragId, setStageDragId, moveStage,
   )
 }
 
+function formatLocalDateValue(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function todayDate() {
-  return new Date().toISOString().slice(0, 10)
+  return formatLocalDateValue(new Date())
 }
 
 function addDaysDate(days) {
   const date = new Date()
   date.setDate(date.getDate() + days)
-  return date.toISOString().slice(0, 10)
+  return formatLocalDateValue(date)
 }
 
 function nextRunningId(prefix, rows = []) {
@@ -5147,7 +5155,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const weekCellWidth = compact ? 124 : weekCount >= 12 ? 96 : weekCount >= 9 ? 108 : weekCount >= 7 ? 118 : 140
     const labelColumnWidth = compact ? 290 : weekCount >= 12 ? 268 : weekCount >= 9 ? 292 : weekCount >= 7 ? 312 : 342
     const gridColumns = `${labelColumnWidth}px repeat(${weekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
-    const todayValue = new Date().toISOString().slice(0, 10)
+    const todayValue = todayDate()
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
     const todayLeft = showToday ? `${ganttPoint(todayValue, displayStart, displayEnd)}%` : null
     return (
@@ -5812,7 +5820,7 @@ function parseDate(value) {
 function addDaysToDateValue(value, days) {
   const date = parseDate(value)
   date.setDate(date.getDate() + days)
-  return date.toISOString().slice(0, 10)
+  return formatLocalDateValue(date)
 }
 
 function minIsoDate(value, maxValue) {
@@ -5852,7 +5860,7 @@ function buildGanttTicks(start, end) {
   let cursor = parseDate(start)
   const finalDate = parseDate(end)
   while (cursor <= finalDate) {
-    ticks.push(cursor.toISOString().slice(0, 10))
+    ticks.push(formatLocalDateValue(cursor))
     cursor = new Date(cursor.getTime() + 86400000)
   }
   if (!ticks.length || ticks[ticks.length - 1] !== end) ticks.push(end)
@@ -5865,7 +5873,7 @@ function getProjectGanttRange(project = {}) {
   const pushDate = (value) => {
     if (!value) return
     const parsed = parseDate(value)
-    if (!Number.isNaN(parsed.getTime())) dates.push(parsed.toISOString().slice(0, 10))
+    if (!Number.isNaN(parsed.getTime())) dates.push(formatLocalDateValue(parsed))
   }
   pushDate(project.startDate)
   pushDate(project.endDate)
@@ -5879,7 +5887,7 @@ function getProjectGanttRange(project = {}) {
   })
   ;(project.milestones || []).forEach((milestone) => pushDate(milestone.date))
   if (!dates.length) {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayDate()
     return { start: today, end: today }
   }
   dates.sort()
@@ -5891,10 +5899,10 @@ function buildGanttWeekTicks(start, end) {
   let cursor = parseDate(start)
   const finalDate = parseDate(end)
   while (cursor <= finalDate) {
-    const weekStart = cursor.toISOString().slice(0, 10)
+    const weekStart = formatLocalDateValue(cursor)
     const weekEndDate = new Date(cursor.getTime() + (6 * 86400000))
     const normalizedWeekEnd = weekEndDate > finalDate ? finalDate : weekEndDate
-    const weekEnd = normalizedWeekEnd.toISOString().slice(0, 10)
+    const weekEnd = formatLocalDateValue(normalizedWeekEnd)
     ticks.push({
       key: `${weekStart}_${weekEnd}`,
       start: weekStart,
