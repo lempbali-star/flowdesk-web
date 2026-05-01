@@ -23628,31 +23628,3 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   border-radius: 999px !important;
   white-space: nowrap;
 }
-
-/* FlowDesk v20.4.15 - 先修 1日→ 按鈕可用性 */
-.fd20415-shift-next {
-  position: relative;
-  z-index: 20;
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  touch-action: manipulation;
-  background: linear-gradient(135deg, rgba(14,165,233,.22), rgba(99,102,241,.18)) !important;
-  color: #1d4ed8 !important;
-  border: 1px solid rgba(37,99,235,.24) !important;
-  box-shadow: 0 6px 14px rgba(37,99,235,.12) !important;
-}
-.fd20415-shift-next:hover {
-  transform: translateY(-1px);
-}
-
-/* FlowDesk v20.4.16 - 1日右移按鈕真正觸發修正 */
-.fd20416-shift-next {
-  position: relative;
-  z-index: 80 !important;
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  user-select: none;
-}
-.fd20416-shift-next:active {
-  transform: translateY(0) scale(.98);
-}
