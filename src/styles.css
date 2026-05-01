@@ -23885,3 +23885,90 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-head {
   overflow: hidden !important;
 }
+
+/* FlowDesk v20.4.11 - 甘特圖凍結列與平移按鈕修正 */
+.fd203-gantt-panel {
+  --fd20411-summary-sticky-top: 0px;
+  --fd20411-summary-height: 76px;
+  --fd20411-head-height: 72px;
+  --fd20411-project-height: 74px;
+  --fd20411-head-top: calc(var(--fd20411-summary-sticky-top) + var(--fd20411-summary-height));
+  --fd20411-project-top: calc(var(--fd20411-head-top) + var(--fd20411-head-height));
+}
+
+.fd20411-sticky-summary {
+  position: sticky;
+  top: var(--fd20411-summary-sticky-top);
+  z-index: 50;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(148,163,184,0.18);
+}
+
+.fd203-gantt-scroll {
+  position: relative;
+}
+
+.fd20411-sticky-head {
+  position: sticky;
+  top: var(--fd20411-head-top);
+  z-index: 42;
+  background: rgba(248,250,252,0.98);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(226,232,240,0.95);
+}
+
+.fd20411-sticky-project-row {
+  position: sticky;
+  top: var(--fd20411-project-top);
+  z-index: 38;
+  background: rgba(255,255,255,0.98);
+  box-shadow: 0 1px 0 rgba(226,232,240,0.95);
+}
+
+.fd20411-sticky-head > span:first-child,
+.fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-label {
+  position: sticky;
+  left: 0;
+}
+
+.fd20411-sticky-head > span:first-child {
+  z-index: 46;
+  background: rgba(248,250,252,0.99);
+}
+
+.fd20411-sticky-project-row > .fd203-gantt-label,
+.fd203-gantt-grid.fd203-gantt-row.task > .fd203-gantt-label,
+.fd203-gantt-grid.fd203-gantt-row.subtask > .fd203-gantt-label,
+.fd203-gantt-grid.fd203-gantt-row.subtask-collapsed-note > .fd203-gantt-label {
+  z-index: 16;
+  background: rgba(255,255,255,0.98);
+  box-shadow: 1px 0 0 rgba(226,232,240,0.95);
+}
+
+.fd20411-sticky-project-row > .fd203-gantt-label {
+  z-index: 40;
+}
+
+.fd20411-sticky-project-row > .fd203-gantt-track {
+  background: rgba(255,255,255,0.98);
+}
+
+.fd20411-shift-button {
+  position: relative;
+  z-index: 5;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.fd20411-shift-button:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1280px) {
+  .fd203-gantt-panel {
+    --fd20411-summary-height: 84px;
+    --fd20411-head-height: 68px;
+    --fd20411-project-height: 72px;
+  }
+}
