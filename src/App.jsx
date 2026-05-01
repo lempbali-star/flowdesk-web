@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.32'
+const FLOWDESK_APP_VERSION = '20.4.33'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4099,12 +4099,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return nextTasks
   }
 
+  function resolveProjectTaskIndex(tasks = [], taskId, taskIndex) {
+    if (taskId) {
+      const matched = tasks.findIndex((task) => task.id === taskId)
+      if (matched >= 0) return matched
+    }
+    if (Number.isInteger(taskIndex) && taskIndex >= 0 && taskIndex < tasks.length) return taskIndex
+    return -1
+  }
+
   function buildShiftedTaskProject(project = {}, taskId, taskIndex, deltaDays) {
     const safeProject = normalizeProject(project)
     const safeDelta = Number(deltaDays) || 0
     if (!safeDelta) return { project: safeProject, appliedDelta: 0, changedTaskName: '未命名任務', scheduledChanged: false }
     const tasks = (safeProject.tasks || []).map((task) => ({ ...task, subtasks: (task.subtasks || []).map((subtask) => ({ ...subtask })) }))
-    const targetIndex = tasks.findIndex((task, index) => ((taskId && task.id === taskId) || index === taskIndex))
+    const targetIndex = resolveProjectTaskIndex(tasks, taskId, taskIndex)
     if (targetIndex < 0) return { project: safeProject, appliedDelta: 0, changedTaskName: '未命名任務', scheduledChanged: false }
     const targetTask = tasks[targetIndex]
     const taskStart = targetTask.start || safeProject.startDate || todayDate()
@@ -5194,41 +5203,52 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const fromPoint = Math.max(0, Math.min(100, ganttPoint(predecessorEnd, displayStart, displayEnd)))
     const toPoint = Math.max(0, Math.min(100, ganttPoint(currentStart, displayStart, displayEnd)))
     const rowDistance = predecessorIndex >= 0 ? Math.max(1, taskIndex - predecessorIndex) : 1
-    const curveHeight = Math.max(118, Math.min(420, rowDistance * 136))
-    const svgHeight = curveHeight + 42
+    const laneHeight = 104
+    const topPadding = 22
+    const bottomPadding = 18
+    const startY = topPadding
+    const endY = topPadding + rowDistance * laneHeight
+    const svgHeight = endY + bottomPadding
     const fromX = Math.round(fromPoint * 10)
     const toX = Math.round(toPoint * 10)
-    const startY = 14
-    const endY = svgHeight - 18
-    const midY = Math.round((startY + endY) / 2)
     const isBackward = toX < fromX
-    const controlGap = Math.max(90, Math.min(220, Math.abs(toX - fromX) * 0.35 + 80))
-    const c1X = isBackward ? Math.min(990, fromX + controlGap) : Math.min(990, fromX + controlGap)
-    const c2X = isBackward ? Math.max(10, toX - controlGap) : Math.max(10, toX - controlGap)
+    const direction = isBackward ? -1 : 1
+    const startStub = Math.max(18, Math.min(40, Math.abs(toX - fromX) * 0.12 + 16))
+    const endStub = Math.max(18, Math.min(40, Math.abs(toX - fromX) * 0.12 + 16))
+    const bendX = Math.round((fromX + toX) / 2)
+    const startLeadX = fromX + startStub * direction
+    const endLeadX = toX - endStub * direction
+    const path = [
+      `M ${fromX} ${startY}`,
+      `L ${startLeadX} ${startY}`,
+      `C ${bendX} ${startY}, ${bendX} ${endY}, ${endLeadX} ${endY}`,
+      `L ${toX} ${endY}`,
+    ].join(' ')
+    const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDayWeekday(predecessorEnd)} → ${formatMonthDayWeekday(currentStart)}`
     const safeTaskId = String(task?.id || taskIndex).replace(/[^a-zA-Z0-9_-]/g, '')
-    const markerId = `fd20432-arrow-${safeTaskId}-${taskIndex}`
-    const path = `M ${fromX} ${startY} C ${c1X} ${startY}, ${c1X} ${midY}, ${Math.round((fromX + toX) / 2)} ${midY} S ${c2X} ${endY}, ${toX} ${endY}`
-    const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDay(predecessorEnd)} → ${formatMonthDay(currentStart)}`
+    const markerId = `fd20433-arrow-${safeTaskId}-${taskIndex}`
     return (
       <span
-        className={`fd20432-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
-        style={{ top: `-${curveHeight}px`, height: `${svgHeight}px` }}
+        className={`fd20433-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
+        style={{ top: `-${endY}px`, height: `${svgHeight}px` }}
         title={title}
         aria-label={title}
       >
         <svg viewBox={`0 0 1000 ${svgHeight}`} preserveAspectRatio="none" aria-hidden="true">
           <defs>
-            <marker id={markerId} markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
-              <path d="M 0 1 L 10 6 L 0 11 z" className="fd20432-gantt-arrow-head" />
+            <marker id={markerId} markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+              <path d="M 0 1 L 11 6 L 0 11 z" className="fd20433-gantt-arrow-head" />
             </marker>
           </defs>
-          <path className="fd20432-gantt-curve-shadow" d={path} />
-          <path className="fd20432-gantt-curve-line" d={path} markerEnd={`url(#${markerId})`} />
-          <circle className="fd20432-gantt-curve-dot" cx={fromX} cy={startY} r="4.5" />
+          <path className="fd20433-gantt-curve-shadow" d={path} />
+          <path className="fd20433-gantt-curve-line" d={path} markerEnd={`url(#${markerId})`} />
+          <circle className="fd20433-gantt-curve-dot from" cx={fromX} cy={startY} r="4.5" />
+          <circle className="fd20433-gantt-curve-dot to" cx={toX} cy={endY} r="4.5" />
         </svg>
       </span>
     )
   }
+
 
   function renderGanttBar({ project, task, taskIndex = null, subtask, subtaskIndex = null, scope, start, end, displayStart, displayEnd, progress, label, className = '', tone = '', indent = false }) {
     const activePreview = ganttDragPreview?.projectId === project.id && ganttDragPreview?.scope === scope && ganttDragPreview?.taskIndex === taskIndex && ganttDragPreview?.subtaskIndex === subtaskIndex ? ganttDragPreview : null
@@ -5245,7 +5265,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return (
       <span className={`fd203-gantt-bar fd20431-gantt-draggable ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={`${title}｜拖曳任務條可平移日期`}>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
-        {scope !== 'project' ? <span className="fd20431-gantt-bar-range"><b>{formatMonthDay(safeStart)}</b><span>→</span><b>{formatMonthDay(safeEnd)}</b></span> : null}
+        {scope !== 'project' ? <span className="fd20433-gantt-date-label"><b>{formatMonthDayWeekday(safeStart)}</b><span>→</span><b>{formatMonthDayWeekday(safeEnd)}</b></span> : null}
         {!activePreview ? (
           <span className="fd20426-gantt-hover-tip" aria-hidden="true">
             <strong>{label}</strong>
@@ -5378,7 +5398,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       </label>
                     </div>
                     <div className="fd203-gantt-meta-progress">
-                      <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {formatMonthDay(taskStart)} → {formatMonthDay(taskEnd)}</small>
+                      <small title={dateRangeLabel(taskStart, taskEnd)}>{task.owner || '未指定'} · {formatMonthDayWeekday(taskStart)} → {formatMonthDayWeekday(taskEnd)}</small>
                       <label className="fd203-inline-progress-edit" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
                         <span>進度</span>
                         <input
@@ -5448,7 +5468,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                           </label>
                         </div>
                         <div className="fd203-gantt-meta-progress subtask">
-                          <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {formatMonthDay(subStart)} → {formatMonthDay(subEnd)}</small>
+                          <small title={dateRangeLabel(subStart, subEnd)}>{subtask.owner || task.owner || '未指定'} · {formatMonthDayWeekday(subStart)} → {formatMonthDayWeekday(subEnd)}</small>
                           <label className="fd203-inline-progress-edit" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
                             <span>進度</span>
                             <input
