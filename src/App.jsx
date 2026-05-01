@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.38'
+const FLOWDESK_APP_VERSION = '20.4.39'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5212,31 +5212,26 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const fromX = Math.round(fromPoint * 10)
     const toX = Math.round(toPoint * 10)
     const isBackward = toX < fromX
-    const spread = Math.max(24, Math.min(72, Math.abs(toX - fromX) * 0.22))
-    const ctrl1X = isBackward ? fromX + 24 : fromX + spread
-    const ctrl2X = isBackward ? toX - 24 : toX - spread
-    const path = [
-      `M ${fromX} ${startY}`,
-      `C ${ctrl1X} ${startY}, ${ctrl2X} ${endY}, ${toX} ${endY}`,
-    ].join(' ')
+    const elbowX = isBackward ? toX + 18 : fromX + 18
+    const path = `M ${fromX} ${startY} L ${elbowX} ${startY} L ${elbowX} ${endY} L ${toX} ${endY}`
     const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDayWeekday(predecessorEnd)} → ${formatMonthDayWeekday(currentStart)}`
     const safeTaskId = String(task?.id || taskIndex).replace(/[^a-zA-Z0-9_-]/g, '')
-    const markerId = `fd20438-arrow-${safeTaskId}-${taskIndex}`
+    const markerId = `fd20439-arrow-${safeTaskId}-${taskIndex}`
     return (
       <span
-        className={`fd20438-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
+        className={`fd20439-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
         style={{ top: `-${topOffset}px`, height: `${svgHeight}px` }}
         title={title}
         aria-label={title}
       >
         <svg viewBox={`0 0 1000 ${svgHeight}`} preserveAspectRatio="none" aria-hidden="true">
           <defs>
-            <marker id={markerId} markerWidth="8" markerHeight="8" refX="6.8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M 0 0.7 L 6.8 4 L 0 7.3 z" className="fd20438-gantt-arrow-head" />
+            <marker id={markerId} markerWidth="8" markerHeight="8" refX="6.7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M 0 0.7 L 6.8 4 L 0 7.3 z" className="fd20439-gantt-arrow-head" />
             </marker>
           </defs>
-          <path className="fd20438-gantt-curve-line" d={path} markerEnd={`url(#${markerId})`} />
-          <circle className="fd20438-gantt-curve-start-dot" cx={fromX} cy={startY} r="2.8" />
+          <path className="fd20439-gantt-curve-line" d={path} markerEnd={`url(#${markerId})`} />
+          <circle className="fd20439-gantt-curve-start-dot" cx={fromX} cy={startY} r="2.6" />
         </svg>
       </span>
     )

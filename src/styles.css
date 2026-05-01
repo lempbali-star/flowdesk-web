@@ -25224,3 +25224,86 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20435-gantt-scroll::-webkit-scrollbar-track {
   background: rgba(241,245,249,0.96);
 }
+
+
+/* FlowDesk v20.4.39 - 相依虛線箭頭對準、總期程列穩定 */
+.fd20438-gantt-dependency-curve,
+.fd20437-gantt-dependency-curve,
+.fd20436-gantt-dependency-curve,
+.fd20435-gantt-dependency-curve,
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20435-gantt-project-row {
+  position: relative !important;
+  top: auto !important;
+  z-index: 6 !important;
+}
+
+.fd20435-gantt-project-row > .fd203-gantt-label,
+.fd20435-gantt-project-row > .fd203-gantt-track {
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.fd203-gantt-head {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.fd203-gantt-scroll,
+.fd20435-gantt-scroll {
+  scrollbar-gutter: stable !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  padding-right: 0 !important;
+}
+
+.fd203-gantt-scroll > .fd203-gantt-grid,
+.fd20435-gantt-scroll > .fd203-gantt-grid {
+  contain: layout paint;
+}
+
+.fd20439-gantt-dependency-curve {
+  --fd20439-dep-color: #2563eb;
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 8;
+  overflow: visible;
+}
+
+.fd20439-gantt-dependency-curve svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+.fd20439-gantt-curve-line {
+  fill: none;
+  stroke: var(--fd20439-dep-color);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 5 4;
+}
+
+.fd20439-gantt-curve-start-dot {
+  fill: #ffffff;
+  stroke: var(--fd20439-dep-color);
+  stroke-width: 1.5;
+}
+
+.fd20439-gantt-arrow-head {
+  fill: var(--fd20439-dep-color);
+}
+
+.fd20439-gantt-dependency-curve.backward {
+  --fd20439-dep-color: #f97316;
+}
