@@ -25585,3 +25585,156 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20443-gantt-dependency-curve.backward {
   --fd20443-dep-color: #f97316;
 }
+
+
+/* FlowDesk v20.4.44 - 相依線尾端進入任務條 */
+.fd20443-gantt-dependency-curve,
+.fd20442-gantt-dependency-curve,
+.fd20441-gantt-dependency-curve,
+.fd20440-gantt-dependency-curve,
+.fd20439-gantt-dependency-curve,
+.fd20438-gantt-dependency-curve,
+.fd20437-gantt-dependency-curve,
+.fd20436-gantt-dependency-curve,
+.fd20435-gantt-dependency-curve,
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20444-gantt-dependency-curve {
+  --fd20444-dep-color: #2563eb;
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 8;
+  overflow: visible;
+}
+
+.fd20444-gantt-dependency-curve svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+.fd20444-gantt-curve-line,
+.fd20444-gantt-terminal-line {
+  fill: none;
+  stroke: var(--fd20444-dep-color);
+  stroke-width: 1.95;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fd20444-gantt-curve-line { stroke-dasharray: 5 4; }
+.fd20444-gantt-terminal-line { stroke-dasharray: none; }
+.fd20444-gantt-curve-start-dot,
+.fd20444-gantt-target-dot {
+  fill: #ffffff;
+  stroke: var(--fd20444-dep-color);
+  stroke-width: 1.55;
+}
+.fd20444-gantt-arrow-head { fill: var(--fd20444-dep-color); }
+.fd20444-gantt-dependency-curve.backward { --fd20444-dep-color: #f97316; }
+
+
+/* FlowDesk v20.4.45 - 任務條日期標籤清晰度修正 */
+.fd20433-gantt-date-label {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid rgba(15, 23, 42, 0.18) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+  z-index: 60 !important;
+}
+
+.fd20433-gantt-date-label,
+.fd20433-gantt-date-label b,
+.fd20433-gantt-date-label span {
+  color: #000000 !important;
+}
+
+.fd203-gantt-bar.task .fd20433-gantt-date-label,
+.fd203-gantt-bar.subtask .fd20433-gantt-date-label,
+.fd203-gantt-bar.completed .fd20433-gantt-date-label,
+.fd203-gantt-bar.done .fd20433-gantt-date-label,
+.fd203-gantt-row:has(.fd203-gantt-status-chip.done) .fd20433-gantt-date-label,
+.fd203-gantt-row:has(.fd203-gantt-status-chip.completed) .fd20433-gantt-date-label {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-color: rgba(15, 23, 42, 0.22) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* 避免完成/已完成任務條用 opacity 把上方日期一起洗淡 */
+.fd203-gantt-row:has(.fd203-gantt-status-chip.done) .fd203-gantt-bar,
+.fd203-gantt-row:has(.fd203-gantt-status-chip.completed) .fd203-gantt-bar,
+.fd203-gantt-bar.done,
+.fd203-gantt-bar.completed {
+  opacity: 1 !important;
+  filter: saturate(.78) brightness(.98) !important;
+}
+
+
+/* FlowDesk v20.4.46 - 日期清晰保留 + 相依線一起修正 */
+.fd20444-gantt-dependency-curve,
+.fd20443-gantt-dependency-curve,
+.fd20442-gantt-dependency-curve,
+.fd20441-gantt-dependency-curve,
+.fd20440-gantt-dependency-curve,
+.fd20439-gantt-dependency-curve,
+.fd20438-gantt-dependency-curve,
+.fd20437-gantt-dependency-curve,
+.fd20436-gantt-dependency-curve,
+.fd20435-gantt-dependency-curve,
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20446-gantt-dependency-curve {
+  --fd20446-dep-color: #2563eb;
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 8;
+  overflow: visible;
+}
+
+.fd20446-gantt-dependency-curve svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+.fd20446-gantt-curve-line,
+.fd20446-gantt-terminal-line {
+  fill: none;
+  stroke: var(--fd20446-dep-color);
+  stroke-width: 1.95;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fd20446-gantt-curve-line { stroke-dasharray: 5 4; }
+.fd20446-gantt-terminal-line { stroke-dasharray: none; }
+.fd20446-gantt-curve-start-dot {
+  fill: #ffffff;
+  stroke: var(--fd20446-dep-color);
+  stroke-width: 1.5;
+}
+.fd20446-gantt-arrow-head { fill: var(--fd20446-dep-color); }
+.fd20446-gantt-dependency-curve.backward { --fd20446-dep-color: #f97316; }
