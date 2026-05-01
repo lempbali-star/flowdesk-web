@@ -25394,3 +25394,57 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20440-gantt-dependency-curve.backward {
   --fd20440-dep-color: #f97316;
 }
+
+
+/* FlowDesk v20.4.41 - 相依線屁股對頭微調 */
+.fd20440-gantt-dependency-curve,
+.fd20439-gantt-dependency-curve,
+.fd20438-gantt-dependency-curve,
+.fd20437-gantt-dependency-curve,
+.fd20436-gantt-dependency-curve,
+.fd20435-gantt-dependency-curve,
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20441-gantt-dependency-curve {
+  --fd20441-dep-color: #2563eb;
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 8;
+  overflow: visible;
+}
+
+.fd20441-gantt-dependency-curve svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+.fd20441-gantt-curve-line {
+  fill: none;
+  stroke: var(--fd20441-dep-color);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 5 4;
+}
+
+.fd20441-gantt-curve-start-dot {
+  fill: #ffffff;
+  stroke: var(--fd20441-dep-color);
+  stroke-width: 1.55;
+}
+
+.fd20441-gantt-arrow-head {
+  fill: var(--fd20441-dep-color);
+}
+
+.fd20441-gantt-dependency-curve.backward {
+  --fd20441-dep-color: #f97316;
+}
