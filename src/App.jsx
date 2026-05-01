@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.26'
+const FLOWDESK_APP_VERSION = '20.4.27'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4173,12 +4173,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           return { ...task, start: nextStart, end: nextEnd, subtasks: shiftedSubtasks }
         })
         if (!projectChanged) return project
-        const bounds = getProjectBoundsFromTasks({ ...safeProject, tasks })
+        const scheduled = resolveProjectTaskDependencies({ ...safeProject, ...getProjectBoundsFromTasks({ ...safeProject, tasks }), tasks })
+        const nextProject = normalizeProject(scheduled.project)
+        const bounds = getProjectBoundsFromTasks(nextProject)
+        const scheduleNote = scheduled.changed ? '；依前置相依同步重排後續任務' : ''
         const records = [
-          `${new Date().toLocaleString('zh-TW', { hour12: false })}｜整段平移任務「${changedTaskName}」${getShiftDirectionLabel(safeDelta)} ${getShiftAmountLabel(safeDelta)}。`,
+          `${new Date().toLocaleString('zh-TW', { hour12: false })}｜整段平移任務「${changedTaskName}」${getShiftDirectionLabel(safeDelta)} ${getShiftAmountLabel(safeDelta)}${scheduleNote}。`,
           ...(safeProject.records || []),
         ].slice(0, 30)
-        return { ...project, ...bounds, tasks, records }
+        return { ...project, ...bounds, tasks: nextProject.tasks, records }
       })
       if (didChange) {
         try { window.localStorage.setItem('flowdesk-projects-v1972', JSON.stringify(nextRows)) } catch {}
@@ -4226,12 +4229,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           return { ...task, start: nextTaskStart, end: nextTaskEnd, subtasks }
         })
         if (!projectChanged) return project
-        const bounds = getProjectBoundsFromTasks({ ...safeProject, tasks })
+        const scheduled = resolveProjectTaskDependencies({ ...safeProject, ...getProjectBoundsFromTasks({ ...safeProject, tasks }), tasks })
+        const nextProject = normalizeProject(scheduled.project)
+        const bounds = getProjectBoundsFromTasks(nextProject)
+        const scheduleNote = scheduled.changed ? '；依前置相依同步重排後續任務' : ''
         const records = [
-          `${new Date().toLocaleString('zh-TW', { hour12: false })}｜整段平移子任務「${changedSubtaskName}」${getShiftDirectionLabel(safeDelta)} ${getShiftAmountLabel(safeDelta)}。`,
+          `${new Date().toLocaleString('zh-TW', { hour12: false })}｜整段平移子任務「${changedSubtaskName}」${getShiftDirectionLabel(safeDelta)} ${getShiftAmountLabel(safeDelta)}${scheduleNote}。`,
           ...(safeProject.records || []),
         ].slice(0, 30)
-        return { ...project, ...bounds, tasks, records }
+        return { ...project, ...bounds, tasks: nextProject.tasks, records }
       })
       if (didChange) {
         try { window.localStorage.setItem('flowdesk-projects-v1972', JSON.stringify(nextRows)) } catch {}
@@ -5154,6 +5160,28 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     )
   }
 
+  function renderGanttDependencyConnector({ project, task, taskIndex = 0, taskStart, displayStart, displayEnd }) {
+    const dependencyMeta = getTaskDependencyMeta(project, task, taskIndex)
+    if (!dependencyMeta.hasDependency) return null
+    const predecessorEnd = dependencyMeta.predecessor?.end || dependencyMeta.predecessor?.start || displayStart
+    const currentStart = taskStart || task.start || displayStart
+    const fromPoint = Math.max(0, Math.min(100, ganttPoint(predecessorEnd, displayStart, displayEnd)))
+    const toPoint = Math.max(0, Math.min(100, ganttPoint(currentStart, displayStart, displayEnd)))
+    const isBackward = toPoint < fromPoint
+    const leftPoint = Math.min(fromPoint, toPoint)
+    const widthPoint = Math.max(1.4, Math.abs(toPoint - fromPoint))
+    return (
+      <span
+        className={`fd20427-gantt-dependency-link${isBackward ? ' backward' : ''}`}
+        style={{ left: `${leftPoint}%`, width: `${widthPoint}%` }}
+        title={`相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}`}
+        aria-hidden="true"
+      >
+        <span>{dependencyMeta.predecessorName}</span>
+      </span>
+    )
+  }
+
   function renderGanttBar({ project, task, taskIndex = null, subtask, subtaskIndex = null, scope, start, end, displayStart, displayEnd, progress, label, className = '', tone = '', indent = false }) {
     const activePreview = ganttDragPreview?.projectId === project.id && ganttDragPreview?.scope === scope && ganttDragPreview?.taskIndex === taskIndex && ganttDragPreview?.subtaskIndex === subtaskIndex ? ganttDragPreview : null
     const activeEditor = ganttProgressEditor?.scope === scope && ganttProgressEditor?.projectId === project.id && ganttProgressEditor?.taskIndex === taskIndex && ganttProgressEditor?.subtaskIndex === subtaskIndex
@@ -5246,15 +5274,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             ))}
           </div>
 
-          {showToday ? (
-            <div className="fd203-gantt-grid fd203-gantt-floating-today" style={{ gridTemplateColumns: gridColumns }} aria-hidden="true">
-              <span />
-              <div className="fd203-gantt-floating-track" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
-                <i style={{ left: todayLeft }}>今天 {formatMonthDay(todayValue)}</i>
-              </div>
-            </div>
-          ) : null}
-
           <div className="fd203-gantt-grid fd203-gantt-row" style={{ gridTemplateColumns: gridColumns }}>
             <div className="fd203-gantt-label" title={dateRangeLabel(project.startDate, project.endDate)}>
               <strong>專案總期程</strong>
@@ -5341,6 +5360,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   </div>
                   <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                     {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
+                    {renderGanttDependencyConnector({ project, task, taskIndex: index, taskStart, displayStart, displayEnd })}
                     {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}
                   </div>
                 </div>

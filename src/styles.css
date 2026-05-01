@@ -23792,3 +23792,93 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     transform: translateY(0);
   }
 }
+
+
+/* FlowDesk v20.4.27 - 甘特圖相依箭頭與日期標示修正版 */
+.fd203-gantt-panel {
+  --fd20427-dependency-color: rgba(37, 99, 235, 0.62);
+  --fd20427-dependency-warn: rgba(245, 158, 11, 0.78);
+}
+
+.fd203-gantt-floating-today {
+  display: none !important;
+}
+
+.fd20427-gantt-dependency-link {
+  position: absolute;
+  top: 16px;
+  height: 16px;
+  min-width: 34px;
+  border-top: 2px dashed var(--fd20427-dependency-color);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0.95;
+}
+
+.fd20427-gantt-dependency-link::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid var(--fd20427-dependency-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.fd20427-gantt-dependency-link::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: -6px;
+  width: 9px;
+  height: 9px;
+  border-top: 2px solid var(--fd20427-dependency-color);
+  border-right: 2px solid var(--fd20427-dependency-color);
+  transform: rotate(45deg);
+  background: transparent;
+}
+
+.fd20427-gantt-dependency-link.backward {
+  border-top-color: var(--fd20427-dependency-warn);
+}
+
+.fd20427-gantt-dependency-link.backward::before,
+.fd20427-gantt-dependency-link.backward::after {
+  border-color: var(--fd20427-dependency-warn);
+}
+
+.fd20427-gantt-dependency-link > span {
+  position: absolute;
+  left: 50%;
+  top: -25px;
+  transform: translateX(-50%);
+  max-width: 160px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.95);
+  color: #1d4ed8;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.fd203-gantt-track .fd20427-gantt-dependency-link + .fd203-gantt-bar.task {
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12), 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+.fd203-gantt-row.task .fd203-gantt-track {
+  overflow: visible;
+}
+
+@media (max-width: 760px) {
+  .fd20427-gantt-dependency-link > span { display: none; }
+  .fd20427-gantt-dependency-link { top: 12px; min-width: 24px; }
+}
