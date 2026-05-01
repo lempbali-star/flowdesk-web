@@ -24912,3 +24912,129 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   --fd20435-dep-color: #f97316;
   --fd20435-dep-shadow: rgba(249, 115, 22, 0.16);
 }
+
+
+/* FlowDesk v20.4.36 - 甘特圖總期程列瘦身、曲線重畫、右側空白修正 */
+.fd20435-gantt-scroll {
+  scrollbar-gutter: stable !important;
+  padding-bottom: 6px !important;
+}
+
+.fd20435-gantt-project-row {
+  top: 58px !important;
+  z-index: 24 !important;
+}
+
+.fd203-gantt-row.project,
+.fd20435-gantt-project-row {
+  min-height: 46px !important;
+}
+
+.fd20435-gantt-project-row > .fd203-gantt-label {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  font-size: 12px !important;
+}
+
+.fd20435-gantt-project-row > .fd203-gantt-track {
+  min-height: 18px !important;
+  margin: 8px 10px !important;
+  box-shadow: inset 0 -1px 0 rgba(226, 232, 240, 0.72), 0 8px 16px rgba(15, 23, 42, 0.04) !important;
+}
+
+.fd20435-gantt-project-row .fd203-gantt-bar.project {
+  top: 2px !important;
+  height: 14px !important;
+  border-radius: 999px !important;
+}
+
+.fd20435-gantt-project-row .fd203-gantt-bar.project .fd203-gantt-bar-text {
+  font-size: 11px !important;
+}
+
+.fd20435-gantt-project-row .milestone-dot {
+  transform: translate(-50%, 1px) scale(.88) !important;
+}
+
+.fd20435-gantt-head {
+  z-index: 33 !important;
+}
+
+.fd20435-gantt-head > .fd203-gantt-label,
+.fd20435-gantt-head > .fd203-gantt-track {
+  background: rgba(248, 250, 252, 0.98) !important;
+  backdrop-filter: blur(12px);
+}
+
+.fd20435-gantt-scroll .fd203-gantt-grid.fd203-gantt-row.task:first-of-type {
+  margin-top: 2px !important;
+}
+
+.fd20435-gantt-scroll,
+.fd20435-gantt-scroll .fd203-gantt-track {
+  overflow: visible;
+}
+
+.fd20435-gantt-dependency-curve,
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20436-gantt-dependency-curve {
+  --fd20436-dep-color: #2563eb;
+  --fd20436-dep-shadow: rgba(37, 99, 235, 0.12);
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 7;
+  overflow: visible;
+}
+
+.fd20436-gantt-dependency-curve svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.fd20436-gantt-curve-shadow {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.88);
+  stroke-width: 5.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fd20436-gantt-curve-line {
+  fill: none;
+  stroke: var(--fd20436-dep-color);
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 5px var(--fd20436-dep-shadow));
+}
+
+.fd20436-gantt-curve-start-dot {
+  fill: #ffffff;
+  stroke: var(--fd20436-dep-color);
+  stroke-width: 1.9;
+}
+
+.fd20436-gantt-arrow-head {
+  fill: var(--fd20436-dep-color);
+  stroke: none;
+}
+
+.fd20436-gantt-dependency-curve.backward {
+  --fd20436-dep-color: #f97316;
+  --fd20436-dep-shadow: rgba(249, 115, 22, 0.14);
+}
+
+.fd20433-gantt-date-label {
+  background: rgba(255,255,255,0.96) !important;
+  color: #334155 !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08) !important;
+}
