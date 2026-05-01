@@ -25836,3 +25836,28 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20449-gantt-dependency-align-note {
   font-weight: 800;
 }
+
+
+/* FlowDesk v20.4.50 - 前置任務強制貼齊與今日標籤對齊 */
+.fd203-week-head {
+  position: relative !important;
+}
+
+.fd20450-gantt-today-chip {
+  position: absolute !important;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  margin: 0 !important;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.fd203-gantt-head .fd203-week-head {
+  padding-bottom: 26px !important;
+}
+
+.fd203-gantt-today-line,
+.fd203-gantt-today-line.subtle {
+  transform: translateX(-50%);
+}

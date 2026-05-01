@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.49'
+const FLOWDESK_APP_VERSION = '20.4.50'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4066,9 +4066,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         }
         const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
         const currentStart = task.start || project.startDate
-        const exactSourceIds = new Set(options.exactSourceIds || [])
-        const shouldAlignExact = hasTaskDependencyPathTo(tasks, task, exactSourceIds)
-        if (shouldAlignExact ? currentStart === nextStart : (!currentStart || currentStart >= nextStart)) return task
+        if (currentStart === nextStart) return task
         changed = true
         passChanged = true
         return shiftTaskWithSubtasks(task, nextStart)
@@ -5313,7 +5311,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <span key={tick.key} className="fd203-week-head">
                 <b>{formatWeekRange(tick.start, tick.end)}</b>
                 <small>{tick.days} 天 · {formatWeekSpanLabel(tick.start, tick.end)}</small>
-                {showToday && todayValue >= tick.start && todayValue <= tick.end ? <em className="fd20428-gantt-today-chip">今天 {formatMonthDay(todayValue)}</em> : null}
+                {showToday && todayValue >= tick.start && todayValue <= tick.end ? <em className="fd20428-gantt-today-chip fd20450-gantt-today-chip" style={{ left: `${getWeekDayCenterPercent(todayValue, tick.start, tick.end)}%` }}>今天 {formatMonthDay(todayValue)}</em> : null}
               </span>
             ))}
           </div>
@@ -6049,6 +6047,15 @@ function formatWeekSpanLabel(start, end) {
   const startDate = parseDate(start)
   const endDate = parseDate(end)
   return `${weekdayMap[startDate.getDay()]} ～ ${weekdayMap[endDate.getDay()]}`
+}
+
+function getWeekDayCenterPercent(date, weekStart, weekEnd) {
+  const startDate = parseDate(weekStart)
+  const endDate = parseDate(weekEnd)
+  const valueDate = parseDate(date)
+  const dayCount = Math.max(1, Math.round((endDate - startDate) / 86400000) + 1)
+  const offset = Math.max(0, Math.min(dayCount - 1, Math.round((valueDate - startDate) / 86400000)))
+  return Math.max(0, Math.min(100, ((offset + 0.5) / dayCount) * 100))
 }
 
 function formatMonthDayWeekday(value) {
