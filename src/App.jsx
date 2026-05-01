@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.31'
+const FLOWDESK_APP_VERSION = '20.4.32'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -4018,10 +4018,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function getTaskDependencyFinishDate(task = {}) {
-    const progress = clampPercent(task.progress)
-    const isDone = Boolean(task.done) || progress >= 100
-    if (isDone) return task.completedAt || task.end || todayDate()
-    return task.end || todayDate()
+    // 甘特圖相依排程以任務條的「目前迄日」為準。
+    // 這樣不論任務已完成或進度多少，只要拖曳 / 調整任務條，後續相依任務都會跟著重排。
+    return task.end || task.completedAt || task.start || todayDate()
   }
 
   function hasProjectTaskDependencyCycle(tasks = [], taskId, dependencyId) {
@@ -5195,38 +5194,39 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const fromPoint = Math.max(0, Math.min(100, ganttPoint(predecessorEnd, displayStart, displayEnd)))
     const toPoint = Math.max(0, Math.min(100, ganttPoint(currentStart, displayStart, displayEnd)))
     const rowDistance = predecessorIndex >= 0 ? Math.max(1, taskIndex - predecessorIndex) : 1
-    const linkHeight = Math.max(96, Math.min(360, rowDistance * 132))
-    const isBackward = toPoint < fromPoint
-    const safeDelta = Math.abs(toPoint - fromPoint)
-    const curveOffset = Math.max(8, Math.min(18, safeDelta * 0.28))
-    const c1x = isBackward ? Math.min(98, fromPoint + curveOffset * 0.4) : Math.min(98, fromPoint + curveOffset)
-    const c2x = isBackward ? Math.max(2, toPoint - curveOffset) : Math.max(2, toPoint - curveOffset * 0.35)
-    const pathD = `M ${fromPoint} 0 C ${c1x} 0, ${c2x} ${linkHeight}, ${toPoint} ${linkHeight}`
+    const curveHeight = Math.max(118, Math.min(420, rowDistance * 136))
+    const svgHeight = curveHeight + 42
+    const fromX = Math.round(fromPoint * 10)
+    const toX = Math.round(toPoint * 10)
+    const startY = 14
+    const endY = svgHeight - 18
+    const midY = Math.round((startY + endY) / 2)
+    const isBackward = toX < fromX
+    const controlGap = Math.max(90, Math.min(220, Math.abs(toX - fromX) * 0.35 + 80))
+    const c1X = isBackward ? Math.min(990, fromX + controlGap) : Math.min(990, fromX + controlGap)
+    const c2X = isBackward ? Math.max(10, toX - controlGap) : Math.max(10, toX - controlGap)
+    const safeTaskId = String(task?.id || taskIndex).replace(/[^a-zA-Z0-9_-]/g, '')
+    const markerId = `fd20432-arrow-${safeTaskId}-${taskIndex}`
+    const path = `M ${fromX} ${startY} C ${c1X} ${startY}, ${c1X} ${midY}, ${Math.round((fromX + toX) / 2)} ${midY} S ${c2X} ${endY}, ${toX} ${endY}`
     const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDay(predecessorEnd)} → ${formatMonthDay(currentStart)}`
     return (
-      <svg
-        className={`fd20431-gantt-dependency-svg${isBackward ? ' backward' : ''}`}
-        viewBox={`0 0 100 ${linkHeight}`}
-        preserveAspectRatio="none"
-        style={{ height: `${linkHeight}px`, top: `calc(50% - ${linkHeight}px)` }}
+      <span
+        className={`fd20432-gantt-dependency-curve${isBackward ? ' backward' : ''}`}
+        style={{ top: `-${curveHeight}px`, height: `${svgHeight}px` }}
+        title={title}
         aria-label={title}
-        role="img"
       >
-        <defs>
-          <marker id="fd20431-gantt-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" className="fd20431-gantt-arrow-fill" />
-          </marker>
-          <marker id="fd20431-gantt-arrow-backward" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" className="fd20431-gantt-arrow-fill backward" />
-          </marker>
-        </defs>
-        <path
-          className={`fd20431-gantt-dependency-path${isBackward ? ' backward' : ''}`}
-          d={pathD}
-          markerEnd={isBackward ? 'url(#fd20431-gantt-arrow-backward)' : 'url(#fd20431-gantt-arrow)'}
-        />
-        <circle className={`fd20431-gantt-dependency-start${isBackward ? ' backward' : ''}`} cx={fromPoint} cy="0" r="1.2" />
-      </svg>
+        <svg viewBox={`0 0 1000 ${svgHeight}`} preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id={markerId} markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
+              <path d="M 0 1 L 10 6 L 0 11 z" className="fd20432-gantt-arrow-head" />
+            </marker>
+          </defs>
+          <path className="fd20432-gantt-curve-shadow" d={path} />
+          <path className="fd20432-gantt-curve-line" d={path} markerEnd={`url(#${markerId})`} />
+          <circle className="fd20432-gantt-curve-dot" cx={fromX} cy={startY} r="4.5" />
+        </svg>
+      </span>
     )
   }
 
