@@ -25516,3 +25516,72 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20442-gantt-dependency-curve.backward {
   --fd20442-dep-color: #f97316;
 }
+
+
+/* FlowDesk v20.4.43 - 日期黑色箭頭、相依線重新對準 */
+.fd20442-gantt-dependency-curve,
+.fd20441-gantt-dependency-curve,
+.fd20440-gantt-dependency-curve,
+.fd20439-gantt-dependency-curve,
+.fd20438-gantt-dependency-curve,
+.fd20437-gantt-dependency-curve,
+.fd20436-gantt-dependency-curve,
+.fd20435-gantt-dependency-curve,
+.fd20433-gantt-dependency-curve {
+  display: none !important;
+}
+
+.fd20433-gantt-date-label {
+  color: #0f172a !important;
+  font-weight: 900 !important;
+}
+
+.fd20443-gantt-dependency-curve {
+  --fd20443-dep-color: #2563eb;
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 8;
+  overflow: visible;
+}
+
+.fd20443-gantt-dependency-curve svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+.fd20443-gantt-curve-line,
+.fd20443-gantt-terminal-line {
+  fill: none;
+  stroke: var(--fd20443-dep-color);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fd20443-gantt-curve-line {
+  stroke-dasharray: 5 4;
+}
+
+.fd20443-gantt-terminal-line {
+  stroke-dasharray: none;
+}
+
+.fd20443-gantt-curve-start-dot {
+  fill: #ffffff;
+  stroke: var(--fd20443-dep-color);
+  stroke-width: 1.55;
+}
+
+.fd20443-gantt-arrow-head {
+  fill: var(--fd20443-dep-color);
+}
+
+.fd20443-gantt-dependency-curve.backward {
+  --fd20443-dep-color: #f97316;
+}
