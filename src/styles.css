@@ -23882,3 +23882,135 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   .fd20427-gantt-dependency-link > span { display: none; }
   .fd20427-gantt-dependency-link { top: 12px; min-width: 24px; }
 }
+
+
+/* FlowDesk v20.4.28 - 甘特圖今日標示、相依箭頭與任務條起迄修正版 */
+.fd20428-gantt-today-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin: 5px auto 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.fd203-gantt-row .fd203-gantt-today-line.fd20428-gantt-today-guide i {
+  display: inline-flex !important;
+}
+
+.fd20428-gantt-today-guide {
+  z-index: 12 !important;
+}
+
+.fd20428-gantt-today-guide i {
+  top: -26px;
+  padding: 4px 9px;
+  background: rgba(239, 68, 68, 0.94);
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.18);
+}
+
+.fd20428-gantt-bar-range {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max-content;
+  max-width: 190px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  color: #334155 !important;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-shadow: none !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  pointer-events: none;
+  z-index: 16;
+}
+
+.fd203-gantt-bar.subtask .fd20428-gantt-bar-range {
+  font-size: 9px;
+  padding: 2px 6px;
+  color: #0369a1 !important;
+}
+
+.fd20428-gantt-dependency-link {
+  position: absolute;
+  top: 50%;
+  height: 0;
+  min-width: 16px;
+  border-top: 2px dashed rgba(37, 99, 235, 0.7);
+  transform: translateY(-18px);
+  pointer-events: none;
+  z-index: 11;
+  opacity: 0.92;
+}
+
+.fd20428-gantt-dependency-link::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid rgba(37, 99, 235, 0.76);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.fd20428-gantt-dependency-link::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid rgba(37, 99, 235, 0.8);
+  border-right: 2px solid rgba(37, 99, 235, 0.8);
+  transform: rotate(45deg);
+  background: transparent;
+}
+
+.fd20428-gantt-dependency-link.backward {
+  border-top-color: rgba(245, 158, 11, 0.82);
+}
+
+.fd20428-gantt-dependency-link.backward::before,
+.fd20428-gantt-dependency-link.backward::after {
+  border-color: rgba(245, 158, 11, 0.86);
+}
+
+.fd20427-gantt-dependency-link {
+  display: none !important;
+}
+
+.fd203-gantt-row.task .fd203-gantt-track,
+.fd203-gantt-row.subtask .fd203-gantt-track {
+  overflow: visible;
+}
+
+@media (max-width: 760px) {
+  .fd20428-gantt-bar-range {
+    font-size: 9px;
+    max-width: 150px;
+  }
+  .fd20428-gantt-today-guide i {
+    top: -22px;
+    font-size: 9px;
+  }
+}

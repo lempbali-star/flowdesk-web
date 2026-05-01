@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.27'
+const FLOWDESK_APP_VERSION = '20.4.28'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5169,16 +5169,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const toPoint = Math.max(0, Math.min(100, ganttPoint(currentStart, displayStart, displayEnd)))
     const isBackward = toPoint < fromPoint
     const leftPoint = Math.min(fromPoint, toPoint)
-    const widthPoint = Math.max(1.4, Math.abs(toPoint - fromPoint))
+    const widthPoint = Math.max(0.8, Math.abs(toPoint - fromPoint))
+    const title = `相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}｜${formatMonthDay(predecessorEnd)} → ${formatMonthDay(currentStart)}`
     return (
       <span
-        className={`fd20427-gantt-dependency-link${isBackward ? ' backward' : ''}`}
+        className={`fd20428-gantt-dependency-link${isBackward ? ' backward' : ''}`}
         style={{ left: `${leftPoint}%`, width: `${widthPoint}%` }}
-        title={`相依：${dependencyMeta.predecessorName} → ${task.name || `任務 ${taskIndex + 1}`}`}
-        aria-hidden="true"
-      >
-        <span>{dependencyMeta.predecessorName}</span>
-      </span>
+        title={title}
+        aria-label={title}
+      />
     )
   }
 
@@ -5197,6 +5196,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return (
       <span className={`fd203-gantt-bar ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={title}>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
+        {scope !== 'project' ? <span className="fd20428-gantt-bar-range">{formatMonthDay(safeStart)} → {formatMonthDay(safeEnd)}</span> : null}
         {!activePreview ? (
           <span className="fd20426-gantt-hover-tip" aria-hidden="true">
             <strong>{label}</strong>
@@ -5270,6 +5270,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <span key={tick.key} className="fd203-week-head">
                 <b>{formatWeekRange(tick.start, tick.end)}</b>
                 <small>{tick.days} 天 · {formatWeekSpanLabel(tick.start, tick.end)}</small>
+                {showToday && todayValue >= tick.start && todayValue <= tick.end ? <em className="fd20428-gantt-today-chip">今天 {formatMonthDay(todayValue)}</em> : null}
               </span>
             ))}
           </div>
@@ -5280,7 +5281,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <small>{project.phase} · {project.progress}%</small>
             </div>
             <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
-              {showToday ? <span className="fd203-gantt-today-line subtle fd203-gantt-today-guide" style={{ left: todayLeft }} /> : null}
+              {showToday ? <span className="fd203-gantt-today-line subtle fd203-gantt-today-guide fd20428-gantt-today-guide" style={{ left: todayLeft }}><i>今天 {formatMonthDay(todayValue)}</i></span> : null}
               {renderGanttBar({ project, scope: 'project', start: project.startDate, end: project.endDate, displayStart, displayEnd, progress: project.progress, label: '專案進度', className: 'project', tone: project.tone || 'blue' })}
               {(project.milestones || []).map((milestone, index) => (
                 <i key={milestone.id || index} className={milestone.done ? 'milestone-dot done' : 'milestone-dot'} style={{ left: `${ganttPoint(milestone.date, displayStart, displayEnd)}%` }} title={`${milestone.name}｜${formatMonthDayWeekday(milestone.date)}`} />
