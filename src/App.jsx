@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.16'
+const FLOWDESK_APP_VERSION = '20.4.17'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3946,6 +3946,23 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     action()
   }
 
+  function getStableProjectBoundsAfterShift(safeProject, tasks) {
+    const taskDates = []
+    ;(tasks || []).forEach((task) => {
+      if (task.start) taskDates.push(task.start)
+      if (task.end) taskDates.push(task.end)
+      ;(task.subtasks || []).forEach((subtask) => {
+        if (subtask.start) taskDates.push(subtask.start)
+        if (subtask.end) taskDates.push(subtask.end)
+      })
+    })
+    const sorted = taskDates.filter(Boolean).sort()
+    return {
+      startDate: minIsoDate(safeProject.startDate || sorted[0] || todayDate(), sorted[0] || safeProject.startDate || todayDate()),
+      endDate: maxIsoDate(safeProject.endDate || sorted[sorted.length - 1] || addDaysDate(30), sorted[sorted.length - 1] || safeProject.endDate || addDaysDate(30)),
+    }
+  }
+
   function shiftProjectTaskDates(projectId, taskIndex, deltaDays) {
     setProjects((rows) => rows.map((project) => {
       if (project.id !== projectId) return project
@@ -3964,7 +3981,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       const tasks = (safeProject.tasks || []).map((task, index) => index === taskIndex
         ? { ...task, start: nextStart, end: nextEnd, subtasks: shiftedSubtasks }
         : task)
-      const bounds = getProjectBoundsFromTasks({ ...safeProject, tasks })
+      const bounds = getStableProjectBoundsAfterShift(safeProject, tasks)
       const nextProject = normalizeProject({ ...safeProject, ...bounds, tasks })
       nextProject.records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜整段平移任務「${targetTask.name || '未命名任務'}」${deltaDays > 0 ? '往後' : '往前'} ${Math.abs(deltaDays)} 天。`, ...(safeProject.records || [])].slice(0, 30)
       return nextProject
@@ -3991,153 +4008,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           : subtask)
         return { ...task, start: taskStart, end: taskEnd, subtasks }
       })
-      const bounds = getProjectBoundsFromTasks({ ...safeProject, tasks })
+      const bounds = getStableProjectBoundsAfterShift(safeProject, tasks)
       const nextProject = normalizeProject({ ...safeProject, ...bounds, tasks })
       nextProject.records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜整段平移子任務「${targetSubtask.name || '未命名子任務'}」${deltaDays > 0 ? '往後' : '往前'} ${Math.abs(deltaDays)} 天。`, ...(safeProject.records || [])].slice(0, 30)
       return nextProject
     }))
-  }
-
-  function estimateTaskProgress(task = {}) {
-    const subtasks = Array.isArray(task.subtasks) ? task.subtasks : []
-    if (!subtasks.length) return clampPercent(task.progress)
-    const values = subtasks.map((subtask) => clampPercent(subtask.progress))
-    return Math.round(values.reduce((sum, progress) => sum + progress, 0) / Math.max(values.length, 1))
-  }
-
-  function taskDurationOffset(task = {}) {
-    const start = task.start || todayDate()
-    const end = task.end || start
-    return Math.max(0, Math.round((parseDate(end) - parseDate(start)) / 86400000))
-  }
-
-  function shiftTaskWithSubtasks(task = {}, nextStart) {
-    const previousStart = task.start || nextStart
-    const durationOffset = taskDurationOffset(task)
-    const deltaDays = Math.round((parseDate(nextStart) - parseDate(previousStart)) / 86400000)
-    const nextEnd = addDaysToDateValue(nextStart, durationOffset)
-    return {
-      ...task,
-      start: nextStart,
-      end: nextEnd,
-      subtasks: (task.subtasks || []).map((subtask) => {
-        const subStart = addDaysToDateValue(subtask.start || previousStart, deltaDays)
-        const subEnd = addDaysToDateValue(subtask.end || subtask.start || previousStart, deltaDays)
-        return {
-          ...subtask,
-          start: clampIsoDate(subStart, nextStart, nextEnd),
-          end: clampIsoDate(subEnd, subStart, nextEnd),
-        }
-      }),
-    }
-  }
-
-  function getTaskDependencyFinishDate(task = {}) {
-    const progress = clampPercent(task.progress)
-    const isDone = Boolean(task.done) || progress >= 100
-    if (isDone) return task.completedAt || task.end || todayDate()
-    return task.end || todayDate()
-  }
-
-  function hasProjectTaskDependencyCycle(tasks = [], taskId, dependencyId) {
-    if (!taskId || !dependencyId) return false
-    let cursor = dependencyId
-    const visited = new Set()
-    while (cursor) {
-      if (cursor === taskId) return true
-      if (visited.has(cursor)) return true
-      visited.add(cursor)
-      const current = tasks.find((task) => task.id === cursor)
-      cursor = current?.dependsOnTaskId || ''
-    }
-    return false
-  }
-
-  function resolveProjectTaskDependencies(project = {}) {
-    let changed = false
-    let tasks = (project.tasks || []).map((task) => ({ ...task, subtasks: (task.subtasks || []).map((subtask) => ({ ...subtask })) }))
-    for (let pass = 0; pass < Math.max(tasks.length * 2, 1); pass += 1) {
-      let passChanged = false
-      tasks = tasks.map((task) => {
-        if (!task.dependsOnTaskId) return task
-        const predecessor = tasks.find((item) => item.id === task.dependsOnTaskId)
-        if (!predecessor || predecessor.id === task.id || hasProjectTaskDependencyCycle(tasks, task.id, task.dependsOnTaskId)) {
-          changed = true
-          passChanged = true
-          return { ...task, dependsOnTaskId: '' }
-        }
-        const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
-        // 前置任務異動後，後續任務要「緊接」前置完成日後一天，
-        // 不只是在早於前置時才往後推，避免 A 往前/往後調整時 B 停在舊日期。
-        if ((task.start || project.startDate) === nextStart) return task
-        changed = true
-        passChanged = true
-        return shiftTaskWithSubtasks(task, nextStart)
-      })
-      if (!passChanged) break
-    }
-    const allDates = [project.startDate, project.endDate]
-    tasks.forEach((task) => {
-      allDates.push(task.start, task.end)
-      ;(task.subtasks || []).forEach((subtask) => allDates.push(subtask.start, subtask.end))
-    })
-    const safeDates = allDates.filter(Boolean).sort()
-    const nextProject = {
-      ...project,
-      startDate: safeDates[0] && safeDates[0] < project.startDate ? safeDates[0] : project.startDate,
-      endDate: safeDates[safeDates.length - 1] && safeDates[safeDates.length - 1] > project.endDate ? safeDates[safeDates.length - 1] : project.endDate,
-      tasks,
-    }
-    return { project: nextProject, changed }
-  }
-
-  function getTaskDependencyMeta(project = {}, task = {}, taskIndex = 0) {
-    if (!task?.dependsOnTaskId) return { hasDependency: false }
-    const predecessor = (project.tasks || []).find((item) => item.id === task.dependsOnTaskId)
-    if (!predecessor) return { hasDependency: false }
-    const predecessorDone = Boolean(predecessor.done) || clampPercent(predecessor.progress) >= 100
-    const startAfter = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
-    return {
-      hasDependency: true,
-      predecessor,
-      predecessorName: predecessor.name || `任務 ${taskIndex + 1}`,
-      predecessorDone,
-      waiting: !predecessorDone,
-      startAfter,
-    }
-  }
-
-  function getTaskStatusMeta(project = {}, task = {}, taskIndex = 0) {
-    const today = todayDate()
-    const dependencyMeta = getTaskDependencyMeta(project, task, taskIndex)
-    const progress = clampPercent(task.progress)
-    const start = task.start || project.startDate || today
-    const end = task.end || project.endDate || start
-    if (Boolean(task.done) || progress >= 100) return { label: '已完成', tone: 'done' }
-    if (dependencyMeta.waiting) return { label: '等待前置', tone: 'waiting' }
-    if (end < today) return { label: '逾期', tone: 'overdue' }
-    if (start > today) return { label: '未開始', tone: 'pending' }
-    if (progress > 0) return { label: '進行中', tone: 'active' }
-    return { label: '未啟動', tone: 'idle' }
-  }
-
-  function getSubtaskStatusMeta(project = {}, task = {}, subtask = {}) {
-    const today = todayDate()
-    const progress = clampPercent(subtask.progress)
-    const start = subtask.start || task.start || project.startDate || today
-    const end = subtask.end || task.end || project.endDate || start
-    if (Boolean(subtask.done) || progress >= 100) return { label: '已完成', tone: 'done' }
-    if (end < today) return { label: '逾期', tone: 'overdue' }
-    if (start > today) return { label: '未開始', tone: 'pending' }
-    if (progress > 0) return { label: '進行中', tone: 'active' }
-    return { label: '未啟動', tone: 'idle' }
-  }
-
-  function getAvailablePredecessorTasks(project = {}, taskIndex = 0) {
-    const tasks = project.tasks || []
-    const target = tasks[taskIndex]
-    if (!target) return []
-    return tasks.filter((task, index) => index !== taskIndex && !hasProjectTaskDependencyCycle(tasks, target.id, task.id))
   }
 
   function updateProjectTask(projectId, taskIndex, patch, recordText) {
