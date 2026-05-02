@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.86'
+const FLOWDESK_APP_VERSION = '20.4.87'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -7689,6 +7689,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
   const [reminderPage, setReminderPage] = useState(1)
   const [reminderPageSize, setReminderPageSize] = useState(10)
   const [showForm, setShowForm] = useState(false)
+  const [editingReminder, setEditingReminder] = useState(null)
   const [draft, setDraft] = useState(createEmptyReminder())
   const [autoDone, setAutoDone] = useState(() => readAutoReminderMap('flowdesk-auto-reminder-done-v20390'))
   const [autoSnooze, setAutoSnooze] = useState(() => readAutoReminderMap('flowdesk-auto-reminder-snooze-v20390'))
@@ -7764,6 +7765,36 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
 
   function updateReminder(id, patch) {
     setReminders((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item))
+  }
+
+  function openReminderEditor(item) {
+    if (!item) return
+    setEditingReminder({ ...item })
+  }
+
+  function saveEditingReminder() {
+    if (!editingReminder) return
+    if (editingReminder.virtual) {
+      if (editingReminder.status === '已完成') updateAutoReminder(editingReminder.id, 'done')
+      if (editingReminder.status === '延後') updateAutoReminder(editingReminder.id, 'defer', 3)
+      setEditingReminder(null)
+      return
+    }
+    updateReminder(editingReminder.id, {
+      title: editingReminder.title || '未命名提醒',
+      sourceType: editingReminder.sourceType || '一般提醒',
+      sourceTitle: editingReminder.sourceTitle || '',
+      type: editingReminder.type || '一般',
+      priority: editingReminder.priority || '中',
+      status: editingReminder.status || '待處理',
+      dueDate: editingReminder.dueDate || todayDate(),
+      note: editingReminder.note || '',
+    })
+    setEditingReminder(null)
+  }
+
+  function updateEditingReminder(key, value) {
+    setEditingReminder((current) => current ? { ...current, [key]: value } : current)
   }
 
   function updateAutoReminder(id, action, days = 0) {
@@ -7947,7 +7978,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
               {group.rows.map((item) => {
                 const due = getReminderDueInfo(item.dueDate)
                 return (
-                  <article className={`reminder-card ${item.status === '已完成' ? 'done' : ''} ${item.virtual ? 'auto' : ''}`} key={item.id}>
+                  <article className={`reminder-card ${item.status === '已完成' ? 'done' : ''} ${item.virtual ? 'auto' : ''}`} key={item.id} onClick={() => openReminderEditor(item)}>
                     <div className="reminder-card-main">
                       <span className="record-id">{item.virtual ? 'AUTO' : item.id}</span>
                       <strong>{item.title}</strong>
@@ -7957,7 +7988,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
                     <div className="reminder-card-meta">
                       <Badge value={item.priority} />
                       <span className={`due-chip ${due.tone}`}>{due.label}</span>
-                      {item.virtual ? <span className="auto-reminder-chip">自動提醒</span> : <select value={item.status} onChange={(event) => updateReminder(item.id, { status: event.target.value })}>{reminderStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>}
+                      {item.virtual ? <span className="auto-reminder-chip">自動提醒</span> : <select value={item.status} onClick={(event) => event.stopPropagation()} onChange={(event) => { event.stopPropagation(); updateReminder(item.id, { status: event.target.value }) }}>{reminderStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>}
                     </div>
                     <div className="reminder-card-actions">
                       <button type="button" onClick={() => completeReminder(item)}>{item.status === '已完成' ? '重新開啟' : '完成'}</button>
@@ -7985,6 +8016,82 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
           onPageSizeChange={setReminderPageSize}
         />
       </section>
+
+      {editingReminder && (
+        <div className="fd20487-reminder-modal-layer" role="presentation">
+          <button className="fd20487-reminder-modal-backdrop" type="button" aria-label="關閉提醒彈窗" onClick={() => setEditingReminder(null)} />
+          <section className="fd20487-reminder-modal" role="dialog" aria-modal="true" aria-label="提醒詳情">
+            <header className="fd20487-reminder-modal-head">
+              <div>
+                <p className="eyebrow">提醒中心</p>
+                <h2>{editingReminder.title || '未命名提醒'}</h2>
+                <span>{editingReminder.virtual ? '自動提醒' : editingReminder.id} · {editingReminder.sourceType || '一般'} · {editingReminder.sourceTitle || '未指定來源'}</span>
+              </div>
+              <div className="fd20487-reminder-modal-actions">
+                <button type="button" className="ghost-btn" onClick={() => setEditingReminder(null)}>關閉</button>
+                <button type="button" className="primary-btn" onClick={saveEditingReminder}>{editingReminder.virtual ? '套用狀態' : '儲存'}</button>
+              </div>
+            </header>
+
+            <div className="fd20487-reminder-modal-body">
+              {editingReminder.virtual ? (
+                <section className="fd20487-reminder-panel fd20487-reminder-panel-main">
+                  <h3>自動提醒</h3>
+                  <div className="fd20487-auto-reminder-note">
+                    <strong>這筆是由採購 / 工作 / 專案資料自動產生。</strong>
+                    <span>自動提醒不能直接改標題或日期；可從這裡完成、延後或刪除顯示。</span>
+                  </div>
+                  <div className="fd20487-reminder-summary-grid">
+                    <article><span>來源</span><strong>{editingReminder.sourceType || '一般'}</strong></article>
+                    <article><span>提醒類型</span><strong>{editingReminder.type || '一般'}</strong></article>
+                    <article><span>到期日</span><strong>{editingReminder.dueDate || '未設定'}</strong></article>
+                    <article><span>優先級</span><strong>{editingReminder.priority || '中'}</strong></article>
+                  </div>
+                  <label className="wide">提醒內容<textarea value={editingReminder.note || ''} readOnly /></label>
+                </section>
+              ) : (
+                <section className="fd20487-reminder-panel fd20487-reminder-panel-main">
+                  <h3>基本資料</h3>
+                  <div className="fd20487-reminder-form-grid">
+                    <label className="wide">提醒標題<input value={editingReminder.title || ''} onChange={(event) => updateEditingReminder('title', event.target.value)} /></label>
+                    <label>來源類型<input value={editingReminder.sourceType || ''} onChange={(event) => updateEditingReminder('sourceType', event.target.value)} /></label>
+                    <label>來源名稱<input value={editingReminder.sourceTitle || ''} onChange={(event) => updateEditingReminder('sourceTitle', event.target.value)} /></label>
+                    <label>提醒類型<select value={editingReminder.type || '一般'} onChange={(event) => updateEditingReminder('type', event.target.value)}>{reminderTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}</select></label>
+                    <label>優先級<select value={editingReminder.priority || '中'} onChange={(event) => updateEditingReminder('priority', event.target.value)}>{reminderPriorityOptions.map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+                    <label>狀態<select value={editingReminder.status || '待處理'} onChange={(event) => updateEditingReminder('status', event.target.value)}>{reminderStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+                    <label>提醒日期<input type="date" value={editingReminder.dueDate || todayDate()} onChange={(event) => updateEditingReminder('dueDate', event.target.value)} /></label>
+                    <label className="wide">備註<textarea value={editingReminder.note || ''} onChange={(event) => updateEditingReminder('note', event.target.value)} /></label>
+                  </div>
+                </section>
+              )}
+
+              <section className="fd20487-reminder-panel">
+                <h3>快速操作</h3>
+                <div className="fd20487-reminder-summary-grid">
+                  <article><span>目前狀態</span><strong>{editingReminder.status || '待處理'}</strong></article>
+                  <article><span>到期日</span><strong>{editingReminder.dueDate || '未設定'}</strong></article>
+                  <article><span>優先級</span><strong>{editingReminder.priority || '中'}</strong></article>
+                  <article><span>來源</span><strong>{editingReminder.sourceType || '一般'}</strong></article>
+                </div>
+                <div className="fd20487-reminder-quick-actions">
+                  <button type="button" onClick={() => { completeReminder(editingReminder); setEditingReminder(null) }}>{editingReminder.status === '已完成' ? '重新開啟' : '視為完成'}</button>
+                  <button type="button" onClick={() => { deferReminder(editingReminder.id, 1, editingReminder.virtual); setEditingReminder(null) }}>延後明天</button>
+                  <button type="button" onClick={() => { deferReminder(editingReminder.id, 7, editingReminder.virtual); setEditingReminder(null) }}>延後下週</button>
+                  <button type="button" onClick={() => onNavigateSource?.(editingReminder)}>查看來源</button>
+                </div>
+              </section>
+            </div>
+
+            <footer className="fd20487-reminder-modal-footer">
+              <button type="button" className="danger" onClick={() => { removeReminderRow(editingReminder); setEditingReminder(null) }}>刪除</button>
+              <div>
+                <button type="button" onClick={() => setEditingReminder(null)}>取消</button>
+                <button type="button" className="primary-btn" onClick={saveEditingReminder}>{editingReminder.virtual ? '套用狀態' : '儲存並關閉'}</button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
