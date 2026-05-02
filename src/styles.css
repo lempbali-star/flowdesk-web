@@ -26128,3 +26128,52 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   pointer-events: none !important;
   transform: translateX(-50%) !important;
 }
+
+
+/* FlowDesk v20.4.59 - 今天標籤改到專案 track，與紅色虛線共用同一個 left */
+.fd20457-gantt-today-chip-head {
+  display: none !important;
+}
+
+.fd20459-gantt-today-chip-inline {
+  position: absolute !important;
+  left: 0;
+  top: -26px !important;
+  transform: translateX(-50%) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: max-content !important;
+  padding: 3px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 241, 242, 0.98) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(239, 68, 68, 0.34) !important;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.18) !important;
+  font-style: normal !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  z-index: 80 !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.fd20459-gantt-today-line {
+  z-index: 70 !important;
+}
+
+.fd20459-project-readonly-bar,
+.fd20459-project-readonly-bar *,
+.fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-bar.project,
+.fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-bar.project * {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+.fd203-gantt-row.fd20458-gantt-project-row .fd20426-gantt-hover-tip,
+.fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-progress-trigger {
+  display: none !important;
+}
