@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.82'
+const FLOWDESK_APP_VERSION = '20.4.83'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1748,6 +1748,49 @@ function EmptyState({ title, action }) {
   )
 }
 
+
+function FlowdeskPaginationV83({
+  page = 1,
+  pageCount = 1,
+  pageSize = 12,
+  pageSizeOptions = [6, 12, 24, 48],
+  total = 0,
+  currentCount = 0,
+  label = '資料',
+  onPageChange,
+  onPageSizeChange,
+}) {
+  const safePageCount = Math.max(1, Number(pageCount) || 1)
+  const safePage = Math.min(Math.max(1, Number(page) || 1), safePageCount)
+  const canPrev = safePage > 1
+  const canNext = safePage < safePageCount
+  const start = total ? (safePage - 1) * Number(pageSize || 0) + 1 : 0
+  const end = total ? Math.min(total, start + Number(currentCount || 0) - 1) : 0
+
+  return (
+    <div className="fd20483-pagination" aria-label={`${label}分頁`}>
+      <div className="fd20483-pagination-info">
+        <strong>{label}</strong>
+        <span>{total ? `${start}-${end} / ${total}` : '0 / 0'}</span>
+      </div>
+      <div className="fd20483-pagination-controls">
+        <button type="button" disabled={!canPrev} onClick={() => onPageChange?.(1)}>第一頁</button>
+        <button type="button" disabled={!canPrev} onClick={() => onPageChange?.(safePage - 1)}>上一頁</button>
+        <span className="fd20483-page-indicator">{safePage} / {safePageCount}</span>
+        <button type="button" disabled={!canNext} onClick={() => onPageChange?.(safePage + 1)}>下一頁</button>
+        <button type="button" disabled={!canNext} onClick={() => onPageChange?.(safePageCount)}>最後頁</button>
+      </div>
+      <label className="fd20483-page-size">
+        每頁
+        <select value={pageSize} onChange={(event) => onPageSizeChange?.(Number(event.target.value))}>
+          {pageSizeOptions.map((size) => <option key={size} value={size}>{size} 筆</option>)}
+        </select>
+      </label>
+    </div>
+  )
+}
+
+
 function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onUpdateItem, onDeleteItem, onDuplicateItem }) {
   const [laneFilter, setLaneFilter] = useState('全部')
   const [priorityFilter, setPriorityFilter] = useState('全部')
@@ -1758,6 +1801,8 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
   const [bulkPriority, setBulkPriority] = useState('中')
   const [bulkOwner, setBulkOwner] = useState('Kyle')
   const [hideDone, setHideDone] = useState(false)
+  const [boardPage, setBoardPage] = useState(1)
+  const [boardPageSize, setBoardPageSize] = useState(12)
   const normalizedBoardView = view === '卡片' ? '卡片' : '清單'
 
   useEffect(() => {
@@ -1797,6 +1842,18 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
     ]
   }, [items, hideDone])
 
+  useEffect(() => {
+    setBoardPage(1)
+  }, [laneFilter, priorityFilter, ownerFilter, sortMode, hideDone, normalizedBoardView, boardPageSize])
+
+  const boardPageCount = Math.max(1, Math.ceil(scopedItems.length / boardPageSize))
+  const safeBoardPage = Math.min(boardPage, boardPageCount)
+  const pagedBoardItems = scopedItems.slice((safeBoardPage - 1) * boardPageSize, safeBoardPage * boardPageSize)
+
+  useEffect(() => {
+    if (boardPage !== safeBoardPage) setBoardPage(safeBoardPage)
+  }, [boardPage, safeBoardPage])
+
   function toggleSelectedId(itemId) {
     setSelectedIds((current) => current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId])
   }
@@ -1806,7 +1863,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
   }
 
   function selectScopedItems() {
-    setSelectedIds(scopedItems.map((item) => item.id))
+    setSelectedIds(pagedBoardItems.map((item) => item.id))
   }
 
   function applyBulkPatch(patch) {
@@ -1862,7 +1919,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
           <label>排序<select value={sortMode} onChange={(event) => setSortMode(event.target.value)}>{['到期日', '優先級', '健康度'].map((mode) => <option key={mode} value={mode}>{mode}</option>)}</select></label>
           <button className="ghost-btn" type="button" onClick={clearBoardFilters}>清除篩選</button>
         </div>
-        <div className="board-result-hint">目前顯示 {scopedItems.length} / {items.length} 筆</div>
+        <div className="board-result-hint">目前顯示 {pagedBoardItems.length} / 篩選後 {scopedItems.length} 筆｜全部 {items.length} 筆</div>
       </section>
 
       <section className="board-focus-strip v199-focus-strip">
@@ -1877,7 +1934,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
       <section className="board-bulk-panel v199-bulk-panel">
         <div><strong>批次處理</strong><span>已選取 {selectedIds.length} 筆 / 目前視圖 {scopedItems.length} 筆</span></div>
         <div className="bulk-actions-grid">
-          <button type="button" onClick={selectScopedItems} disabled={!scopedItems.length}>選取目前視圖</button>
+          <button type="button" onClick={selectScopedItems} disabled={!pagedBoardItems.length}>選取目前頁</button>
           <button type="button" onClick={clearBoardSelection} disabled={!selectedIds.length}>取消選取</button>
           <label>狀態<select value={bulkLane} onChange={(event) => setBulkLane(event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
           <button type="button" onClick={() => applyBulkPatch({ lane: bulkLane })} disabled={!selectedIds.length}>套用狀態</button>
@@ -1907,7 +1964,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
 
       {normalizedBoardView === '清單' && (
         <WorkItemDailyList
-          items={scopedItems}
+          items={pagedBoardItems}
           selected={selected}
           setSelected={setSelected}
           selectedIds={selectedIds}
@@ -1919,7 +1976,18 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
       )}
 
 
-      {normalizedBoardView === '卡片' && <CardWall items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} onUpdateItem={onUpdateItem} />}
+      {normalizedBoardView === '卡片' && <CardWall items={pagedBoardItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} onUpdateItem={onUpdateItem} />}
+
+      <FlowdeskPaginationV83
+        label="工作事項"
+        page={safeBoardPage}
+        pageCount={boardPageCount}
+        pageSize={boardPageSize}
+        total={scopedItems.length}
+        currentCount={pagedBoardItems.length}
+        onPageChange={setBoardPage}
+        onPageSizeChange={setBoardPageSize}
+      />
 
       {selected && <BoardWorkItemDetailDialog item={selected} onClose={() => setSelected(null)} onUpdateItem={onUpdateItem} onDeleteItem={onDeleteItem} onDuplicateItem={onDuplicateItem} />}
     </div>
@@ -6400,6 +6468,8 @@ function DocsPage({ docs = [] }) {
   const [typeFilter, setTypeFilter] = useState('全部')
   const [statusFilter, setStatusFilter] = useState('全部')
   const [keyword, setKeyword] = useState('')
+  const [docPage, setDocPage] = useState(1)
+  const [docPageSize, setDocPageSize] = useState(12)
   const [editingDoc, setEditingDoc] = useState(null)
 
   useEffect(() => {
@@ -6449,6 +6519,18 @@ function DocsPage({ docs = [] }) {
       })
       .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || String(b.updated || '').localeCompare(String(a.updated || '')))
   }, [docItems, folderFilter, typeFilter, statusFilter, keyword])
+
+  useEffect(() => {
+    setDocPage(1)
+  }, [folderFilter, typeFilter, statusFilter, keyword, docView, docPageSize])
+
+  const docPageCount = Math.max(1, Math.ceil(filteredDocs.length / docPageSize))
+  const safeDocPage = Math.min(docPage, docPageCount)
+  const pagedDocs = filteredDocs.slice((safeDocPage - 1) * docPageSize, safeDocPage * docPageSize)
+
+  useEffect(() => {
+    if (docPage !== safeDocPage) setDocPage(safeDocPage)
+  }, [docPage, safeDocPage])
 
   const docSummary = useMemo(() => ({
     total: docItems.length,
@@ -6588,17 +6670,17 @@ function DocsPage({ docs = [] }) {
             <button type="button" className="ghost-btn" onClick={clearDocFilters}>清除篩選</button>
           </div>
 
-          <div className="fd20481-doc-result-hint">目前顯示 {filteredDocs.length} / {docItems.length} 筆</div>
+          <div className="fd20481-doc-result-hint">目前顯示 {pagedDocs.length} / 篩選後 {filteredDocs.length} 筆｜全部 {docItems.length} 筆</div>
 
           {filteredDocs.length ? (
             docView === '卡片' ? (
               <div className="doc-grid fd20481-doc-grid">
-                {filteredDocs.map((doc) => <DocMemoCard key={doc.id} doc={doc} onOpen={() => setEditingDoc(doc)} onPin={() => togglePinDoc(doc)} />)}
+                {pagedDocs.map((doc) => <DocMemoCard key={doc.id} doc={doc} onOpen={() => setEditingDoc(doc)} onPin={() => togglePinDoc(doc)} />)}
               </div>
             ) : (
               <div className="fd20481-doc-list">
                 <div className="fd20481-doc-list-head"><span>文件</span><span>分類 / 類型</span><span>狀態</span><span>更新 / 負責</span><span>操作</span></div>
-                {filteredDocs.map((doc) => <DocMemoRow key={doc.id} doc={doc} onOpen={() => setEditingDoc(doc)} onPin={() => togglePinDoc(doc)} />)}
+                {pagedDocs.map((doc) => <DocMemoRow key={doc.id} doc={doc} onOpen={() => setEditingDoc(doc)} onPin={() => togglePinDoc(doc)} />)}
               </div>
             )
           ) : (
@@ -6608,6 +6690,17 @@ function DocsPage({ docs = [] }) {
               <button type="button" className="primary-btn" onClick={openNewDoc}>新增文件</button>
             </div>
           )}
+
+          <FlowdeskPaginationV83
+            label="文件備忘"
+            page={safeDocPage}
+            pageCount={docPageCount}
+            pageSize={docPageSize}
+            total={filteredDocs.length}
+            currentCount={pagedDocs.length}
+            onPageChange={setDocPage}
+            onPageSizeChange={setDocPageSize}
+          />
         </section>
       </div>
 
@@ -6821,6 +6914,8 @@ function InsightPage({ metrics, records, tickets }) {
   const [insightTab, setInsightTab] = useState('總覽')
   const [insightScope, setInsightScope] = useState('本月')
   const [insightSearch, setInsightSearch] = useState('')
+  const [insightRecentPage, setInsightRecentPage] = useState(1)
+  const [insightRecentPageSize, setInsightRecentPageSize] = useState(8)
 
   const today = todayDate()
 
@@ -7009,6 +7104,18 @@ function InsightPage({ metrics, records, tickets }) {
     }
   }, [insightScope, insightSearch, today])
 
+  useEffect(() => {
+    setInsightRecentPage(1)
+  }, [insightScope, insightSearch, insightTab, insightRecentPageSize])
+
+  const insightRecentPageCount = Math.max(1, Math.ceil(insightData.recentRows.length / insightRecentPageSize))
+  const safeInsightRecentPage = Math.min(insightRecentPage, insightRecentPageCount)
+  const pagedInsightRecentRows = insightData.recentRows.slice((safeInsightRecentPage - 1) * insightRecentPageSize, safeInsightRecentPage * insightRecentPageSize)
+
+  useEffect(() => {
+    if (insightRecentPage !== safeInsightRecentPage) setInsightRecentPage(safeInsightRecentPage)
+  }, [insightRecentPage, safeInsightRecentPage])
+
   const tabCards = [
     { key: '總覽', label: '總覽' },
     { key: '工作', label: '工作' },
@@ -7180,7 +7287,7 @@ function InsightPage({ metrics, records, tickets }) {
             <input value={insightSearch} onChange={(event) => setInsightSearch(event.target.value)} placeholder="搜尋摘要資料..." />
           </div>
           <div className="fd20482-recent-list">
-            {insightData.recentRows.length ? insightData.recentRows.map((row, index) => (
+            {pagedInsightRecentRows.length ? pagedInsightRecentRows.map((row, index) => (
               <article key={`${row.type}-${row.title}-${index}`}>
                 <span>{row.type}</span>
                 <strong>{row.title}</strong>
@@ -7188,6 +7295,17 @@ function InsightPage({ metrics, records, tickets }) {
               </article>
             )) : <div className="purchase-empty-state">沒有符合條件的近期資料</div>}
           </div>
+          <FlowdeskPaginationV83
+            label="近期資料"
+            page={safeInsightRecentPage}
+            pageCount={insightRecentPageCount}
+            pageSize={insightRecentPageSize}
+            pageSizeOptions={[5, 8, 12, 20]}
+            total={insightData.recentRows.length}
+            currentCount={pagedInsightRecentRows.length}
+            onPageChange={setInsightRecentPage}
+            onPageSizeChange={setInsightRecentPageSize}
+          />
         </article>
 
         <article className="fd20482-panel">
@@ -7547,6 +7665,8 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
   const [typeFilter, setTypeFilter] = useState('全部')
   const [focusFilter, setFocusFilter] = useState('全部')
   const [reminderView, setReminderView] = useState('卡片')
+  const [reminderPage, setReminderPage] = useState(1)
+  const [reminderPageSize, setReminderPageSize] = useState(10)
   const [showForm, setShowForm] = useState(false)
   const [draft, setDraft] = useState(createEmptyReminder())
   const [autoDone, setAutoDone] = useState(() => readAutoReminderMap('flowdesk-auto-reminder-done-v20390'))
@@ -7587,14 +7707,26 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
       if (dueSort) return dueSort
       return reminderPriorityRank(b.priority) - reminderPriorityRank(a.priority)
     })
+  useEffect(() => {
+    setReminderPage(1)
+  }, [keyword, statusFilter, caseFilter, typeFilter, focusFilter, reminderView, reminderPageSize])
+
+  const reminderPageCount = Math.max(1, Math.ceil(filtered.length / reminderPageSize))
+  const safeReminderPage = Math.min(reminderPage, reminderPageCount)
+  const pagedFilteredReminders = filtered.slice((safeReminderPage - 1) * reminderPageSize, safeReminderPage * reminderPageSize)
+
+  useEffect(() => {
+    if (reminderPage !== safeReminderPage) setReminderPage(safeReminderPage)
+  }, [reminderPage, safeReminderPage])
+
   const reminderGroups = [
-    { id: 'overdue', title: '逾期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days < 0) },
-    { id: 'today', title: '今日到期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 0) },
-    { id: 'tomorrow', title: '明日到期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 1) },
-    { id: 'week', title: '本週到期', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 1 && getReminderDueInfo(item.dueDate).days <= 7) },
-    { id: 'high', title: '高優先 / 緊急', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7 && ['緊急', '高'].includes(item.priority)) },
-    { id: 'later', title: '之後', rows: filtered.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7 && !['緊急', '高'].includes(item.priority)) },
-    { id: 'done', title: '已完成', rows: filtered.filter((item) => item.status === '已完成') },
+    { id: 'overdue', title: '逾期', rows: pagedFilteredReminders.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days < 0) },
+    { id: 'today', title: '今日到期', rows: pagedFilteredReminders.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 0) },
+    { id: 'tomorrow', title: '明日到期', rows: pagedFilteredReminders.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days === 1) },
+    { id: 'week', title: '本週到期', rows: pagedFilteredReminders.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 1 && getReminderDueInfo(item.dueDate).days <= 7) },
+    { id: 'high', title: '高優先 / 緊急', rows: pagedFilteredReminders.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7 && ['緊急', '高'].includes(item.priority)) },
+    { id: 'later', title: '之後', rows: pagedFilteredReminders.filter((item) => item.status !== '已完成' && getReminderDueInfo(item.dueDate).days > 7 && !['緊急', '高'].includes(item.priority)) },
+    { id: 'done', title: '已完成', rows: pagedFilteredReminders.filter((item) => item.status === '已完成') },
   ].filter((group) => group.rows.length)
 
   function updateDraft(key, value) {
@@ -7765,6 +7897,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
             ))}
           </div>
         </div>
+        <div className="fd20483-reminder-result-hint">目前顯示 {pagedFilteredReminders.length} / 篩選後 {filtered.length} 筆｜全部 {allReminderRows.length} 筆</div>
         <div className={`reminder-card-list reminder-grouped-list fd20478-reminder-${reminderView === '清單' ? 'list' : 'card'}-view`}>
           {reminderGroups.length ? reminderGroups.map((group) => (
             <section className="reminder-date-group" key={group.id}>
@@ -7798,6 +7931,17 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
             </section>
           )) : <div className="purchase-empty-state">沒有符合條件的提醒事項</div>}
         </div>
+        <FlowdeskPaginationV83
+          label="提醒中心"
+          page={safeReminderPage}
+          pageCount={reminderPageCount}
+          pageSize={reminderPageSize}
+          pageSizeOptions={[6, 10, 20, 40]}
+          total={filtered.length}
+          currentCount={pagedFilteredReminders.length}
+          onPageChange={setReminderPage}
+          onPageSizeChange={setReminderPageSize}
+        />
       </section>
     </div>
   )
