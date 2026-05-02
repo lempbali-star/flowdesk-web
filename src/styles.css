@@ -25908,3 +25908,17 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20452-gantt-today-chip {
   display: none !important;
 }
+
+
+/* FlowDesk v20.4.54 - 今天標籤微調 2px 置中；專案總期程不顯示 hover 資訊 */
+.fd20453-gantt-project-guide i {
+  transform: translateX(calc(-50% + 2px)) !important;
+}
+
+.fd203-gantt-bar.project .fd20426-gantt-hover-tip,
+.fd203-gantt-bar.project:hover .fd20426-gantt-hover-tip,
+.fd203-gantt-bar.project:focus-within .fd20426-gantt-hover-tip {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
