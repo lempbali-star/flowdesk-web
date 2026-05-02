@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.59'
+const FLOWDESK_APP_VERSION = '20.4.61'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5325,8 +5325,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <small>{project.phase} · {project.progress}%</small>
             </div>
             <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
-              {showToday ? <span className="fd203-gantt-today-line subtle fd203-gantt-today-guide fd20456-gantt-project-guide fd20459-gantt-today-line" style={{ left: todayLeft }} /> : null}
-              {showToday ? <span className="fd20459-gantt-today-chip-inline" style={{ left: todayLeft }}>今天 {formatMonthDay(todayValue)}</span> : null}
+              {showToday ? (
+                <span className="fd203-gantt-today-line subtle fd203-gantt-today-guide fd20456-gantt-project-guide fd20461-gantt-today-line" style={{ left: todayLeft }}>
+                  <span className="fd20461-gantt-today-chip">今天 {formatMonthDay(todayValue)}</span>
+                </span>
+              ) : null}
               <span
                 className={`fd203-gantt-bar project fd20457-project-readonly-bar fd20459-project-readonly-bar ${project.tone || 'blue'}`.trim()}
                 style={ganttStyle(project.startDate, project.endDate, displayStart, displayEnd)}

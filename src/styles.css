@@ -26167,6 +26167,24 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 
 .fd20459-project-readonly-bar,
 .fd20459-project-readonly-bar *,
+
+
+.fd20435-gantt-project-row.fd20458-gantt-project-row {
+  z-index: 36 !important;
+}
+
+.fd20461-gantt-today-line {
+  z-index: 320 !important;
+}
+
+.fd20461-gantt-today-chip {
+  top: -18px !important;
+}
+
+.fd20435-gantt-head {
+  z-index: 33 !important;
+}
+
 .fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-bar.project,
 .fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-bar.project * {
   pointer-events: none !important;
@@ -26176,4 +26194,75 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-row.fd20458-gantt-project-row .fd20426-gantt-hover-tip,
 .fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-progress-trigger {
   display: none !important;
+}
+
+
+/* FlowDesk v20.4.61 - 今天標籤顯示層級與位置修正 */
+.fd20459-gantt-today-chip-inline,
+.fd20457-gantt-today-chip-head,
+.fd20456-gantt-today-chip-fixed,
+.fd20455-gantt-today-chip-fixed,
+.fd20452-gantt-today-chip,
+.fd20451-gantt-today-chip,
+.fd20450-gantt-today-chip,
+.fd20428-gantt-today-chip:not(.fd20457-gantt-today-chip-head) {
+  display: none !important;
+}
+
+.fd20435-gantt-project-row,
+.fd20435-gantt-project-row .fd203-gantt-track,
+.fd20458-gantt-project-row,
+.fd20458-gantt-project-row .fd203-gantt-track {
+  overflow: visible !important;
+  contain: none !important;
+}
+
+.fd20461-gantt-today-line {
+  z-index: 220 !important;
+  overflow: visible !important;
+  transform: translateX(-50%) !important;
+}
+
+.fd20461-gantt-today-chip {
+  position: absolute !important;
+  left: 50% !important;
+  top: -34px !important;
+  transform: translateX(-50%) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: max-content !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 241, 242, 0.99) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(239, 68, 68, 0.38) !important;
+  box-shadow: 0 10px 22px rgba(239, 68, 68, 0.2) !important;
+  font-style: normal !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  z-index: 240 !important;
+  pointer-events: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-bar.project,
+.fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-bar.project *,
+.fd20459-project-readonly-bar,
+.fd20459-project-readonly-bar * {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+.fd203-gantt-row.fd20458-gantt-project-row .fd20426-gantt-hover-tip,
+.fd203-gantt-row.fd20458-gantt-project-row .fd203-gantt-progress-trigger,
+.fd20459-project-readonly-bar .fd20426-gantt-hover-tip,
+.fd20459-project-readonly-bar:hover .fd20426-gantt-hover-tip,
+.fd20459-project-readonly-bar:focus-within .fd20426-gantt-hover-tip {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
 }
