@@ -28923,3 +28923,80 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_85_EXACT_PURCHASE_VIEW_BUTTONS_END */
 
+
+/* FLOWDESK_V20_4_86_PROJECT_EXACT_PURCHASE_VIEW_BUTTONS_START */
+/* 專案管理：卡片 / 清單切換按鈕補改成採購管理同款 */
+
+.fd20486-project-exact-purchase-view,
+.project-filter-panel .fd20486-project-exact-purchase-view {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px !important;
+  border-radius: 18px !important;
+  background: rgba(248, 250, 252, .92) !important;
+  border: 1px solid rgba(148, 163, 184, .22) !important;
+  box-shadow: none !important;
+}
+
+.fd20486-project-exact-purchase-view .collection-control-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: auto !important;
+  padding: 0 6px 0 4px !important;
+  color: #738098 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.fd20486-project-exact-purchase-view button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: auto !important;
+  padding: 8px 11px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  color: #64718a !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  transition: .16s ease !important;
+}
+
+.fd20486-project-exact-purchase-view button:hover {
+  background: #f4f7fd !important;
+  color: #26344d !important;
+  transform: none !important;
+}
+
+.fd20486-project-exact-purchase-view button.active {
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary)) !important;
+  box-shadow: 0 8px 18px var(--theme-shadow) !important;
+  border: 0 !important;
+}
+
+.fd20486-project-exact-purchase-view button span[aria-hidden="true"] {
+  display: inline-flex !important;
+  width: auto !important;
+  justify-content: center !important;
+  color: inherit !important;
+}
+
+@media (max-width: 760px) {
+  .fd20486-project-exact-purchase-view {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    overflow: auto !important;
+  }
+
+  .fd20486-project-exact-purchase-view button {
+    flex: 0 0 auto !important;
+  }
+}
+/* FLOWDESK_V20_4_86_PROJECT_EXACT_PURCHASE_VIEW_BUTTONS_END */
+

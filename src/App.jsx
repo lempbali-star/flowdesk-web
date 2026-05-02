@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.85'
+const FLOWDESK_APP_VERSION = '20.4.86'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -6069,9 +6069,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <select value={projectPageSize} onChange={(event) => setProjectPageSize(Number(event.target.value))} aria-label="每頁筆數">
           {[10, 20, 30, 40, 50].map((size) => <option key={size} value={size}>每頁 {size} 筆</option>)}
         </select>
-        <div className="project-view-toggle" aria-label="專案檢視切換">
-          <button type="button" className={projectViewMode === 'cards' ? 'active' : ''} onClick={() => setProjectViewMode('cards')}>卡片</button>
-          <button type="button" className={projectViewMode === 'list' ? 'active' : ''} onClick={() => setProjectViewMode('list')}>清單</button>
+        <div className="collection-view-control purchase-local-view-control project-view-toggle fd20486-project-exact-purchase-view" aria-label="專案管理視圖">
+          <span className="collection-control-label">視圖</span>
+          {[
+            { id: 'list', icon: '☰', name: '清單' },
+            { id: 'cards', icon: '▦', name: '卡片' },
+          ].map((option) => (
+            <button key={option.id} type="button" className={projectViewMode === option.id ? 'active' : ''} onClick={() => setProjectViewMode(option.id)}>
+              <span aria-hidden="true">{option.icon}</span>{option.name}
+            </button>
+          ))}
         </div>
       </section>
 
