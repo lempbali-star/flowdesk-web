@@ -29441,3 +29441,34 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_90_LIST_TOPBAR_UNIFIED_END */
 
+
+/* FLOWDESK_V20_4_91_REMOVE_WORK_RIGHT_PREVIEW_START */
+/* 工作事項：移除右側「詳細預覽 / 未選取工作」側欄，主內容改為滿版 */
+
+.product-shell.has-context {
+  grid-template-columns: var(--sidebar-width, 72px) minmax(0, 1fr) !important;
+}
+
+.product-shell:not(.has-context) .context-panel,
+.board-page + .context-panel {
+  display: none !important;
+}
+
+.context-panel {
+  /* 保留其他舊樣式不動；本版 JSX 已不再輸出工作事項右側預覽 */
+}
+
+.board-page {
+  max-width: none !important;
+}
+
+.board-page .surface-toolbar,
+.board-page .board-control-center,
+.board-page .board-focus-strip,
+.board-page .board-bulk-panel,
+.board-page .fd20490-list-topbar,
+.board-page .fd20483-pagination {
+  max-width: none !important;
+}
+/* FLOWDESK_V20_4_91_REMOVE_WORK_RIGHT_PREVIEW_END */
+

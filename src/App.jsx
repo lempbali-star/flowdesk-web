@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.90'
+const FLOWDESK_APP_VERSION = '20.4.91'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1046,7 +1046,7 @@ function FlowDeskShell({ authSession, onLogout }) {
   }
 
   return (
-    <div className={`product-shell ${sidebarOpen ? 'sidebar-open' : ''} ${active === 'board' ? 'has-context' : ''}`}>
+    <div className={`product-shell ${sidebarOpen ? 'sidebar-open' : ''}`}>
       <aside className="workspace-sidebar" aria-label="側邊選單" onMouseEnter={() => setSidebarOpen(true)} onMouseLeave={() => setSidebarOpen(false)}>
         <div className="workspace-card">
           <div className="brand-mark">F</div>
@@ -1181,12 +1181,6 @@ function FlowDeskShell({ authSession, onLogout }) {
         }} />}
         {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} customTheme={customTheme} setCustomTheme={setCustomTheme} themeShuffleSettings={themeShuffleSettings} setThemeShuffleSettings={setThemeShuffleSettings} themeShuffleCountdown={themeShuffleCountdown} randomizeThemeNow={randomizeThemeNow} freezeThemeShuffle={freezeThemeShuffle} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
       </main>
-
-      {active === 'board' && (
-        <aside className="context-panel">
-          <ContextPanel selected={selected} onUpdateItem={updateWorkItem} onDeleteItem={deleteWorkItem} onDuplicateItem={duplicateWorkItem} />
-        </aside>
-      )}
 
       {showLauncher && <CreateLauncher onClose={() => setShowLauncher(false)} />}
       <ScrollTopButton />
