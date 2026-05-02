@@ -1,11 +1,11 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
 const FLOWDESK_APP_VERSION = '20.4.62'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
-const PROJECT_PHASE_OPTIONS = ['閬?銝?, '?瘙Ⅱ隤?, '?瑁?銝?, '皜祈岫撽', '敺???, '銝?撠', '?怎楨', '撌脣???, '撌脣?瘨?]
-const PROJECT_HEALTH_OPTIONS = ['蝛拙??券?, '敺Ⅱ隤?, '擃◢??, '?⊿?']
-const PROJECT_PRIORITY_OPTIONS = ['蝺?, '擃?, '銝?, '雿?]
+const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
+const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
+const PROJECT_PRIORITY_OPTIONS = ['低', '中', '高', '緊急']
 const PROJECT_SORT_OPTIONS = ['?芸???', '????', '?唳???, '?脣漲', '?迂']
 
 function mergeOptionList(base = [], current) {
@@ -72,9 +72,9 @@ function ChineseTextField({ value = '', onCommit, multiline = false, commitOnBlu
   )
 }
 
-function confirmDestructiveAction(label = '??鞈?', detail = '?芷敺瘜?亙儔??) {
+function confirmDestructiveAction(label = '??鞈?', detail = '?芷敺瘜?亙儔??) {
   if (typeof window === 'undefined') return true
-  return window.confirm(`蝣箏?閬?扎?{label || '??鞈?'}??\n${detail}`)
+  return window.confirm(`蝣箏?閬?扎?{label || '??鞈?'}??\n${detail}`)
 }
 
 function confirmResetAction(message) {
@@ -95,60 +95,60 @@ const initialModules = [
 
 
 const modulePurposeMap = {
-  home: { role: '蝮質汗?芸?????撘?銝?交?亦敦蝭蝺刻摩??, scope: '隞???◢?芾?????????, avoid: '銝摰?梯”??憛???雿? },
-  board: { role: '撌乩?鈭??芰恣?撣詨?颲西?頝脖???, scope: '隞予閬???閬蕭鈭箝?摰??極雿?, avoid: '銝?隞?鞈潭?蝔??誨撠???蝣? },
-  base: { role: '?∟頃????鞎祈??擃?瘚?蝝??, scope: '?∟頃?柴?????憿???甈整鞎刻?甇瑞???, avoid: '銝?瘥鞈潭郊撽???函?隞餃??? },
-  desk: { role: '頝脩?????憿????窗??, scope: '?閬?????瘜???鞎砌犖??蝥?閬?鈭???, avoid: '銝???蝚砌??極雿??? },
-  roadmap: { role: '撠?蝞∠??芣??畾萸?蝔??絲餈????瑟?撌乩???, scope: '撠????孵???畾萸?蝔???獢遙???脣漲??, avoid: '銝?嗆撠??蝝??? },
-  docs: { role: '?辣???芣??????蝭??, scope: 'SOP??霅啁??身摰?閮虜?函??研?, avoid: '銝?亙?颲行?蝔? },
-  flow: { role: '瘚?閬??芣?????閬???, scope: '?唳?????????銴?雿???, avoid: '銝撖阡?隞餃?皜?? },
-  insight: { role: '?????芸?瑼Ｚ?嚗????雁霅瑯?, scope: '?∟頃?極雿?獢???蝯梯??隅?Ｕ?, avoid: '銝憓銝憟????? },
-  reminders: { role: '??銝剖??芾?鞎祆?????, scope: '?暹????乓??乓?晞辣敺??????, avoid: '銝??洵鈭遙?恣?? },
-  settings: { role: '蝟餌絞閮剖??芾???閫??隞質?璅∠?閮剖???, scope: '?郊???隞賡??蜓憿?蝷箝?????, avoid: '銝?亙虜撌乩??批捆?? },
+  home: { role: '蝮質汗?芸?????撘?銝?交?亦敦蝭蝺刻摩??, scope: '隞???◢?芾?????????, avoid: '銝摰?梯”??憛???雿? },
+  board: { role: '撌乩?鈭??芰恣?撣詨?颲西?頝脖???, scope: '隞予閬???閬蕭鈭箝?摰??極雿?, avoid: '銝?隞?鞈潭?蝔??誨撠???蝣? },
+  base: { role: '?∟頃????鞎祈??擃?瘚?蝝??, scope: '?∟頃?柴?????憿???甈整鞎刻?甇瑞???, avoid: '銝?瘥鞈潭郊撽???函?隞餃??? },
+  desk: { role: '頝脩?????憿????窗??, scope: '?閬?????瘜???鞎砌犖??蝥?閬?鈭???, avoid: '銝???蝚砌??極雿??? },
+  roadmap: { role: '撠?蝞∠??芣??畾萸?蝔??絲餈????瑟?撌乩???, scope: '撠????孵???畾萸?蝔???獢遙???脣漲??, avoid: '銝?嗆撠??蝝??? },
+  docs: { role: '?辣???芣??????蝭??, scope: 'SOP??霅啁??身摰?閮虜?函??研?, avoid: '銝?亙?颲行?蝔? },
+  flow: { role: '瘚?閬??芣?????閬???, scope: '?唳?????????銴?雿???, avoid: '銝撖阡?隞餃?皜?? },
+  insight: { role: '?????芸?瑼Ｚ?嚗????雁霅瑯?, scope: '?∟頃?極雿?獢???蝯梯??隅?Ｕ?, avoid: '銝憓銝憟????? },
+  reminders: { role: '??銝剖??芾?鞎祆?????, scope: '?暹????乓??乓?晞辣敺??????, avoid: '銝??洵鈭遙?恣?? },
+  settings: { role: '蝟餌絞閮剖??芾???閫??隞質?璅∠?閮剖???, scope: '?郊???隞賡??蜓憿?蝷箝?????, avoid: '銝?亙虜撌乩??批捆?? },
 }
 
 const flowdeskModuleBoundaries = [
   {
     id: 'board',
     title: '撌乩?鈭?',
-    keep: '?亙虜敺齒????脯?憭抵??券脩?撠極雿?,
-    avoid: '銝??曉??湔鞈潭?蝔?獢?蝔?????????,
-    handoff: '?閬?????????銝剖?嚗?閬迤撘?獢???撠?蝞∠?嚗?閬鞈潸??????∟頃????,
+    keep: '?亙虜敺齒????脯?憭抵??券脩?撠極雿?,
+    avoid: '銝??曉??湔鞈潭?蝔?獢?蝔?????????,
+    handoff: '?閬?????????銝剖?嚗?閬迤撘?獢???撠?蝞∠?嚗?閬鞈潸??????∟頃????,
   },
   {
     id: 'reminders',
     title: '??銝剖?',
-    keep: '隞???乓?晞暹??辣敺??唳????,
-    avoid: '銝?霈?蝚砌?憟遙?恣??銋?閬雁霅瑟鞈潭?撠?銝餉???,
-    handoff: '???祇??靘?璅∠???嚗?憒鞈潦?獢?撌乩?鈭???,
+    keep: '隞???乓?晞暹??辣敺??唳????,
+    avoid: '銝?霈?蝚砌?憟遙?恣??銋?閬雁霅瑟鞈潭?撠?銝餉???,
+    handoff: '???祇??靘?璅∠???嚗?憒鞈潦?獢?撌乩?鈭???,
   },
   {
     id: 'desk',
-    title: '頝脩???,
-    keep: '???窗????閬撣詨???蝥蕭頩斤???,
+    title: '頝脩???,
+    keep: '???窗????閬撣詨???蝥蕭頩斤???,
     avoid: '銝?霈?蝚砌??極雿???銋?閬?憭折?敺齒皜??,
-    handoff: '?閬?憭拙銵???撌乩?鈭?嚗?閬????????銝剖???,
+    handoff: '?閬?憭拙銵???撌乩?鈭?嚗?閬????????銝剖???,
   },
   {
     id: 'base',
     title: '?∟頃????,
-    keep: '?∟頃銝餅?????憿???甈整鞎具??嗉?甇瑞???,
+    keep: '?∟頃銝餅?????憿???甈整鞎具??嗉?甇瑞???,
     avoid: '銝????鞈潭郊撽???函?撌乩?鈭?隞餃???,
-    handoff: '?閬蕭鈭箏撱箇?頝脩????閬?????脫??葉敹?,
+    handoff: '?閬蕭鈭箏撱箇?頝脩????閬?????脫??葉敹?,
   },
   {
     id: 'roadmap',
     title: '撠?蝞∠?',
-    keep: '?絲閮?畾萸?蝔????孵??◢?芾??蔭?訾???極雿?,
-    avoid: '銝?????鈭蝝???銝甈⊥批?颲血??脣?獢?,
+    keep: '?絲閮?畾萸?蝔????孵??◢?芾??蔭?訾???極雿?,
+    avoid: '銝?????鈭蝝???銝甈⊥批?颲血??脣?獢?,
     handoff: '?剜?撠? ??撌乩?鈭?嚗?????????銝剖???,
   },
 ]
 
 const flowdeskFocusRules = [
-  { title: '撌乩?鈭?', detail: '?暹撣詨?颲艾蕭頩支???憭抵??券脩?撠極雿? },
-  { title: '?∟頃????, detail: '?暹鞈潔蜓瑼???憿???甈曇??啗疏??? },
-  { title: '撠?蝞∠?', detail: '?暹?韏瑁???畾萸?蝔????孵???極雿? },
+  { title: '撌乩?鈭?', detail: '?暹撣詨?颲艾蕭頩支???憭抵??券脩?撠極雿? },
+  { title: '?∟頃????, detail: '?暹鞈潔蜓瑼???憿???甈曇??啗疏??? },
+  { title: '撠?蝞∠?', detail: '?暹?韏瑁???畾萸?蝔????孵???極雿? },
   { title: '??銝剖?', detail: '?芣?????銝???蝞∠?隞餃??祇??? },
 ]
 
@@ -166,18 +166,18 @@ const defaultModuleIcons = {
 }
 
 const defaultBaseTableIcons = {
-  '?∟頃蝝??: '?屁',
+  '?∟頃蝝??: '?屁',
   '撱?鞈?': '?',
 }
 
 const iconOptions = ['??', '??儭?, '?屁', '?', '??', '??', '??', '??', '??', '?', '??', '?妍', '?儭?, '?', '?儭?, '?儭?, '??', '?', '??', '?', '??儭?, '?', '?', '?', '??', '??', '??', '??, '?梧?', '??', '?', '??', '?', '??', '??', '?妣', '?', '??]
 
 const iconStyleOptions = [
-  { id: 'auto', name: '頝 UI 銝駁?', description: '?? UI 銝駁????內憸冽???韏瑁??氬? },
-  { id: 'soft', name: '敶抵??', description: '???∠?摨嚗???質??亙虜撌乩??啜? },
-  { id: 'tech', name: '蝺?蝘?', description: '?????憭???鈭桅敶晞? },
-  { id: 'minimal', name: '璆萇陛?株', description: '雿僕?整?脩頂嚗??????Ｕ? },
-  { id: 'card', name: '?膜?∠?', description: '?內?∠???＊嚗?閬箸?頛暑瞏? },
+  { id: 'auto', name: '頝 UI 銝駁?', description: '?? UI 銝駁????內憸冽???韏瑁??氬? },
+  { id: 'soft', name: '敶抵??', description: '???∠?摨嚗???質??亙虜撌乩??啜? },
+  { id: 'tech', name: '蝺?蝘?', description: '?????憭???鈭桅敶晞? },
+  { id: 'minimal', name: '璆萇陛?株', description: '雿僕?整?脩頂嚗??????Ｕ? },
+  { id: 'card', name: '?膜?∠?', description: '?內?∠???＊嚗?閬箸?頛暑瞏? },
 ]
 
 const iconAutoStyleByTheme = {
@@ -205,32 +205,32 @@ const iconAutoStyleByTheme = {
 }
 
 const themeOptions = [
-  { id: 'blue', name: '?身??, description: '蝛拙??嗾瘛函? FlowDesk ?身?莎??拙??亙虜撌乩??啜?, accent: '#356bff', secondary: '#8c4dff', vibe: '蝬蝛拙?' },
+  { id: 'blue', name: '?身??, description: '蝛拙??嗾瘛函? FlowDesk ?身?莎??拙??亙虜撌乩??啜?, accent: '#356bff', secondary: '#8c4dff', vibe: '蝬蝛拙?' },
   { id: 'fresh', name: '??', description: '皜?漁嚗????渡??∟頃??餈質馱鈭???, accent: '#1db79d', secondary: '#4dc9ff', vibe: '皜??' },
-  { id: 'purple', name: '蝝怨', description: '頛?蝘???霈?暺?憛????湧??柴?, accent: '#7b4dff', secondary: '#b14cff', vibe: '蝘??' },
+  { id: 'purple', name: '蝝怨', description: '頛?蝘???霈?暺?憛????湧??柴?, accent: '#7b4dff', secondary: '#b14cff', vibe: '蝘??' },
   { id: 'amber', name: '璈', description: '?????撘瘀??拙?????頝?極雿??, accent: '#f2992e', secondary: '#ff6b4a', vibe: '銵???' },
   { id: 'rose', name: '?怎?', description: '???內?湔?憿荔??拙?????????憭?雿輻??, accent: '#e84c72', secondary: '#8c4dff', vibe: '鈭桃??' },
-  { id: 'slate', name: '?喳◢??, description: '瘝帘雿僕?橘??拙?鞈?撖??迤撘??, accent: '#475569', secondary: '#0e7490', vibe: '瘝帘雿矽' },
-  { id: 'tech', name: '瘛望絲??, description: '瘛梯??剝??餃???靽? FlowDesk ?????, accent: '#315dff', secondary: '#00c2ff', vibe: '瘛望絲蝘?' },
+  { id: 'slate', name: '?喳◢??, description: '瘝帘雿僕?橘??拙?鞈?撖??迤撘??, accent: '#475569', secondary: '#0e7490', vibe: '瘝帘雿矽' },
+  { id: 'tech', name: '瘛望絲??, description: '瘛梯??剝??餃???靽? FlowDesk ?????, accent: '#315dff', secondary: '#00c2ff', vibe: '瘛望絲蝘?' },
   { id: 'green', name: '璉桃?', description: '蝛拚????抬??拙??瑟??炎閬?獢??∟頃鞈???, accent: '#0fa374', secondary: '#1d9b8f', vibe: '蝛拙??' },
   { id: 'ice', name: '?啣???, description: '雿ˊ??脩頂嚗?Ｘ銋暹楊靽??, accent: '#38a9d6', secondary: '#66c7c2', vibe: '銋暹楊靽' },
-  { id: 'aurora', name: '璆萄?', description: '?換?剝?璆萄?蝬?銝餌?Ｚ?????湔?撅斗活??, accent: '#00d4ff', secondary: '#7c3aed', vibe: '?怠蔗?刻' },
-  { id: 'neon', name: '?', description: '擃蔗摨阡??寞?嚗?霈????????∠??渲歲??, accent: '#00e5ff', secondary: '#ff2bd6', vibe: '擃漁閬死' },
-  { id: 'cyber', name: '鞈賢?蝝?, description: '蝝怨銝餉矽???嚗?蝟餌絞??蝘??銵冽憸冽??, accent: '#8b5cf6', secondary: '#06b6d4', vibe: '蝘??怠?' },
-  { id: 'sunset', name: '?桀?璈?, description: '璈?瞍詨惜?湔?銵????拙??????祈?撠??券脯?, accent: '#fb923c', secondary: '#ef4444', vibe: '??券? },
+  { id: 'aurora', name: '璆萄?', description: '?換?剝?璆萄?蝬?銝餌?Ｚ?????湔?撅斗活??, accent: '#00d4ff', secondary: '#7c3aed', vibe: '?怠蔗?刻' },
+  { id: 'neon', name: '?', description: '擃蔗摨阡??寞?嚗?霈????????∠??渲歲??, accent: '#00e5ff', secondary: '#ff2bd6', vibe: '擃漁閬死' },
+  { id: 'cyber', name: '鞈賢?蝝?, description: '蝝怨銝餉矽???嚗?蝟餌絞??蝘??銵冽憸冽??, accent: '#8b5cf6', secondary: '#06b6d4', vibe: '蝘??怠?' },
+  { id: 'sunset', name: '?桀?璈?, description: '璈?瞍詨惜?湔?銵????拙??????祈?撠??券脯?, accent: '#fb923c', secondary: '#ef4444', vibe: '??券? },
   { id: 'midnight', name: '????, description: '瘛梯??剝??瑕???靽?甇?????湔?閬死撘萄???, accent: '#1e3a8a', secondary: '#38bdf8', vibe: '瘛梯鞈芣?' },
-  { id: 'galaxy', name: '?瘝喟換', description: '蝝怨??????拙??單? FlowDesk ??蝘劂?銵冽??, accent: '#6d5dfc', secondary: '#24d4ff', vibe: '?蝘劂' },
-  { id: 'lava', name: '?痔蝝?, description: '蝝?擃?瘥??????祈?敺????湔?銵???, accent: '#ff5a36', secondary: '#ffb000', vibe: '擃霅衣內' },
-  { id: 'prism', name: '蝔蝟蔗', description: '蝎換???瑁?憭抵?瘛瑁嚗?Ｘ??湔暑瞏?潦?, accent: '#ff4fd8', secondary: '#38bdf8', vibe: '蝟蔗?怠?' },
+  { id: 'galaxy', name: '?瘝喟換', description: '蝝怨??????拙??單? FlowDesk ??蝘劂?銵冽??, accent: '#6d5dfc', secondary: '#24d4ff', vibe: '?蝘劂' },
+  { id: 'lava', name: '?痔蝝?, description: '蝝?擃?瘥??????祈?敺????湔?銵???, accent: '#ff5a36', secondary: '#ffb000', vibe: '擃霅衣內' },
+  { id: 'prism', name: '蝔蝟蔗', description: '蝎換???瑁?憭抵?瘛瑁嚗?Ｘ??湔暑瞏?潦?, accent: '#ff4fd8', secondary: '#38bdf8', vibe: '蝟蔗?怠?' },
   { id: 'hologlass', name: '?冽璆萄?', description: '?換璆萄??剝??孵蔗?楠嚗??蝷箄?瘛梯璅∪???, accent: '#7dd3fc', secondary: '#c084fc', vibe: '?冽撅內' },
-  { id: 'nebula', name: '?暺?, description: '瘛梯???霈???孵???暺?憛??嗅??, accent: '#818cf8', secondary: '#22d3ee', vibe: '??批?? },
-  { id: 'plasma', name: '?餅撚??', description: '??擃瘚?嚗????????獢?脫?憓?, accent: '#f59e0b', secondary: '#ef4444', vibe: '擃瘚?' },
-  { id: 'custom', name: '??銝駁?', description: '?芾?隤踵銝餉???抵?撥隤輯嚗遣蝡?FlowDesk ?犖??閫??, accent: '#2563eb', secondary: '#14b8a6', vibe: '?芾??脣蔗' },
+  { id: 'nebula', name: '?暺?, description: '瘛梯???霈???孵???暺?憛??嗅??, accent: '#818cf8', secondary: '#22d3ee', vibe: '??批?? },
+  { id: 'plasma', name: '?餅撚??', description: '??擃瘚?嚗????????獢?脫?憓?, accent: '#f59e0b', secondary: '#ef4444', vibe: '擃瘚?' },
+  { id: 'custom', name: '??銝駁?', description: '?芾?隤踵銝餉???抵?撥隤輯嚗遣蝡?FlowDesk ?犖??閫??, accent: '#2563eb', secondary: '#14b8a6', vibe: '?芾??脣蔗' },
 ]
 
 const appearanceModeOptions = [
   { id: 'light', name: '瘛箄', description: '蝬剜??漁銋暹楊?撣詨極雿?? },
-  { id: 'dark', name: '瘛梯', description: '瘛梯摨?蜓憿????拙?憭???蝷箔蝙?具? },
+  { id: 'dark', name: '瘛梯', description: '瘛梯摨?蜓憿????拙?憭???蝷箔蝙?具? },
   { id: 'system', name: '頝蝟餌絞', description: '靘雿平蝟餌絞瘛梯 / 瘛箄閮剖??芸????? },
 ]
 
@@ -245,7 +245,7 @@ const appearancePresetOptions = [
   {
     id: 'business',
     name: '???亙虜',
-    description: '瘛箄??皞???閮剛?嚗?撣詨極雿?甇???游???,
+    description: '瘛箄??皞???閮剛?嚗?撣詨極雿?甇???游???,
     theme: 'blue',
     appearance: 'light',
     motion: 'standard',
@@ -254,7 +254,7 @@ const appearancePresetOptions = [
   {
     id: 'focus',
     name: '憭?撠釣',
-    description: '瘛梯??皞????脤?嚗???亦?撠????孵?瘥?????,
+    description: '瘛梯??皞????脤?嚗???亦?撠????孵?瘥?????,
     theme: 'nebula',
     appearance: 'dark',
     motion: 'standard',
@@ -263,7 +263,7 @@ const appearancePresetOptions = [
   {
     id: 'showcase',
     name: '撅內璅∪?',
-    description: '瘛梯??舀扔????舀扔?蜓憿??拙? Demo ??蝷箇頂蝯晞?,
+    description: '瘛梯??舀扔????舀扔?蜓憿??拙? Demo ??蝷箇頂蝯晞?,
     theme: 'hologlass',
     appearance: 'dark',
     motion: 'holo',
@@ -272,7 +272,7 @@ const appearancePresetOptions = [
   {
     id: 'alert',
     name: '擃??',
-    description: '?餅撚???剝??怠蔗??嚗???????獢?脫???,
+    description: '?餅撚???剝??怠蔗??嚗???????獢?脫???,
     theme: 'plasma',
     appearance: 'light',
     motion: 'vivid',
@@ -281,7 +281,7 @@ const appearancePresetOptions = [
   {
     id: 'calm',
     name: '雿僕??,
-    description: '?啣????????拙?鞈?撖???霅唳?敶望?雿僕?暹?雿?,
+    description: '?啣????????拙?鞈?撖???霅唳?敶望?雿僕?暹?雿?,
     theme: 'ice',
     appearance: 'light',
     motion: 'off',
@@ -306,13 +306,13 @@ const themeShuffleIntervalOptions = [
   { id: 1, name: '1 ??', description: '撅內?葫閰衣嚗????餌??? },
   { id: 5, name: '5 ??', description: '?刻閮剖?嚗?Ｘ?靽??圈悅雿?????? },
   { id: 15, name: '15 ??', description: '?亙虜撌乩?瘥?蝛抬?銝?憭芸虜頝唾?? },
-  { id: 30, name: '30 ??', description: '雿僕?橘??芸?暹?銝銝??? },
+  { id: 30, name: '30 ??', description: '雿僕?橘??芸?暹?銝銝??? },
 ]
 
 const themeShuffleModeOptions = [
-  { id: 'vivid', name: '?怠蔗銝駁?', description: '?芸璆萄????嫘魚???脯瞍輻?擃儘霅蜓憿葉頛芣???, themeIds: ['aurora', 'neon', 'cyber', 'galaxy', 'hologlass', 'nebula', 'plasma', 'prism', 'lava', 'sunset'] },
-  { id: 'work', name: '撌乩???', description: '?芸?身??蝬ㄝ蝬撌??憓函蝑?撟脫銝駁?銝剛憚??, themeIds: ['blue', 'fresh', 'green', 'ice', 'slate', 'tech'] },
-  { id: 'all', name: '?券?批遣', description: '???銝駁?嚗璈??冽??撱箔蜓憿?, themeIds: [] },
+  { id: 'vivid', name: '?怠蔗銝駁?', description: '?芸璆萄????嫘魚???脯瞍輻?擃儘霅蜓憿葉頛芣???, themeIds: ['aurora', 'neon', 'cyber', 'galaxy', 'hologlass', 'nebula', 'plasma', 'prism', 'lava', 'sunset'] },
+  { id: 'work', name: '撌乩???', description: '?芸?身??蝬ㄝ蝬撌??憓函蝑?撟脫銝駁?銝剛憚??, themeIds: ['blue', 'fresh', 'green', 'ice', 'slate', 'tech'] },
+  { id: 'all', name: '?券?批遣', description: '???銝駁?嚗璈??冽??撱箔蜓憿?, themeIds: [] },
 ]
 
 function normalizeThemeShuffleSettings(value = {}) {
@@ -378,7 +378,7 @@ function protectThemeContrast(theme) {
   }
 }
 
-const attachmentTypeOptionsV66 = ['?勗??, 'PO / ?∟頃??, '?潛巨', '撽??, '??', '?芸?', 'SOP', '?降蝝??, '?嗡?']
+const attachmentTypeOptionsV66 = ['?勗??, 'PO / ?∟頃??, '?潛巨', '撽??, '??', '?芸?', 'SOP', '?降蝝??, '?嗡?']
 
 function normalizeAttachmentList(value) {
   return Array.isArray(value) ? value.map((item, index) => ({
@@ -432,8 +432,8 @@ const collectionViewOptions = [
 const collectionPageSizeOptions = [6, 12, 24]
 
 const baseTables = [
-  { id: 'purchase-records', name: '?∟頃蝝??, rows: 0, fields: ['撱?', '??', '?唾?鈭?, '雿輻鈭?, '?挾', '?啗疏???], color: 'violet', icon: 'purchase-record', visible: true, locked: true, order: 1, defaultView: 'list' },
-  { id: 'vendors', name: '撱?鞈?', rows: 0, fields: ['憿?', '?舐窗鈭?, '??', '?餈蝜?], color: 'green', icon: 'vendor-record', visible: true, locked: true, order: 2, defaultView: 'card' },
+  { id: 'purchase-records', name: '?∟頃蝝??, rows: 0, fields: ['撱?', '??', '?唾?鈭?, '雿輻鈭?, '?挾', '?啗疏???], color: 'violet', icon: 'purchase-record', visible: true, locked: true, order: 1, defaultView: 'list' },
+  { id: 'vendors', name: '撱?鞈?', rows: 0, fields: ['憿?', '?舐窗鈭?, '??', '?餈蝜?], color: 'green', icon: 'vendor-record', visible: true, locked: true, order: 2, defaultView: 'card' },
 ]
 
 const activeCollectionIds = ['purchase-records', 'vendors']
@@ -445,7 +445,7 @@ const initialReminders = []
 const reminderTypeOptions = ['?唳???', '餈質馱??', '撱?????', '蝪賣??', '?啗疏??', '蝥???', '?降??']
 const reminderStatusOptions = ['敺???, '??銝?, '撌脣???, '撱嗅?']
 const reminderPriorityOptions = ['擃?, '銝?, '雿?]
-const reminderSourceOptions = ['銝??, '?∟頃', '撠?', '隞餃?', '鞈?皜']
+const reminderSourceOptions = ['銝??, '?∟頃', '撠?', '隞餃?', '鞈?皜']
 
 
 const purchaseBaseRows = []
@@ -459,7 +459,7 @@ function buildInitialPurchases() {
 const initialPurchases = buildInitialPurchases()
 
 const initialPurchaseStages = [
-  { id: 'stage-1', name: '?瘙Ⅱ隤?, tone: 'blue', enabled: true, locked: true },
+  { id: 'stage-1', name: '?瘙Ⅱ隤?, tone: 'blue', enabled: true, locked: true },
   { id: 'stage-2', name: '閰Ｗ銝?, tone: 'violet', enabled: true },
   { id: 'stage-3', name: '敺偷??, tone: 'amber', enabled: true },
   { id: 'stage-4', name: '撌脖???, tone: 'blue', enabled: true },
@@ -487,16 +487,16 @@ const purchasePaymentStatusOptions = ['?芯?甈?, '隢狡銝?, '撌脖?甈?]
 const purchaseArrivalStatusOptions = ['?芸鞎?, '?典??啗疏', '撌脣鞎?]
 const purchaseAcceptanceStatusOptions = ['?芷???, '撽銝?, '撌脤???]
 const purchasePriorityOptions = [
-  { id: '蝺?, label: '蝺?, tone: 'red', weight: 0, hint: '???身???蜓蝞⊥乩辣嚗??芸??????? },
-  { id: '擃?, label: '擃?, tone: 'orange', weight: 1, hint: '??蝣箸????蔣?輸?雿平?蝙?刻脣漲?? },
-  { id: '銝??, label: '銝??, tone: 'blue', weight: 2, hint: '甇?虜?∟頃瘚?嚗?????唳??亥蕭頩扎? },
-  { id: '雿?, label: '雿?, tone: 'slate', weight: 3, hint: '???掠??蝡?瘙??舀??典??Ｚ??? },
+  { id: '蝺?, label: '蝺?, tone: 'red', weight: 0, hint: '???身???蜓蝞⊥乩辣嚗??芸??????? },
+  { id: '擃?, label: '擃?, tone: 'orange', weight: 1, hint: '??蝣箸????蔣?輸?雿平?蝙?刻脣漲?? },
+  { id: '銝??, label: '銝??, tone: 'blue', weight: 2, hint: '甇?虜?∟頃瘚?嚗?????唳??亥蕭頩扎? },
+  { id: '雿?, label: '雿?, tone: 'slate', weight: 3, hint: '???掠??蝡?瘙??舀??典??Ｚ??? },
 ]
 const purchasePriorityValues = purchasePriorityOptions.map((item) => item.id)
 
 function normalizePurchasePriority(value) {
-  if (value === '銝?) return '銝??
-  return purchasePriorityValues.includes(value) ? value : '銝??
+  if (value === '銝?) return '銝??
+  return purchasePriorityValues.includes(value) ? value : '銝??
 }
 
 function getPurchasePriorityMeta(value) {
@@ -531,7 +531,7 @@ const lanes = [
 
 const toneMap = {
   敺?憿? 'blue', 撌脫?蝔? 'slate', ??銝? 'violet', 蝑???: 'amber', 撌脣??? 'green',
-  擃? 'red', 蝺? 'red', 銝? 'amber', 雿? 'green', ?: 'green', ?阮: 'slate', 敺??? 'blue', 頝脖葉: 'violet', 蝑?閬? 'amber', ?⊿?: 'red', 撌脫?? 'green', 蝛拙??券? 'green', 敺?隞嗉?朣? 'red', 敺暺? 'amber',
+  擃? 'red', 蝺? 'red', 銝? 'amber', 雿? 'green', ?: 'green', ?阮: 'slate', 敺??? 'blue', 頝脖葉: 'violet', 蝑?閬? 'amber', ?⊿?: 'red', 撌脫?? 'green', 蝛拙??券? 'green', 敺?隞嗉?朣? 'red', 敺暺? 'amber',
   撌脖??? 'violet', 敺偷?? 'amber', 敺Ⅱ隤? 'blue', 撱?撅內: 'blue', 隤踵銝? 'violet', 蝑??辣: 'amber',
   ??銝? 'blue', 蝑??詨?: 'amber', 擃◢?? 'red', 銝剝◢?? 'amber', 雿◢?? 'green',
 }
@@ -626,8 +626,8 @@ function FlowDeskShell({ authSession, onLogout }) {
   })
   const [themeShuffleClock, setThemeShuffleClock] = useState(Date.now())
   const [activeBaseTable, setActiveBaseTable] = useState(() => {
-    if (typeof window === 'undefined') return '?∟頃蝝??
-    return window.localStorage.getItem('flowdesk-active-base-table-v20316') || '?∟頃蝝??
+    if (typeof window === 'undefined') return '?∟頃蝝??
+    return window.localStorage.getItem('flowdesk-active-base-table-v20316') || '?∟頃蝝??
   })
   const [workItems, setWorkItems] = useState(() => {
     if (typeof window === 'undefined') return initialWorkItems
@@ -733,7 +733,7 @@ function FlowDeskShell({ authSession, onLogout }) {
     .sort((a, b) => (a.order || 0) - (b.order || 0)), [collections])
 
   useEffect(() => {
-    const firstTable = visibleCollections[0]?.name || '?∟頃蝝??
+    const firstTable = visibleCollections[0]?.name || '?∟頃蝝??
     if (!visibleCollections.some((item) => item.name === activeBaseTable)) setActiveBaseTable(firstTable)
   }, [activeBaseTable, visibleCollections])
 
@@ -801,7 +801,7 @@ function FlowDeskShell({ authSession, onLogout }) {
     const nextItem = {
       id: getNextWorkItemId(),
       title: '?芸?極雿?,
-      type: '銝?砍極雿?,
+      type: '銝?砍極雿?,
       lane: '敺?憿?,
       priority: '銝?,
       channel: '???啣?',
@@ -857,7 +857,7 @@ function FlowDeskShell({ authSession, onLogout }) {
     const nextItem = {
       id: getNextWorkItemId(),
       title: payload.title || '?芸?極雿?,
-      type: payload.type || '銝?砍極雿?,
+      type: payload.type || '銝?砍極雿?,
       lane: payload.lane || '敺?憿?,
       priority: payload.priority || '銝?,
       channel: payload.channel || '???啣?',
@@ -889,7 +889,7 @@ function FlowDeskShell({ authSession, onLogout }) {
       priority: payload.priority || '銝?,
       status: payload.status || '敺???,
       dueDate: payload.dueDate || addDaysDate(3),
-      sourceType: payload.sourceType || '銝??,
+      sourceType: payload.sourceType || '銝??,
       sourceTitle: payload.sourceTitle || '',
       note: payload.note || '',
     }
@@ -909,7 +909,7 @@ function FlowDeskShell({ authSession, onLogout }) {
   const metrics = useMemo(() => {
     const open = workItems.filter((item) => item.lane !== '撌脣???).length
     const waiting = workItems.filter((item) => item.lane === '蝑???').length
-    const urgent = workItems.filter((item) => item.priority === '蝺? || item.priority === '擃?).length
+    const urgent = workItems.filter((item) => item.priority === '蝺? || item.priority === '擃?).length
     const pulse = workItems.length ? Math.round(workItems.reduce((sum, item) => sum + item.health, 0) / workItems.length) : 100
     const spend = initialPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
     const reminderOpen = reminders.filter((item) => item.status !== '撌脣???).length
@@ -1092,14 +1092,14 @@ function FlowDeskShell({ authSession, onLogout }) {
       <main className="main-canvas">
         <header className={`app-topbar ${active === 'base' ? 'app-topbar-with-collections' : ''}`}>
           <div className="topbar-title">
-            <p className="eyebrow">隞撌乩????/p>
+            <p className="eyebrow">隞撌乩????/p>
             <h1>{pageTitle(active, modules)}</h1>
             <div className="topbar-status-row">
               <span className="version-pill">{FLOWDESK_VERSION_LABEL}</span>
               <span className={flowdeskCloud ? 'sync-state-pill online' : 'sync-state-pill local'}>{flowdeskCloud ? '?脩垢?郊銝? : '?祆??璅∪?'}</span>
             </div>
             <div className="module-purpose-line">
-              <span>{modulePurposeMap[active]?.role || '蝬剜??桐??券??踹??????}</span>
+              <span>{modulePurposeMap[active]?.role || '蝬剜??桐??券??踹??????}</span>
             </div>
           </div>
           {active === 'base' && (
@@ -1116,7 +1116,7 @@ function FlowDeskShell({ authSession, onLogout }) {
                 className="ghost-btn fd39-appearance-trigger"
                 type="button"
                 onClick={() => setShowAppearanceQuick((open) => !open)}
-                title="敹恍???閫?寞?"
+                title="敹恍???閫?寞?"
               >
                 <span>?</span>
                 <strong>{shellAppearancePreset?.name || '憭?敹急'}</strong>
@@ -1148,10 +1148,10 @@ function FlowDeskShell({ authSession, onLogout }) {
             </div>
             <label className="global-search">
               <span>??/span>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="??隞餃??鞈潦?獢?隞?.." />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="??隞餃??鞈潦?獢?隞?.." />
             </label>
             <button className="ghost-btn" type="button" onClick={onLogout}>?餃</button>
-            <button className="ghost-btn" type="button">?隢???/button>
+            <button className="ghost-btn" type="button">?隢???/button>
             <button className="primary-btn" type="button" onClick={() => setShowLauncher(true)}>?啣?</button>
           </div>
         </header>
@@ -1169,7 +1169,7 @@ function FlowDeskShell({ authSession, onLogout }) {
         {active === 'reminders' && <RemindersPage reminders={reminders} setReminders={setReminders} workItems={workItems} onNavigateSource={(item) => {
           const sourceType = item?.sourceType || ''
           if (sourceType.includes('?∟頃')) {
-            setActiveBaseTable('?∟頃蝝??)
+            setActiveBaseTable('?∟頃蝝??)
             setActive('base')
           } else if (sourceType.includes('撠?')) {
             setActive('roadmap')
@@ -1321,7 +1321,7 @@ function LoginScreen({ mode, configMissing }) {
 
 function BaseCollectionSwitcher({ tables, activeTable, setActiveTable, baseTableIcons }) {
   return (
-    <nav className="topbar-collection-switcher" aria-label="蝝??憿?>
+    <nav className="topbar-collection-switcher" aria-label="蝝??憿?>
       {tables.map((table) => (
         <button key={table.name} className={activeTable === table.name ? 'base-table active' : 'base-table'} type="button" onClick={() => setActiveTable(table.name)} title={table.name}>
           <span className={`table-icon ${table.color}`} aria-hidden="true">{baseTableIcons?.[table.id] || baseTableIcons?.[table.name] || defaultBaseTableIcons[table.name] || table.icon || "??"}</span>
@@ -1448,7 +1448,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
   const operationTone = operationScore >= 85 ? 'green' : operationScore >= 70 ? 'blue' : operationScore >= 55 ? 'amber' : 'red'
   const operationSignals = [
     { title: '?暹? / 隞?唳?', value: overdueWork + todayDueWork + reminderSummary.overdue + reminderSummary.today, note: '????憭抵????歇?暹??', tone: overdueWork + reminderSummary.overdue ? 'red' : 'blue', target: 'reminders' },
-    { title: '?∟頃?餃?', value: purchaseWaitingQuote + purchaseNotArrived + purchaseUnpaid, note: '?勗?鞎具?甈曄???餈質馱', tone: purchaseNotArrived || purchaseUnpaid ? 'amber' : 'green', target: 'base' },
+    { title: '?∟頃?餃?', value: purchaseWaitingQuote + purchaseNotArrived + purchaseUnpaid, note: '?勗?鞎具?甈曄???餈質馱', tone: purchaseNotArrived || purchaseUnpaid ? 'amber' : 'green', target: 'base' },
     { title: '撠?憸券', value: projectRisk, note: '憸券???獢?蝣箄?銝?甇?, tone: projectRisk ? 'red' : 'green', target: 'roadmap' },
     { title: '蝑???', value: waitingWork + taskBlocked, note: '蝑?撱???隞?銝餌恣??', tone: waitingWork + taskBlocked ? 'violet' : 'green', target: 'board' },
   ]
@@ -1456,19 +1456,19 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
     { label: '撌乩?鞈?', count: workItems.length + taskRows.length, meta: `${workItems.length} ? / ${taskRows.length} 隞餃?`, target: 'board' },
     { label: '?∟頃鞈?', count: purchases.length, meta: `${purchaseOpen} ?芸???/ ${formatMoney(purchaseTotal)}`, target: 'base' },
     { label: '撠?鞈?', count: projects.length, meta: `${projectActive} ?脰?銝?/ 撟喳? ${projectAvgProgress}%`, target: 'roadmap' },
-    { label: '??鞈?', count: reminders.length, meta: `${reminderSummary.open} ?芰? / ${reminderSummary.week} ?祇常, target: 'reminders' },
+    { label: '??鞈?', count: reminders.length, meta: `${reminderSummary.open} ?芰? / ${reminderSummary.week} ?祇常, target: 'reminders' },
   ]
   const briefingRows = [
     `??? ${operationScore}嚗??{riskTotal ? `??${riskTotal} ?◢?芾?? : '瘝??＊憸券閮?'}?,
-    purchaseOpen ? `?∟頃撠? ${purchaseOpen} 蝑摰?嚗銝?${purchaseNotArrived} 蝑?啗疏??{purchaseUnpaid} 蝑隞狡? : '?∟頃?桀?瘝??芸????柴?,
-    projectRisk ? `撠???${projectRisk} 蝑◢?芣??⊿?嚗遣霅啣?蝣箄?鞎砌遙鈭箄?銝?甇乓 : `撠?撟喳??脣漲 ${projectAvgProgress}%嚗??＊憸券?,
-    reminderSummary.open ? `??銝剖???${reminderSummary.open} 蝑蝯?隞 ${reminderSummary.today} 蝑??祇?${reminderSummary.week} 蝑 : '??銝剖??桀?瘝??芰?鈭???,
+    purchaseOpen ? `?∟頃撠? ${purchaseOpen} 蝑摰?嚗銝?${purchaseNotArrived} 蝑?啗疏??{purchaseUnpaid} 蝑隞狡? : '?∟頃?桀?瘝??芸????柴?,
+    projectRisk ? `撠???${projectRisk} 蝑◢?芣??⊿?嚗遣霅啣?蝣箄?鞎砌遙鈭箄?銝?甇乓 : `撠?撟喳??脣漲 ${projectAvgProgress}%嚗??＊憸券?,
+    reminderSummary.open ? `??銝剖???${reminderSummary.open} 蝑蝯?隞 ${reminderSummary.today} 蝑??祇?${reminderSummary.week} 蝑 : '??銝剖??桀?瘝??芰?鈭???,
   ]
   const focusItems = workItems
     .filter((item) => item.lane !== '撌脣???)
     .slice()
     .sort((a, b) => {
-      const priorityScore = (row) => row.priority === '蝺? ? 0 : row.priority === '擃? ? 1 : row.priority === '銝? ? 2 : 3
+      const priorityScore = (row) => row.priority === '蝺? ? 0 : row.priority === '擃? ? 1 : row.priority === '銝? ? 2 : 3
       return priorityScore(a) - priorityScore(b) || String(a.due || '9999-12-31').localeCompare(String(b.due || '9999-12-31'))
     })
     .slice(0, 5)
@@ -1506,7 +1506,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
       badge: item.priority || '銝?,
       target: 'board',
       raw: item,
-      score: item.priority === '蝺? ? 90 : item.priority === '擃? ? 75 : 45,
+      score: item.priority === '蝺? ? 90 : item.priority === '擃? ? 75 : 45,
     })),
     ...purchaseFocus.map(({ row, actions, amount }) => ({
       id: `purchase-${row.id}`,
@@ -1602,7 +1602,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
           <article className={`home-score-card ${operationTone}`}>
             <span>???</span>
             <strong>{operationScore}</strong>
-            <small>{riskTotal ? `?桀???${riskTotal} ?◢?芾?? : '?桀???帘摰?}</small>
+            <small>{riskTotal ? `?桀???${riskTotal} ?◢?芾?? : '?桀???帘摰?}</small>
           </article>
           <div className="home-signal-grid">
             {operationSignals.map((signal) => (
@@ -1644,12 +1644,12 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
               </div>
               <Badge value={row.badge} />
             </button>
-          )) : <EmptyState title="?桀?瘝?敺??暺? action="?啣?撌乩?鈭??鞈澆?嚗ㄐ????港?銝甇乓? />}
+          )) : <EmptyState title="?桀?瘝?敺??暺? action="?啣?撌乩?鈭??鞈澆?嚗ㄐ????港?銝甇乓? />}
         </div>
       </section>
 
       <section className="panel wide purchase-home home-live-panel">
-        <PanelTitle eyebrow="?∟頃??" title="?∟頃瘚?蝮質汗" action="蝝?葉敹? />
+        <PanelTitle eyebrow="?∟頃??" title="?∟頃瘚?蝮質汗" action="蝝?葉敹? />
         <div className="purchase-home-grid">
           <article><span>?∟頃蝮賡?</span><strong>{formatMoney(purchaseTotal)}</strong></article>
           <article><span>閰Ｗ / ?勗</span><strong>{purchaseWaitingQuote}</strong></article>
@@ -1662,12 +1662,12 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
               <div><strong>{purchaseCardTitle(row)}</strong><small>{row.department || '?芣?摰雿?} 繚 {row.vendor || '?芣?摰???} 繚 {getPurchaseItems(row).length} ??/small></div>
               <Badge value={row.status || '敺Ⅱ隤?} />
             </button>
-          )) : <EmptyState title="撠?∟頃鞈?" action="?脣蝝?葉敹憓鞈澆?嚗蜇閬賣??單?敶?? />}
+          )) : <EmptyState title="撠?∟頃鞈?" action="?脣蝝?葉敹憓鞈澆?嚗蜇閬賣??單?敶?? />}
         </div>
       </section>
 
       <section className="panel wide home-project-panel">
-        <PanelTitle eyebrow="撠??券? title="撠?蝞∠???" action="撠?蝞∠?" />
+        <PanelTitle eyebrow="撠??券? title="撠?蝞∠???" action="撠?蝞∠?" />
         <div className="home-project-summary">
           <article><span>撠???/span><strong>{projects.length}</strong></article>
           <article><span>?脰?銝?/span><strong>{projectActive}</strong></article>
@@ -1684,7 +1684,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
               </div>
               <Badge value={project.health || `${Number(project.progress || 0)}%`} />
             </button>
-          )) : <EmptyState title="撠?脰?銝剖?獢? action="撱箇?撠?敺??ㄐ?＊蝷粹脣漲?◢?芥? />}
+          )) : <EmptyState title="撠?脰?銝剖?獢? action="撱箇?撠?敺??ㄐ?＊蝷粹脣漲?◢?芥? />}
         </div>
       </section>
 
@@ -1693,7 +1693,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
         <div className="reminder-home-grid">
           <article className="danger"><span>?暹?</span><strong>{reminderSummary.overdue}</strong></article>
           <article><span>隞</span><strong>{reminderSummary.today}</strong></article>
-          <article><span>?祇?/span><strong>{reminderSummary.week}</strong></article>
+          <article><span>?祇?/span><strong>{reminderSummary.week}</strong></article>
           <article><span>?芰?</span><strong>{reminderSummary.open}</strong></article>
         </div>
         <div className="reminder-home-list">
@@ -1705,15 +1705,15 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
                 <Badge value={item.priority} />
               </button>
             )
-          }) : <EmptyState title="?桀?瘝??芰???" action="?啣???敺??箇?券ㄐ?? />}
+          }) : <EmptyState title="?桀?瘝??芰???" action="?啣???敺??箇?券ㄐ?? />}
         </div>
       </section>
 
       <section className="panel">
-        <PanelTitle eyebrow="敹恍?? title="撣貊閬?" />
+        <PanelTitle eyebrow="敹恍?? title="撣貊閬?" />
         <div className="view-launchers view-launchers-min">
           <button type="button" onClick={() => setActive('board')}><span><Icon name="kanban" /></span><strong>撌乩?鈭?</strong></button>
-          <button type="button" onClick={() => setActive('base')}><span><Icon name="records" /></span><strong>蝝?葉敹?/strong></button>
+          <button type="button" onClick={() => setActive('base')}><span><Icon name="records" /></span><strong>蝝?葉敹?/strong></button>
           <button type="button" onClick={() => setActive('roadmap')}><span><Icon name="project" /></span><strong>撠?蝞∠?</strong></button>
           <button type="button" onClick={() => setActive('insight')}><span><Icon name="report" /></span><strong>????</strong></button>
           <button type="button" onClick={() => setActive('reminders')}><span>??</span><strong>??銝剖?</strong></button>
@@ -1721,7 +1721,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
       </section>
 
       <section className="panel wide">
-        <PanelTitle eyebrow="餈???" title="撌乩????" />
+        <PanelTitle eyebrow="餈???" title="撌乩????" />
         <div className="pulse-feed">
           {workItems.length ? workItems.slice(0, 10).map((item) => (
             <article key={item.id} className="pulse-item">
@@ -1732,7 +1732,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
               </div>
               <Badge value={item.priority} />
             </article>
-          )) : <EmptyState title="撠撌乩???" action="?啣?撌乩?鈭?敺?餈?????＊蝷箝? />}
+          )) : <EmptyState title="撠撌乩???" action="?啣?撌乩?鈭?敺?餈?????＊蝷箝? />}
         </div>
       </section>
     </div>
@@ -1769,7 +1769,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
     next.sort((a, b) => {
       if (sortMode === '?亙熒摨?) return Number(a.health || 0) - Number(b.health || 0)
       if (sortMode === '?芸?蝝?) {
-        const order = { 蝺? 0, 擃? 1, 銝? 2, 雿? 3 }
+        const order = { 蝺? 0, 擃? 1, 銝? 2, 雿? 3 }
         return (order[a.priority] ?? 9) - (order[b.priority] ?? 9)
       }
       return String(a.due || '').localeCompare(String(b.due || ''))
@@ -1780,14 +1780,14 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
     total: items.length,
     open: items.filter((item) => item.lane !== '撌脣???).length,
     waiting: items.filter((item) => item.lane === '蝑???').length,
-    urgent: items.filter((item) => ['蝺?, '擃?].includes(item.priority)).length,
+    urgent: items.filter((item) => ['蝺?, '擃?].includes(item.priority)).length,
   }), [items])
   const focusRows = useMemo(() => {
     const today = todayDate()
     return [
       { id: 'today', label: '隞?唳?', count: items.filter((item) => item.due === today && item.lane !== '撌脣???).length, action: () => { setLaneFilter('?券'); setPriorityFilter('?券'); setOwnerFilter('?券'); setSortMode('?唳???); setHideDone(true) } },
       { id: 'waiting', label: '蝑???', count: items.filter((item) => item.lane === '蝑???').length, action: () => { setLaneFilter('蝑???'); setPriorityFilter('?券'); setOwnerFilter('?券'); setHideDone(false) } },
-      { id: 'urgent', label: '擃??, count: items.filter((item) => ['蝺?, '擃?].includes(item.priority)).length, action: () => { setLaneFilter('?券'); setPriorityFilter('擃?); setOwnerFilter('?券'); setHideDone(false) } },
+      { id: 'urgent', label: '擃??, count: items.filter((item) => ['蝺?, '擃?].includes(item.priority)).length, action: () => { setLaneFilter('?券'); setPriorityFilter('擃?); setOwnerFilter('?券'); setHideDone(false) } },
       { id: 'done', label: hideDone ? '憿舐內撌脣??? : '?嗅?撌脣???, count: items.filter((item) => item.lane === '撌脣???).length, action: () => setHideDone((value) => !value) },
     ]
   }, [items, hideDone])
@@ -1811,7 +1811,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
   }
 
   function exportBoardCsv() {
-    const headers = ['蝺刻?', '璅?', '???, '?芸?蝝?, '鞎痊鈭?, '?唳???, '靘?', '?', '?亙熒摨?, '?酉']
+    const headers = ['蝺刻?', '璅?', '???, '?芸?蝝?, '鞎痊鈭?, '?唳???, '靘?', '?', '?亙熒摨?, '?酉']
     const rows = scopedItems.map((item) => [item.id, item.title, item.lane, item.priority, item.owner, item.due, item.channel, item.relation, item.health, item.note])
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
     downloadFlowdeskText(`FlowDesk撌乩?鈭?_${todayDate()}.csv`, `\ufeff${csv}`, 'text/csv;charset=utf-8;')
@@ -1851,8 +1851,8 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
           <article><span>擃??/span><strong>{boardSummary.urgent}</strong></article>
         </div>
         <div className="board-filter-grid">
-          <label>???select value={laneFilter} onChange={(event) => setLaneFilter(event.target.value)}><option value="?券">?券</option>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
-          <label>?芸?蝝?select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option value="?券">?券</option>{['蝺?, '擃?, '銝?, '雿?].map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+          <label>???select value={laneFilter} onChange={(event) => setLaneFilter(event.target.value)}><option value="?券">?券</option>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
+          <label>?芸?蝝?select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option value="?券">?券</option>{['蝺?, '擃?, '銝?, '雿?].map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
           <label>鞎痊鈭?select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>{ownerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}</select></label>
           <label>??<select value={sortMode} onChange={(event) => setSortMode(event.target.value)}>{['?唳???, '?芸?蝝?, '?亙熒摨?].map((mode) => <option key={mode} value={mode}>{mode}</option>)}</select></label>
           <button className="ghost-btn" type="button" onClick={clearBoardFilters}>皜蝭拚</button>
@@ -1874,9 +1874,9 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         <div className="bulk-actions-grid">
           <button type="button" onClick={selectScopedItems} disabled={!scopedItems.length}>?詨??桀?閬?</button>
           <button type="button" onClick={clearBoardSelection} disabled={!selectedIds.length}>???詨?</button>
-          <label>???select value={bulkLane} onChange={(event) => setBulkLane(event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
-          <button type="button" onClick={() => applyBulkPatch({ lane: bulkLane })} disabled={!selectedIds.length}>憟???/button>
-          <label>?芸?<select value={bulkPriority} onChange={(event) => setBulkPriority(event.target.value)}>{['蝺?, '擃?, '銝?, '雿?].map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+          <label>???select value={bulkLane} onChange={(event) => setBulkLane(event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
+          <button type="button" onClick={() => applyBulkPatch({ lane: bulkLane })} disabled={!selectedIds.length}>憟???/button>
+          <label>?芸?<select value={bulkPriority} onChange={(event) => setBulkPriority(event.target.value)}>{['蝺?, '擃?, '銝?, '雿?].map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
           <button type="button" onClick={() => applyBulkPatch({ priority: bulkPriority })} disabled={!selectedIds.length}>憟?芸?</button>
           <label>鞎痊<input value={bulkOwner} onChange={(event) => setBulkOwner(event.target.value)} /></label>
           <button type="button" onClick={() => applyBulkPatch({ owner: bulkOwner || 'Kyle' })} disabled={!selectedIds.length}>憟鞎痊鈭?/button>
@@ -1887,7 +1887,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
       {!items.length && (
         <section className="board-empty-state">
           <strong>?桀?瘝?撌乩??</strong>
-          <span>?臬??啣?銝蝑極雿???敺??∟頃??獢?蝔遣蝡蕭頩日??柴?/span>
+          <span>?臬??啣?銝蝑極雿???敺??∟頃??獢?蝔遣蝡蕭頩日??柴?/span>
           <button type="button" className="primary-btn" onClick={onAddItem}>?啣?蝚砌?蝑極雿?/button>
         </section>
       )}
@@ -1895,7 +1895,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
       {items.length > 0 && !scopedItems.length && (
         <section className="board-empty-state slim">
           <strong>瘝?蝚血?蝭拚?極雿?/strong>
-          <span>隢矽?渡??????鞎砌犖璇辣??/span>
+          <span>隢矽?渡??????鞎砌犖璇辣??/span>
           <button type="button" className="ghost-btn" onClick={clearBoardFilters}>皜蝭拚</button>
         </section>
       )}
@@ -1969,7 +1969,7 @@ function BoardInlinePreview({ selected, onUpdateItem }) {
       </div>
       <p>{selected.note}</p>
       <div className="board-inline-grid">
-        <span>???<b>{selected.lane}</b></span>
+        <span>???<b>{selected.lane}</b></span>
         <span>?芸?蝝?<b>{selected.priority}</b></span>
         <span>? <b>{selected.relation}</b></span>
         <span>?唳? <b>{selected.due}</b></span>
@@ -2194,8 +2194,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const paymentPending = purchases.filter((row) => (row.paymentStatus || '?芯?甈?) !== '撌脖?甈? && !doneStages.includes(row.status)).length
   const acceptancePending = purchases.filter((row) => (row.acceptanceStatus || '?芷???) !== '撌脤??? && !doneStages.includes(row.status)).length
   const completedPurchases = purchases.filter((row) => doneStages.includes(row.status)).length
-  const urgentPurchases = purchases.filter((row) => normalizePurchasePriority(row.priority) === '蝺? && !doneStages.includes(row.status)).length
-  const highPriorityPurchases = purchases.filter((row) => ['蝺?, '擃?].includes(normalizePurchasePriority(row.priority)) && !doneStages.includes(row.status)).length
+  const urgentPurchases = purchases.filter((row) => normalizePurchasePriority(row.priority) === '蝺? && !doneStages.includes(row.status)).length
+  const highPriorityPurchases = purchases.filter((row) => ['蝺?, '擃?].includes(normalizePurchasePriority(row.priority)) && !doneStages.includes(row.status)).length
   const archiveSummaryV72 = purchases.reduce((summary, row) => {
     const status = purchaseArchiveStatusV72(row)
     summary[status] = (summary[status] || 0) + 1
@@ -2222,9 +2222,9 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       if ((row.acceptanceStatus || '?芷???) !== '撌脤??? && !doneStages.includes(row.status)) reasons.push('撽')
       if (row.status.includes('閰Ｗ') || row.status.includes('?勗')) reasons.push('?勗')
       const priority = normalizePurchasePriority(row.priority)
-      if (priority === '蝺?) reasons.unshift('蝺?)
+      if (priority === '蝺?) reasons.unshift('蝺?)
       if (priority === '擃?) reasons.unshift('擃??)
-      const priorityBoost = priority === '蝺? ? 80 : priority === '擃? ? 48 : priority === '銝?? ? 16 : 0
+      const priorityBoost = priority === '蝺? ? 80 : priority === '擃? ? 48 : priority === '銝?? ? 16 : 0
       const score = priorityBoost + reasons.length * 10 + Math.min(50, Math.round(amount / 10000))
       return { row, score, reasons, amount, priority }
     })
@@ -2234,7 +2234,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   const activePurchaseFilterLabels = [
     purchaseCaseFilter !== '?券' ? `獢辣嚗?{purchaseCaseFilter}` : '',
-    statusFilter !== '?券' ? `???${statusFilter}` : '',
+    statusFilter !== '?券' ? `???${statusFilter}` : '',
     purchasePriorityFilter !== '?券' ? `?芸?嚗?{purchasePriorityFilter}` : '',
     paymentFilter !== '?券' ? `隞狡嚗?{paymentFilter}` : '',
     arrivalFilter !== '?券' ? `?啗疏嚗?{arrivalFilter}` : '',
@@ -2374,7 +2374,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   useEffect(() => {
     if (!tables.some((table) => table.name === activeTable)) {
-      setActiveTable(tables[0]?.name || '?∟頃蝝??)
+      setActiveTable(tables[0]?.name || '?∟頃蝝??)
     }
   }, [tables, activeTable])
 
@@ -2383,7 +2383,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   }, [statusFilter, paymentFilter, arrivalFilter, acceptanceFilter, archiveFilter, purchasePriorityFilter, purchaseCaseFilter, vendorFilter, monthFilter, purchaseKeyword, purchasePageSize])
 
   useEffect(() => {
-    if (activeTable !== '?∟頃蝝??) return
+    if (activeTable !== '?∟頃蝝??) return
     if (!purchases.length) {
       if (selectedPurchase) setSelectedPurchase(null)
       if (purchaseDetailOpenId) setPurchaseDetailOpenId(null)
@@ -2427,7 +2427,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       _purchaseKey: form._purchaseKey || createPurchaseKey(),
     })
     setPurchases((rows) => [next, ...rows])
-    writeHistory(next.id, next.item, `?啣??∟頃嚗????{next.status}?)
+    writeHistory(next.id, next.item, `?啣??∟頃嚗????{next.status}?)
     setShowPurchaseForm(false)
   }
 
@@ -2442,7 +2442,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     const before = purchases.find((row) => isSamePurchase(row, source)) || purchases.find((row) => row.id && row.id === next.id)
     setPurchases((rows) => rows.map((row) => isSamePurchase(row, source) || (row.id && row.id === next.id && !source?._purchaseKey) ? next : row))
     if (before?.status !== next.status) {
-      writeHistory(next.id, next.item, `????{before?.status || '?芾身摰?}??箝?{next.status}?)
+      writeHistory(next.id, next.item, `????{before?.status || '?芾身摰?}??箝?{next.status}?)
     } else {
       writeHistory(next.id, next.item, '?湔?∟頃鞈???)
     }
@@ -2461,7 +2461,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     const next = normalizePurchase({ ...row, ...patch })
     setPurchases((rows) => rows.map((item) => isSamePurchase(item, row) ? next : item))
     setSelectedPurchase(next)
-    writeHistory(row.id, purchaseTitle(row), `???箝?{status}?)
+    writeHistory(row.id, purchaseTitle(row), `???箝?{status}?)
   }
 
   function updatePurchaseMeta(row, patch, message) {
@@ -2493,7 +2493,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       title: `餈質馱?∟頃嚗?{purchaseTitle(row)}`,
       type: '?∟頃餈質馱',
       lane: '??銝?,
-      priority: normalizePurchasePriority(row.priority) === '蝺? ? '蝺? : normalizePurchasePriority(row.priority) === '擃? ? '擃? : amount.taxedTotal >= 50000 ? '擃? : '銝?,
+      priority: normalizePurchasePriority(row.priority) === '蝺? ? '蝺? : normalizePurchasePriority(row.priority) === '擃? ? '擃? : amount.taxedTotal >= 50000 ? '擃? : '銝?,
       channel: '?∟頃蝞∠?',
       relation: row.id,
       requester: row.requester || '?芣?摰?,
@@ -2516,7 +2516,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     return onCreateReminder({
       title: `${type}??嚗?{purchaseTitle(row)}`,
       type: `${type}??`,
-      priority: normalizePurchasePriority(row.priority) === '蝺? ? '蝺? : normalizePurchasePriority(row.priority) === '擃? || type === '隞狡' || type === '?啗疏' ? '擃? : '銝?,
+      priority: normalizePurchasePriority(row.priority) === '蝺? ? '蝺? : normalizePurchasePriority(row.priority) === '擃? || type === '隞狡' || type === '?啗疏' ? '擃? : '銝?,
       dueDate,
       sourceType: '?∟頃蝞∠?',
       sourceTitle: `${row.id} ${purchaseTitle(row)}`,
@@ -2528,7 +2528,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     const target = typeof targetRow === 'object' ? targetRow : purchases.find((row) => row.id === targetRow)
     if (!target) return
     const deleteLabel = [target.id, purchaseTitle(target)].filter(Boolean).join(' ')
-    if (!confirmDestructiveAction(deleteLabel || '?∟頃蝝??)) return
+    if (!confirmDestructiveAction(deleteLabel || '?∟頃蝝??)) return
     setPurchases((rows) => {
       let removed = false
       const nextRows = rows.filter((row) => {
@@ -2547,7 +2547,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       }
       return nextRows
     })
-    writeHistory(target.id, purchaseTitle(target), '?芷?∟頃蝝??)
+    writeHistory(target.id, purchaseTitle(target), '?芷?∟頃蝝??)
   }
 
   function duplicatePurchase(row) {
@@ -2556,7 +2556,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       ...row,
       id: getNextPurchaseId(purchases),
       _purchaseKey: createPurchaseKey(),
-      status: activeStages[0]?.name || row.status || '?瘙Ⅱ隤?,
+      status: activeStages[0]?.name || row.status || '?瘙Ⅱ隤?,
       requestDate: todayDate(),
       orderDate: '',
       arrivalDate: '',
@@ -2574,7 +2574,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       title: `餈質馱 ${purchaseTitle(row)}`,
       type: '?∟頃餈質馱',
       lane: doneStages.includes(row.status) ? '撌脣??? : '敺?憿?,
-      priority: normalizePurchasePriority(row.priority) === '蝺? ? '蝺? : normalizePurchasePriority(row.priority) === '擃? || row.status?.includes('蝪賣') || row.status?.includes('蝣箄?') ? '擃? : '銝?,
+      priority: normalizePurchasePriority(row.priority) === '蝺? ? '蝺? : normalizePurchasePriority(row.priority) === '擃? || row.status?.includes('蝪賣') || row.status?.includes('蝣箄?') ? '擃? : '銝?,
       channel: '?∟頃蝞∠?',
       relation: row.id,
       requester: row.requester || 'Kyle',
@@ -2599,7 +2599,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     onCreateReminder({
       title: `${reminderKind} ${purchaseTitle(row)}`,
       type: typeMap[reminderKind] || '餈質馱??',
-      priority: normalizePurchasePriority(row.priority) === '蝺? ? '蝺? : normalizePurchasePriority(row.priority) === '擃? || reminderKind === '隞狡' || row.status?.includes('蝪賣') || row.status?.includes('蝣箄?') ? '擃? : '銝?,
+      priority: normalizePurchasePriority(row.priority) === '蝺? ? '蝺? : normalizePurchasePriority(row.priority) === '擃? || reminderKind === '隞狡' || row.status?.includes('蝪賣') || row.status?.includes('蝣箄?') ? '擃? : '銝?,
       dueDate: dueMap[reminderKind] || addDaysDate(3),
       sourceType: '?∟頃',
       sourceTitle: `${row.id} ${purchaseTitle(row)}`,
@@ -2609,7 +2609,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   }
 
   function exportFilteredPurchases() {
-    const headers = ['蝺刻?', '??', '?芸?蝑?', '撱?', '?券?', '?唾?鈭?, '雿輻鈭?, '瘚????, '隞狡???, '?啗疏???, '撽???, '?勗?株?', 'PO?株?', '?潛巨?Ⅳ', '?唾???, '銝??, '???啗疏', '?啗疏??, '隞狡??', '撽??, '??', '?勗??', '?芰?', '蝔?', '?怎?', '??撌桃', '???敦', '?酉']
+    const headers = ['蝺刻?', '??', '?芸?蝑?', '撱?', '?券?', '?唾?鈭?, '雿輻鈭?, '瘚????, '隞狡???, '?啗疏???, '撽???, '?勗?株?', 'PO?株?', '?潛巨?Ⅳ', '?唾???, '銝??, '???啗疏', '?啗疏??, '隞狡??', '撽??, '??', '?勗??', '?芰?', '蝔?', '?怎?', '??撌桃', '???敦', '?酉']
     const rows = filteredPurchases.map((row) => {
       const amount = calculatePurchase(row)
       const itemsText = getPurchaseItems(row).map((item) => `${item.name || '?芸??} x ${item.quantity || 0} @ ${item.unitPrice || 0}`).join('嚗?)
@@ -2632,7 +2632,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     const next = normalizePurchase({ ...row, status: cancelStage })
     setPurchases((rows) => rows.map((item) => isSamePurchase(item, row) ? next : item))
     setSelectedPurchase(next)
-    writeHistory(row.id, purchaseTitle(row), `???箝?{cancelStage}?)
+    writeHistory(row.id, purchaseTitle(row), `???箝?{cancelStage}?)
   }
 
   function updateStage(stageId, patch) {
@@ -2647,7 +2647,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   function removeStage(stageId) {
     const target = purchaseStages.find((stage) => stage.id === stageId)
     if (target?.locked) return
-    if (!confirmDestructiveAction(target?.name || '?∟頃瘚????)) return
+    if (!confirmDestructiveAction(target?.name || '?∟頃瘚????)) return
     setPurchaseStages((stages) => stages.filter((stage) => stage.id !== stageId))
   }
 
@@ -2658,7 +2658,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   }
 
   function resetPurchases() {
-    if (!confirmResetAction('蝣箏?閬?蝵格鞈潸????桀??∟頃蝝??甇瑞??◤閬???)) return
+    if (!confirmResetAction('蝣箏?閬?蝵格鞈潸????桀??∟頃蝝??甇瑞??◤閬???)) return
     setPurchases(initialPurchases)
     setSelectedPurchase(null)
     setPurchaseHistory([])
@@ -2683,10 +2683,10 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
         <div className="records-header">
           <div>
             <p className="eyebrow">{activeTable}</p>
-            <h2>{activeTable === '?∟頃蝝?? ? '?∟頃瘚?餈質馱' : activeTable}</h2>
+            <h2>{activeTable === '?∟頃蝝?? ? '?∟頃瘚?餈質馱' : activeTable}</h2>
           </div>
           <div className="record-actions collection-record-actions">
-            {activeTable !== '?∟頃蝝?? && (
+            {activeTable !== '?∟頃蝝?? && (
               <>
                 <div className="collection-view-control" aria-label="鞈???閬?">
                   <span className="collection-control-label">閬?</span>
@@ -2703,7 +2703,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                 </label>
               </>
             )}
-            {activeTable === '?∟頃蝝?? && (
+            {activeTable === '?∟頃蝝?? && (
               <>
                 <button className="primary-btn" type="button" onClick={() => setShowPurchaseForm(true)}>?啣??∟頃</button>
                 <details className="more-actions-menu">
@@ -2719,7 +2719,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
           </div>
         </div>
 
-        {activeTable === '?∟頃蝝?? ? (
+        {activeTable === '?∟頃蝝?? ? (
           <>
             {showStageSettings && (
               <PurchaseStageSettings
@@ -2743,7 +2743,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <Metric label="?芸鞎? value={notArrived} tone="red" />
             </div>
             <div className="purchase-filter-bar">
-              <label className="purchase-search-field">??<input value={purchaseKeyword} onChange={(event) => setPurchaseKeyword(event.target.value)} placeholder="蝺刻??????隢犖?蝙?其犖..." /></label>
+              <label className="purchase-search-field">??<input value={purchaseKeyword} onChange={(event) => setPurchaseKeyword(event.target.value)} placeholder="蝺刻??????隢犖?蝙?其犖..." /></label>
               <label>瘚?<select value={statusFilter} onChange={(event) => { const nextStatus = event.target.value; setStatusFilter(nextStatus); if (nextStatus !== '?券') setPurchaseCaseFilter('?券') }}><option value="?券">?券</option>{activeStages.map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
               <label>?芸?蝑?<select value={purchasePriorityFilter} onChange={(event) => setPurchasePriorityFilter(event.target.value)}><option value="?券">?券</option>{purchasePriorityOptions.map((priority) => <option key={priority.id} value={priority.id}>{priority.label}</option>)}</select></label>
               <label>隞狡<select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}><option value="?券">?券</option>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
@@ -2761,7 +2761,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <button type="button" className={purchaseCaseFilter === '撌脣?瘨? ? 'active muted' : ''} onClick={() => { setPurchaseCaseFilter('撌脣?瘨?); setStatusFilter('?券'); setPaymentFilter('?券'); setArrivalFilter('?券'); setAcceptanceFilter('?券'); setArchiveFilter('?券'); setPurchasePriorityFilter('?券') }}>撌脣?瘨?<small>{purchaseCaseCounts.cancelled}</small></button>
               <button type="button" className={purchaseCaseFilter === '?券' && statusFilter === '?券' && paymentFilter === '?券' && arrivalFilter === '?券' && acceptanceFilter === '?券' && archiveFilter === '?券' && purchasePriorityFilter === '?券' ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('?券'); setStatusFilter('?券'); setPaymentFilter('?券'); setArrivalFilter('?券'); setAcceptanceFilter('?券'); setArchiveFilter('?券'); setPurchasePriorityFilter('?券') }}>?券 <small>{purchaseCaseCounts.all}</small></button>
               <span className="fd88-case-divider" />
-              <button type="button" className={purchasePriorityFilter === '蝺? ? 'active urgent' : ''} onClick={() => { setPurchasePriorityFilter('蝺?); setPurchaseCaseFilter('?脰?銝?); setStatusFilter('?券'); setPaymentFilter('?券'); setArrivalFilter('?券'); setAcceptanceFilter('?券'); setArchiveFilter('?券') }}>蝺?/button>
+              <button type="button" className={purchasePriorityFilter === '蝺? ? 'active urgent' : ''} onClick={() => { setPurchasePriorityFilter('蝺?); setPurchaseCaseFilter('?脰?銝?); setStatusFilter('?券'); setPaymentFilter('?券'); setArrivalFilter('?券'); setAcceptanceFilter('?券'); setArchiveFilter('?券') }}>蝺?/button>
               <button type="button" className={purchasePriorityFilter === '擃? ? 'active' : ''} onClick={() => { setPurchasePriorityFilter('擃?); setPurchaseCaseFilter('?脰?銝?); setStatusFilter('?券'); setPaymentFilter('?券'); setArrivalFilter('?券'); setAcceptanceFilter('?券'); setArchiveFilter('?券') }}>擃??/button>
               <button type="button" className={arrivalFilter === '?芸鞎? ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('?脰?銝?); setStatusFilter('?券'); setArrivalFilter('?芸鞎?); setPaymentFilter('?券'); setAcceptanceFilter('?券'); setArchiveFilter('?券'); setPurchasePriorityFilter('?券') }}>?芸鞎?/button>
               <button type="button" className={paymentFilter === '?芯?甈? ? 'active' : ''} onClick={() => { setPurchaseCaseFilter('?脰?銝?); setStatusFilter('?券'); setPaymentFilter('?芯?甈?); setArrivalFilter('?券'); setAcceptanceFilter('?券'); setArchiveFilter('?券'); setPurchasePriorityFilter('?券') }}>?芯?甈?/button>
@@ -2776,7 +2776,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                   <strong>{archiveSummaryV72[status] || 0}</strong>
                 </button>
               ))}
-              <article className="fd88-completion-note"><strong>撌脣????芷</strong><span>銝餅??桅?閮剔??脰?銝哨?摰???瘨?甇豢?獢辣?寧銝獢辣蝭拚????閬閰Ｕ?/span></article>
+              <article className="fd88-completion-note"><strong>撌脣????芷</strong><span>銝餅??桅?閮剔??脰?銝哨?摰???瘨?甇豢?獢辣?寧銝獢辣蝭拚????閬閰Ｕ?/span></article>
             </div>
             <div className="purchase-v15-status-row purchase-v1974-status-row">
               <article><span>蝑??勗</span><strong>{waitingQuote}</strong></article>
@@ -2785,7 +2785,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <article><span>?芯?甈?/span><strong>{paymentPending}</strong></article>
               <article><span>?芷???/span><strong>{acceptancePending}</strong></article>
               <article><span>撌脣???/span><strong>{completedPurchases}</strong></article>
-              <article className="purchase-priority-metric urgent"><span>蝺交鞈?/span><strong>{urgentPurchases}</strong></article>
+              <article className="purchase-priority-metric urgent"><span>蝺交鞈?/span><strong>{urgentPurchases}</strong></article>
               <article className="purchase-priority-metric high"><span>擃?摰?</span><strong>{highPriorityPurchases}</strong></article>
             </div>
             <div className="purchase-insight-strip">
@@ -2794,14 +2794,14 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <article><span>蝭拚蝑</span><strong>{filteredPurchases.length}</strong></article>
             </div>
             <div className="purchase-action-board">
-              <div><p className="eyebrow">???芸?摨?/p><strong>?∟頃敺齒?阡?</strong><span>靘??蝝?憿??芸?????摨?/span></div>
+              <div><p className="eyebrow">???芸?摨?/p><strong>?∟頃敺齒?阡?</strong><span>靘??蝝?憿??芸?????摨?/span></div>
               <div className="purchase-action-list">
                 {purchaseActionRows.length ? purchaseActionRows.map((item) => (
                   <button type="button" key={getPurchaseKey(item.row)} onClick={() => openPurchaseDetailDialogV78(item.row)}>
                     <div><strong>{purchaseTitle(item.row)}</strong><small><PurchasePriorityBadge value={item.row.priority} compact /> {item.row.vendor || '?芣?摰???} 繚 {item.reasons.join(' / ')}</small></div>
                     <b>{formatMoney(item.amount)}</b>
                   </button>
-                )) : <span className="purchase-action-empty">?桀?瘝??閬?蕭頩斤??∟頃??/span>}
+                )) : <span className="purchase-action-empty">?桀?瘝??閬?蕭頩斤??∟頃??/span>}
               </div>
             </div>
 
@@ -2966,7 +2966,7 @@ function buildCollectionPreviewRows(collection, records) {
       meta: [record.vendor, record.group].filter(Boolean).join(' 繚 ') || collection?.name,
     }))
   }
-  const fields = Array.isArray(collection?.fields) && collection.fields.length ? collection.fields : ['?迂', '???, '鞎痊鈭?, '?酉']
+  const fields = Array.isArray(collection?.fields) && collection.fields.length ? collection.fields : ['?迂', '???, '鞎痊鈭?, '?酉']
   return Array.from({ length: Math.min(Math.max(Number(collection?.rows || 0), 3), 12) }, (_, index) => ({
     id: `${collection?.id || 'collection'}-${index + 1}`,
     title: `${collection?.name || '鞈???'} 蝭? ${index + 1}`,
@@ -2981,7 +2981,7 @@ function CollectionPreviewPanel({ collection, view, pageSize, records }) {
   const matchedRecords = records.filter((record) => record.table === collection?.name)
   const isSamplePreview = matchedRecords.length === 0
   const rows = buildCollectionPreviewRows(collection, records).slice(0, pageSize)
-  const fields = Array.isArray(collection?.fields) && collection.fields.length ? collection.fields : ['?迂', '???, '鞎痊鈭?, '?酉']
+  const fields = Array.isArray(collection?.fields) && collection.fields.length ? collection.fields : ['?迂', '???, '鞎痊鈭?, '?酉']
   const isCard = view === 'card'
   return (
     <section className="collection-view-panel">
@@ -2996,7 +2996,7 @@ function CollectionPreviewPanel({ collection, view, pageSize, records }) {
 
       <div className="collection-preview-note">
         <strong>{isSamplePreview ? '?汗璅∪?' : '鞈?璅∪?'}</strong>
-        <span>{isSamplePreview ? '?桀?甇日????芸遣蝡迤撘????誑甈?蝭???芯?鞈?璅???? : '?桀?憿舐內甇方????歇撱箇?????}</span>
+        <span>{isSamplePreview ? '?桀?甇日????芸遣蝡迤撘????誑甈?蝭???芯?鞈?璅???? : '?桀?憿舐內甇方????歇撱箇?????}</span>
       </div>
 
       <div className="collection-field-strip">
@@ -3043,7 +3043,7 @@ function PurchaseStageSettings({ stages, stageDragId, setStageDragId, moveStage,
         </div>
         <div>
           <button className="ghost-btn" type="button" onClick={resetStages}>?Ｗ儔?身</button>
-          <button className="primary-btn" type="button" onClick={addStage}>?啣????/button>
+          <button className="primary-btn" type="button" onClick={addStage}>?啣????/button>
         </div>
       </div>
       <div className="stage-editor-list">
@@ -3114,7 +3114,7 @@ function createEmptyTask() {
   return {
     title: '',
     source: '???啣?',
-    category: '銝?砌遙??,
+    category: '銝?砌遙??,
     status: '敺???,
     priority: '銝?,
     owner: 'Kyle',
@@ -3138,13 +3138,13 @@ function normalizeTask(row = {}) {
     id: row.id || `TASK-${Date.now()}`,
     title: String(row.title || '?芸?遙??).trim(),
     source: row.source || '???啣?',
-    category: row.category || '銝?砌遙??,
+    category: row.category || '銝?砌遙??,
     status: row.status || '敺???,
     priority: row.priority || '銝?,
     owner: row.owner || 'Kyle',
     progress: Math.max(0, Math.min(100, Number(row.progress || 0))),
     due: row.due || todayDate(),
-    next: next || '鋆?銝?甇乓?,
+    next: next || '鋆?銝?甇乓?,
     relatedPurchase: row.relatedPurchase || '',
     relatedVendor: row.relatedVendor || '',
     relatedProject: row.relatedProject || '',
@@ -3171,7 +3171,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
   const [selectedId, setSelectedId] = useState(sourceTasks[0]?.id)
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
-  const statusOptions = ['?芸???, '?券', '敺???, '頝脖葉', '蝑?閬?, '?⊿?', '撌脫??]
+  const statusOptions = ['?芸???, '?券', '敺???, '頝脖葉', '蝑?閬?, '?⊿?', '撌脫??]
   const taskStatusOptions = statusOptions.filter((item) => !['?券', '?芸???].includes(item))
 
   useEffect(() => {
@@ -3238,11 +3238,11 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
 
   function updateTaskStatus(id, status) {
     const target = tasks.find((task) => task.id === id)
-    updateTask(id, { status, progress: status === '撌脫?? ? 100 : status === '頝脖葉' ? Math.max(target?.progress || 0, 35) : target?.progress }, `???箝?{status}?)
+    updateTask(id, { status, progress: status === '撌脫?? ? 100 : status === '頝脖葉' ? Math.max(target?.progress || 0, 35) : target?.progress }, `???箝?{status}?)
   }
 
   function addTask(form) {
-    const next = normalizeTask({ ...form, id: nextRunningId('TASK', tasks), records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}嚚遣蝡遙?] })
+    const next = normalizeTask({ ...form, id: nextRunningId('TASK', tasks), records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}嚚遣蝡遙?] })
     setTasks((current) => [next, ...current])
     setSelectedId(next.id)
     setShowTaskForm(false)
@@ -3250,7 +3250,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
 
   function saveTask(form) {
     const next = normalizeTask(form)
-    setTasks((current) => current.map((task) => task.id === next.id ? { ...next, records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}嚚?唬遙?摰嫘, ...(task.records || [])].slice(0, 20) } : task))
+    setTasks((current) => current.map((task) => task.id === next.id ? { ...next, records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}嚚?唬遙?摰嫘, ...(task.records || [])].slice(0, 20) } : task))
     setSelectedId(next.id)
     setEditingTask(null)
   }
@@ -3277,7 +3277,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
         <div>
           <p className="eyebrow">TASK FLOW</p>
           <h2>隞餃?餈質馱</h2>
-          <span>?刻????格?撣詨??????????銝?甇乓?/span>
+          <span>?刻????格?撣詨??????????銝?甇乓?/span>
         </div>
         <div className="flow-toolbar-actions">
           <span className="toolbar-soft-chip">蝑? / ?⊿? {waitingCount}</span>
@@ -3287,10 +3287,10 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
       </section>
 
       <section className="task-summary-grid compact-flow-stats">
-        <article><span>?芣??/span><strong>{openCount}</strong><small>?閬?蝥???/small></article>
+        <article><span>?芣??/span><strong>{openCount}</strong><small>?閬?蝥???/small></article>
         <article><span>隞閬?</span><strong>{todayCount}</strong><small>隞?唳???蝣箄?</small></article>
         <article><span>蝑? / ?⊿?</span><strong>{waitingCount}</strong><small>?芸?蝣箄???</small></article>
-        <article><span>撟喳??脣漲</span><strong>{avgProgress}%</strong><small>?桀?隞餃??券脣漲</small></article>
+        <article><span>撟喳??脣漲</span><strong>{avgProgress}%</strong><small>?桀?隞餃??券脣漲</small></article>
       </section>
 
       <section className="task-filter-strip flow-pill-filter">
@@ -3302,7 +3302,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
       </section>
 
       <div className="purchase-filter-bar task-search-bar">
-        <label className="purchase-search-field">??<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="隞餃????鞈潦?獢?銝甇?.." /></label>
+        <label className="purchase-search-field">??<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="隞餃????鞈潦?獢?銝甇?.." /></label>
         <button className="ghost-btn" type="button" onClick={() => { setKeyword(''); setFilter('?券') }}>皜蝭拚</button>
       </div>
 
@@ -3334,7 +3334,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
               </div>
             </button>
           ))}
-          {!visibleTasks.length && <div className="flow-empty-card">?桀?瘝?蝚血?璇辣?遙??/div>}
+          {!visibleTasks.length && <div className="flow-empty-card">?桀?瘝?蝚血?璇辣?遙??/div>}
         </section>
 
         <aside className="task-detail-panel flow-detail-drawer">
@@ -3363,7 +3363,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
                 <article><span>?唳?</span><strong>{selectedTask.due}</strong></article>
               </div>
               <section className="detail-block project-meeting-block">
-                <div className="detail-block-headline"><p className="eyebrow">?降蝝??/p><button type="button" onClick={() => addProjectMeeting(selectedProject.id)}>?啣??降</button></div>
+                <div className="detail-block-headline"><p className="eyebrow">?降蝝??/p><button type="button" onClick={() => addProjectMeeting(selectedProject.id)}>?啣??降</button></div>
                 <div className="project-decision-list">
                   {(selectedProject.meetings || []).map((meeting) => (
                     <article key={meeting.id} className="project-note-editor">
@@ -3373,7 +3373,7 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
                       <button type="button" onClick={() => removeProjectMeeting(selectedProject.id, meeting.id)}>?芷</button>
                     </article>
                   ))}
-                  {!selectedProject.meetings?.length && <div className="flow-empty-card">撠?降蝝??/div>}
+                  {!selectedProject.meetings?.length && <div className="flow-empty-card">撠?降蝝??/div>}
                 </div>
               </section>
               <section className="detail-block project-decision-block">
@@ -3392,13 +3392,13 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
                 </div>
               </section>
               <section className="detail-block">
-                <p className="eyebrow">??蝝??/p>
+                <p className="eyebrow">??蝝??/p>
                 <div className="timeline-notes flow-timeline-notes">
                   {(selectedTask.records || []).map((record, index) => <div key={`${record}-${index}`}><span>{index + 1}</span><p>{record}</p></div>)}
                 </div>
               </section>
               <div className="task-action-row task-action-row-v2 task-action-row-expanded">
-                <button type="button" onClick={() => updateTaskStatus(selectedTask.id, '頝脖葉')}>頝脖葉</button>
+                <button type="button" onClick={() => updateTaskStatus(selectedTask.id, '頝脖葉')}>頝脖葉</button>
                 <button type="button" onClick={() => updateTaskStatus(selectedTask.id, '蝑?閬?)}>蝑?閬?/button>
                 <button type="button" onClick={() => updateTaskStatus(selectedTask.id, '撌脫??)}>?嗆?</button>
                 <button type="button" onClick={() => setEditingTask(selectedTask)}>蝺刻摩</button>
@@ -3437,7 +3437,7 @@ function TaskModal({ onClose, onSubmit, statusOptions, initial, mode = 'create' 
         <div className="purchase-modal-body">
           <div className="form-grid">
             <label>璅?<input value={form.title} onChange={(event) => update('title', event.target.value)} placeholder="靘?嚗蕭頩文???? /></label>
-            <label>???select value={form.status} onChange={(event) => update('status', event.target.value)}>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+            <label>???select value={form.status} onChange={(event) => update('status', event.target.value)}>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
             <label>?芸?蝝?select value={form.priority} onChange={(event) => update('priority', event.target.value)}><option>擃?/option><option>銝?/option><option>雿?/option></select></label>
             <label>鞎痊鈭?input value={form.owner} onChange={(event) => update('owner', event.target.value)} /></label>
             <label>靘?<input value={form.source} onChange={(event) => update('source', event.target.value)} /></label>
@@ -3447,7 +3447,7 @@ function TaskModal({ onClose, onSubmit, statusOptions, initial, mode = 'create' 
             <label>??∟頃<input value={form.relatedPurchase} onChange={(event) => update('relatedPurchase', event.target.value)} placeholder="靘? PO-001" /></label>
             <label>?撱?<input value={form.relatedVendor} onChange={(event) => update('relatedVendor', event.target.value)} /></label>
             <label>?撠?<input value={form.relatedProject} onChange={(event) => update('relatedProject', event.target.value)} placeholder="靘? PRJ-001" /></label>
-            <label>璅惜<input value={form.tagsText} onChange={(event) => update('tagsText', event.target.value)} placeholder="隞仿???" /></label>
+            <label>璅惜<input value={form.tagsText} onChange={(event) => update('tagsText', event.target.value)} placeholder="隞仿???" /></label>
             <label className="form-wide">銝?甇?textarea value={form.next} onChange={(event) => update('next', event.target.value)} /></label>
           </div>
         </div>
@@ -3614,7 +3614,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function projectPriorityBaseScore(priority = '銝?) {
-    return priority === '蝺? ? 78 : priority === '擃? ? 62 : priority === '雿? ? 22 : 42
+    return priority === '蝺? ? 78 : priority === '擃? ? 62 : priority === '雿? ? 22 : 42
   }
 
   function getProjectPriorityMeta(project = {}) {
@@ -3643,7 +3643,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     } else {
       if (endDate < today) {
         score += 30
-        reasons.push('撠?撌脤暹?')
+        reasons.push('撠?撌脤暹?')
       } else if (remainingDays <= 3) {
         score += 24
         reasons.push('3 憭拙?唳?')
@@ -3660,11 +3660,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       }
       if (overdueItems > 0) {
         score += Math.min(18, overdueItems * 6)
-        reasons.push(`${overdueItems} ?遙?暹?`)
+        reasons.push(`${overdueItems} ?遙?暹?`)
       }
       if (activeItems > 1) {
         score += Math.min(8, activeItems * 2)
-        reasons.push(`${activeItems} ???桅脰?銝苜)
+        reasons.push(`${activeItems} ???桅脰?銝苜)
       }
       if (progress > 0 && progress < 35 && remainingDays <= 14) {
         score += 8
@@ -3677,8 +3677,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     }
 
     const finalScore = Math.max(0, Math.min(100, Math.round(score)))
-    const label = finalScore >= 82 ? '蝺? : finalScore >= 62 ? '擃? : finalScore >= 35 ? '銝? : '雿?
-    const tone = label === '蝺? || label === '擃? ? 'red' : label === '銝? ? 'amber' : 'green'
+    const label = finalScore >= 82 ? '蝺? : finalScore >= 62 ? '擃? : finalScore >= 35 ? '銝? : '雿?
+    const tone = label === '蝺? || label === '擃? ? 'red' : label === '銝? ? 'amber' : 'green'
     return {
       manual,
       label,
@@ -3811,7 +3811,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const records = Array.isArray(project.records) ? project.records : []
     const defaultTask = tasks[0] || {}
     const defaultMilestone = milestones[0] || {}
-    const defaultNext = '鋆?撠??格???蝔?鞎痊鈭箝?
+    const defaultNext = '鋆?撠??格???蝔?鞎痊鈭箝?
     return (
       String(project.name || '') === '?芸??獢? &&
       String(project.phase || '') === '閬?銝? &&
@@ -3859,7 +3859,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const form = projectCreateForm || buildBlankProjectCreateForm()
     const name = String(form.name || '').trim()
     if (!name) {
-      setProjectCreateError('隢?頛詨撠??迂?憓?獢????具?賢?撠???遣蝡?)
+      setProjectCreateError('隢?頛詨撠??迂?憓?獢????具?賢?撠???遣蝡?)
       return
     }
     const startDate = form.startDate || todayDate()
@@ -3886,7 +3886,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       milestones: milestoneName ? [{ id: stableId('milestone'), name: milestoneName, date: startDate, done: false }] : [],
       meetings: [],
       decisions: [],
-      records: [`${nowLabel}嚚遣蝡?獢?{form.note ? ` ?酉嚗?{String(form.note).trim()}` : ''}`],
+      records: [`${nowLabel}嚚遣蝡?獢?{form.note ? ` ?酉嚗?{String(form.note).trim()}` : ''}`],
     })
     setProjects((rows) => [next, ...rows])
     setSelectedId(next.id)
@@ -3956,7 +3956,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       ? { ...task, start: nextStart, end: nextEnd, subtasks: shiftedSubtasks }
       : task)
     const bounds = getProjectBoundsFromTasks({ ...safeProject, tasks })
-    updateProject(projectId, { ...bounds, tasks }, `?湔挾撟喟宏隞餃???{targetTask.name || '?芸?遙??}??{deltaDays > 0 ? '敺敺? : '敺??} ${Math.abs(deltaDays)} 憭押)
+    updateProject(projectId, { ...bounds, tasks }, `?湔挾撟喟宏隞餃???{targetTask.name || '?芸?遙??}??{deltaDays > 0 ? '敺敺? : '敺??} ${Math.abs(deltaDays)} 憭押)
   }
 
   function shiftProjectSubtaskDates(projectId, taskIndex, subtaskIndex, deltaDays) {
@@ -3980,7 +3980,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       return { ...task, start: taskStart, end: taskEnd, subtasks }
     })
     const bounds = getProjectBoundsFromTasks({ ...safeProject, tasks })
-    updateProject(projectId, { ...bounds, tasks }, `?湔挾撟喟宏摮遙??{targetSubtask.name || '?芸??隞餃?'}??{deltaDays > 0 ? '敺敺? : '敺??} ${Math.abs(deltaDays)} 憭押)
+    updateProject(projectId, { ...bounds, tasks }, `?湔挾撟喟宏摮遙??{targetSubtask.name || '?芸??隞餃?'}??{deltaDays > 0 ? '敺敺? : '敺??} ${Math.abs(deltaDays)} 憭押)
   }
 
   function estimateTaskProgress(task = {}) {
@@ -4018,7 +4018,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function getTaskDependencyFinishDate(task = {}) {
-    // ??靘?蝔誑隞餃?璇?????乓皞?    // ?見銝?隞餃?撌脣????脣漲憭?嚗閬???/ 隤踵隞餃?璇?敺??訾?隞餃??賣?頝?????    return task.end || task.completedAt || task.start || todayDate()
+    // ??靘?蝔誑隞餃?璇?????乓皞?    // ?見銝?隞餃?撌脣????脣漲憭?嚗閬???/ 隤踵隞餃?璇?敺??訾?隞餃??賣?頝?????    return task.end || task.completedAt || task.start || todayDate()
   }
 
   function hasProjectTaskDependencyCycle(tasks = [], taskId, dependencyId) {
@@ -4199,7 +4199,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function getShiftDirectionLabel(deltaDays) {
-    return deltaDays > 0 ? '敺敺? : '敺??
+    return deltaDays > 0 ? '敺敺? : '敺??
   }
 
   function getShiftAmountLabel(deltaDays) {
@@ -4228,7 +4228,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         const bounds = getProjectBoundsFromTasks(shifted.project)
         const scheduleNote = shifted.scheduledChanged ? '嚗??蔭?訾??郊?⊥迤' : '嚗靘?蝥遙??甇亙像蝘?
         const records = [
-          `${new Date().toLocaleString('zh-TW', { hour12: false })}嚚畾萄像蝘颱遙??{shifted.changedTaskName}??{getShiftDirectionLabel(shifted.appliedDelta || safeDelta)} ${getShiftAmountLabel(shifted.appliedDelta || safeDelta)}${scheduleNote}?,
+          `${new Date().toLocaleString('zh-TW', { hour12: false })}嚚畾萄像蝘颱遙??{shifted.changedTaskName}??{getShiftDirectionLabel(shifted.appliedDelta || safeDelta)} ${getShiftAmountLabel(shifted.appliedDelta || safeDelta)}${scheduleNote}?,
           ...(safeProject.records || []),
         ].slice(0, 30)
         return { ...project, ...bounds, tasks: shifted.project.tasks, startDate: shifted.project.startDate, endDate: shifted.project.endDate, records }
@@ -4344,7 +4344,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       : []
     const scheduled = resolveProjectTaskDependencies({ ...safeProject, tasks }, { exactSourceIds: dependencyAlignSourceIds })
     const nextProject = normalizeProject(scheduled.project)
-    const nextRecord = scheduled.changed ? `${recordText ? `${recordText}嚗 : ''}靘?蝵桐遙?????蝥遙? : recordText
+    const nextRecord = scheduled.changed ? `${recordText ? `${recordText}嚗 : ''}靘?蝵桐遙?????蝥遙? : recordText
     updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, nextRecord)
   }
 
@@ -4463,7 +4463,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     }
     const scheduled = resolveProjectTaskDependencies({ ...project, tasks })
     const nextProject = normalizeProject(scheduled.project)
-    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, '?啣?摮遙??)
+    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, '?啣?摮遙??)
   }
 
   function removeProjectSubtask(projectId, taskIndex, subtaskIndex) {
@@ -4480,7 +4480,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     })
     const scheduled = resolveProjectTaskDependencies({ ...project, tasks })
     const nextProject = normalizeProject(scheduled.project)
-    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, '?芷摮遙??)
+    updateProject(projectId, { startDate: nextProject.startDate, endDate: nextProject.endDate, tasks: nextProject.tasks, progress: estimateProjectProgress(nextProject) }, '?芷摮遙??)
   }
 
   function getGanttTaskKey(project, task, index) {
@@ -4523,7 +4523,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const project = normalizeProject(projects.find((item) => item.id === projectId))
     if (!project?.id) return
     const milestones = [...project.milestones, { id: stableId('milestone'), name: '?啣???蝣?, date: project.endDate, done: false }]
-    updateProject(projectId, { milestones }, '?啣???蝣?)
+    updateProject(projectId, { milestones }, '?啣???蝣?)
     setDetailTab('milestones')
   }
 
@@ -4533,7 +4533,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const target = (project.milestones || [])[milestoneIndex]
     if (!confirmDestructiveAction(target?.name || '??蝣?)) return
     const milestones = (project.milestones || []).filter((_, index) => index !== milestoneIndex)
-    updateProject(projectId, { milestones }, '?芷??蝣?)
+    updateProject(projectId, { milestones }, '?芷??蝣?)
   }
 
   function duplicateProject(project) {
@@ -4778,7 +4778,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       sourceType: 'project-task',
       sourceId: `${project.id}-${task.id || task.name}`,
     })
-    updateProject(project.id, {}, `撌脩隞餃???{task.name}?遣蝡??脣極雿)
+    updateProject(project.id, {}, `撌脩隞餃???{task.name}?遣蝡??脣極雿)
   }
 
   function exportProjectSummary() {
@@ -5085,11 +5085,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       if (overdueItems.length) notices.push({ label: `${overdueItems.length} 隞餃??暹?`, tone: 'danger' })
       if (String(safeProject.health || '').includes('??) || String(safeProject.health || '').includes('憸券')) notices.push({ label: safeProject.health, tone: 'danger' })
       if (String(safeProject.health || '').includes('敺?)) notices.push({ label: safeProject.health, tone: 'warning' })
-      if (listInfo.running === '撠閮剖?甇??脰?') notices.push({ label: '?⊿脰?銝?, tone: 'muted' })
-      if (listInfo.next === '撠閮剖?銝?甇?) notices.push({ label: '?∩?銝甇?, tone: 'muted' })
+      if (listInfo.running === '撠閮剖?甇??脰?') notices.push({ label: '?⊿脰?銝?, tone: 'muted' })
+      if (listInfo.next === '撠閮剖?銝?甇?) notices.push({ label: '?∩?銝甇?, tone: 'muted' })
       if (startedZeroItems.length) notices.push({ label: `${startedZeroItems.length} ???`, tone: 'warning' })
     }
-    const fallback = progress >= 100 ? '撠?撌脣??? : '甇?虜?券?
+    const fallback = progress >= 100 ? '撠?撌脣??? : '甇?虜?券?
     return {
       notices: notices.slice(0, 4),
       summary: notices.length ? notices.slice(0, 3).map((item) => item.label).join(' / ') : fallback,
@@ -5157,7 +5157,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <span className="fd203-project-title-badges"><Badge value={project.phase || '?芸??挾'} /><Badge value={project.health} /></span>
           </div>
           <div className="fd203-project-priority-reason"><span>?芸?靘?</span><strong>{priorityMeta.reason}</strong></div>
-          <div className="fd203-status-chip-row">{getProjectStatusMeta(project).notices.length ? getProjectStatusMeta(project).notices.map((notice) => <span key={notice.label} className={`fd203-status-chip ${notice.tone}`}>{notice.label}</span>) : <span className="fd203-status-chip done">甇?虜?券?/span>}</div>
+          <div className="fd203-status-chip-row">{getProjectStatusMeta(project).notices.length ? getProjectStatusMeta(project).notices.map((notice) => <span key={notice.label} className={`fd203-status-chip ${notice.tone}`}>{notice.label}</span>) : <span className="fd203-status-chip done">甇?虜?券?/span>}</div>
           <div className="fd203-project-list-info compact-v21">
             <div className="running"><span>甇??脰?</span><strong>{listInfo.running}</strong></div>
             <div className="next"><span>銝?甇?/span><strong>{listInfo.next}</strong></div>
@@ -5283,7 +5283,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
   function renderGantt(project, options = {}) {
     const { embedded = false, compact = false } = options
-    if (!project?.id) return <div className="flow-empty-card">隢?敺?獢?銵券???獢?/div>
+    if (!project?.id) return <div className="flow-empty-card">隢?敺?獢?銵券???獢?/div>
     const frozenRange = ganttDragRange?.projectId === project.id ? ganttDragRange : null
     const timelineRange = getProjectGanttRange(project)
     const displayStart = frozenRange?.start || timelineRange.start
@@ -5389,8 +5389,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                         <input
                           type="checkbox"
                           checked={Boolean(task.done)}
-                          onChange={(event) => updateProjectTask(project.id, index, { done: event.target.checked, progress: event.target.checked ? 100 : Math.min(progress, 99) }, event.target.checked ? '隞餃?璅?摰??? : '隞餃??寧?芸???)}
-                          aria-label="隞餃?摰????
+                          onChange={(event) => updateProjectTask(project.id, index, { done: event.target.checked, progress: event.target.checked ? 100 : Math.min(progress, 99) }, event.target.checked ? '隞餃?璅?摰??? : '隞餃??寧?芸???)}
+                          aria-label="隞餃?摰????
                         />
                         <span>{task.done ? '摰?' : '?芸???}</span>
                       </label>
@@ -5416,10 +5416,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     {dependencyMeta.hasDependency ? <div className={`fd203-task-dependency-note ${dependencyMeta.waiting ? 'waiting' : 'ready'}`}>{dependencyMeta.waiting ? '蝑??蔭' : '?蔭摰?'}嚗dependencyMeta.predecessorName}嚗?摰?{formatMonthDay(dependencyMeta.startAfter)}</div> : null}
                     <div className="fd203-gantt-row-actions compact-v16 fd203-gantt-row-actions-v29">
                       <button type="button" className="fd203-mini-link soft" onClick={(event) => openGanttProgressEditor('task', project.id, index, null, progress, event)}>隤踵%</button>
-                      <button type="button" className="fd203-mini-link fd20414-shift" title="隞餃??湔挾敺??1 憭? onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => forceShiftTaskByDays(project.id, task.id, index, -1, event)}>????/button>
-                      <button type="button" className="fd203-mini-link fd20414-shift fd20423-forward-button" title="隞餃??湔挾敺敺?1 憭? onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => forceShiftTaskByDays(project.id, task.id, index, 1, event)}>1?乒?</button>
-                      <button type="button" className="fd203-mini-link fd20414-shift week" title="隞餃??湔挾敺??1 ?? onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => forceShiftTaskByDays(project.id, task.id, index, -7, event)}>????/button>
-                      <button type="button" className="fd203-mini-link fd20414-shift week" title="隞餃??湔挾敺敺?1 ?? onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => forceShiftTaskByDays(project.id, task.id, index, 7, event)}>1?晦?</button>
+                      <button type="button" className="fd203-mini-link fd20414-shift" title="隞餃??湔挾敺??1 憭? onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => forceShiftTaskByDays(project.id, task.id, index, -1, event)}>????/button>
+                      <button type="button" className="fd203-mini-link fd20414-shift fd20423-forward-button" title="隞餃??湔挾敺敺?1 憭? onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => forceShiftTaskByDays(project.id, task.id, index, 1, event)}>1?乒?</button>
+                      <button type="button" className="fd203-mini-link fd20414-shift week" title="隞餃??湔挾敺??1 ?? onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => forceShiftTaskByDays(project.id, task.id, index, -7, event)}>????/button>
+                      <button type="button" className="fd203-mini-link fd20414-shift week" title="隞餃??湔挾敺敺?1 ?? onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => forceShiftTaskByDays(project.id, task.id, index, 7, event)}>1?晦?</button>
                       <button type="button" className="fd203-mini-link" onClick={() => addProjectSubtask(project.id, index)}>嚗?隞餃?</button>
                       {subtaskCount ? <button type="button" className="fd203-mini-link soft" onClick={() => autoEstimateProjectTask(project.id, index)}>?芸?%</button> : null}
                       {subtaskCount ? <span className={`fd203-subtask-count-pill ${subtasksOpen ? 'open' : 'closed'}`}>{subtasksOpen ? '撌脣??? : '撌脫??} {subtaskCount}</span> : <span className="fd203-mini-muted">0 摮遙??/span>}
@@ -5459,7 +5459,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                             <input
                               type="checkbox"
                               checked={Boolean(subtask.done)}
-                              onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { done: event.target.checked, progress: event.target.checked ? 100 : Math.min(subProgress, 99) }, event.target.checked ? '摮遙??閮??? : '摮遙??箸摰???)}
+                              onChange={(event) => updateProjectSubtask(project.id, index, subIndex, { done: event.target.checked, progress: event.target.checked ? 100 : Math.min(subProgress, 99) }, event.target.checked ? '摮遙??閮??? : '摮遙??箸摰???)}
                               aria-label="摮遙??????
                             />
                             <span>{subtask.done ? '摰?' : '?芸???}</span>
@@ -5478,7 +5478,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                                 const next = clampPercent(event.target.value)
                                 updateProjectSubtask(project.id, index, subIndex, { progress: next, done: next >= 100 })
                               }}
-                              aria-label="摮遙?脣漲?曉?瘥?
+                              aria-label="摮遙?脣漲?曉?瘥?
                             />
                             <b>%</b>
                           </label>
@@ -5492,7 +5492,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       </div>
                       <div className="fd203-gantt-track subtask" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                         {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
-                        {renderGanttBar({ project, task, taskIndex: index, subtask, subtaskIndex: subIndex, scope: 'subtask', start: subStart, end: subEnd, displayStart, displayEnd, progress: subProgress, label: subtask.name || '摮遙?脣漲', className: 'subtask' })}
+                        {renderGanttBar({ project, task, taskIndex: index, subtask, subtaskIndex: subIndex, scope: 'subtask', start: subStart, end: subEnd, displayStart, displayEnd, progress: subProgress, label: subtask.name || '摮遙?脣漲', className: 'subtask' })}
                       </div>
                     </div>
                   )
@@ -5560,7 +5560,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <button type="button" className={detailTab === 'gantt' ? 'active' : ''} onClick={() => setDetailTab('gantt')}>???/button>
           <button type="button" className={detailTab === 'tasks' ? 'active' : ''} onClick={() => setDetailTab('tasks')}>隞餃?</button>
           <button type="button" className={detailTab === 'milestones' ? 'active' : ''} onClick={() => setDetailTab('milestones')}>??蝣?/button>
-          <button type="button" className={detailTab === 'records' ? 'active' : ''} onClick={() => setDetailTab('records')}>蝝??/button>
+          <button type="button" className={detailTab === 'records' ? 'active' : ''} onClick={() => setDetailTab('records')}>蝝??/button>
         </div>
 
         {detailTab === 'overview' && (
@@ -5601,7 +5601,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </div>
               <div className="fd203-focus-note">
                 <strong>蝺刻摩隤芣?</strong>
-                <span>?桀?蝮質汗?芷＊蝷粹?暺?閬??亥?靽格撠?鞈?嚗????啜楊頛胯???雿輻?函?蝺刻摩?恍??/span>
+                <span>?桀?蝮質汗?芷＊蝷粹?暺?閬??亥?靽格撠?鞈?嚗????啜楊頛胯???雿輻?函?蝺刻摩?恍??/span>
               </div>
             </section>
 
@@ -5620,7 +5620,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <div>
                 <p className="eyebrow">PROJECT EDITOR</p>
                 <h3>撠?蝺刻摩?恍</h3>
-                <span>?ㄐ?臬?獢蜓鞈???撅祉楊頛臬?嚗?雿??券?撓?交?敺?摮?/span>
+                <span>?ㄐ?臬?獢蜓鞈???撅祉楊頛臬?嚗?雿??券?撓?交?敺?摮?/span>
               </div>
               <div className="fd203-edit-hero-actions">
                 <button type="button" className="ghost-btn" onClick={autoEstimateSelectedProject}>靘遙?摯?脣漲</button>
@@ -5634,14 +5634,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <div className="project-editor-grid fd203-editor-grid fd203-edit-grid">
                   <label className="wide-field">撠??迂<ChineseTextField value={project.name === '?芸??獢? ? '' : project.name} onCommit={(value) => updateProject(project.id, { name: String(value || '').trim() })} commitOnBlur placeholder="隢撓?亙?獢?蝔? /></label>
                   <label>?挾<select value={project.phase || '閬?銝?} onChange={(event) => updateProject(project.id, { phase: event.target.value }, '?湔撠??挾??)}>{mergeOptionList(PROJECT_PHASE_OPTIONS, project.phase).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
-                  <label>?亙熒摨?select value={project.health || '敺Ⅱ隤?} onChange={(event) => updateProject(project.id, { health: event.target.value }, '?湔?亙熒摨艾?)}>{mergeOptionList(PROJECT_HEALTH_OPTIONS, project.health).map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
+                  <label>?亙熒摨?select value={project.health || '敺Ⅱ隤?} onChange={(event) => updateProject(project.id, { health: event.target.value }, '?湔?亙熒摨艾?)}>{mergeOptionList(PROJECT_HEALTH_OPTIONS, project.health).map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
                   <label>撠??芸?<select value={project.priority || '銝?} onChange={(event) => updateProject(project.id, { priority: event.target.value }, `?湔撠??芸???${event.target.value}?)}>{mergeOptionList(PROJECT_PRIORITY_OPTIONS, project.priority).map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
                   <label>鞎痊鈭?ChineseTextField value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '?芣?摰? })} commitOnBlur /></label>
                 </div>
               </section>
 
               <section className="fd203-edit-section">
-                <div className="project-section-head compact"><div><p className="eyebrow">SCHEDULE</p><h3>???脣漲</h3></div><small>?交??脣漲?批</small></div>
+                <div className="project-section-head compact"><div><p className="eyebrow">SCHEDULE</p><h3>???脣漲</h3></div><small>?交??脣漲?批</small></div>
                 <div className="project-editor-grid fd203-editor-grid fd203-edit-grid">
                   <label>??<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.startDate} onChange={(event) => updateProject(project.id, { startDate: minIsoDate(event.target.value, project.endDate) }, '?湔???交???)} /></label>
                   <label>蝯?<input title={dateRangeLabel(project.startDate, project.endDate)} type="date" value={project.endDate} onChange={(event) => updateProject(project.id, { endDate: maxIsoDate(event.target.value, project.startDate) }, '?湔蝯??交???)} /></label>
@@ -5659,7 +5659,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <section className="fd203-edit-section full-width">
                 <div className="project-section-head compact"><div><p className="eyebrow">NEXT STEP</p><h3>銝?甇亥?隤芣?</h3></div><small>?ㄐ?舀餈?摰???蝣箄?鈭???閮?/small></div>
                 <div className="project-editor-grid fd203-editor-grid fd203-edit-grid">
-                  <label className="wide-field">銝?甇?ChineseTextField multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} commitOnBlur placeholder="靘?嚗蕭撱????Ⅱ隤?蝞?????.." /></label>
+                  <label className="wide-field">銝?甇?ChineseTextField multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} commitOnBlur placeholder="靘?嚗蕭撱????Ⅱ隤?蝞?????.." /></label>
                 </div>
               </section>
             </div>
@@ -5682,13 +5682,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                     <div className="project-detail-form-grid">
                       <label>隞餃??迂<ChineseTextField value={task.name || ''} onCommit={(value) => updateProjectTask(project.id, index, { name: value || '?芸?遙?? })} commitOnBlur aria-label="隞餃??迂" /></label>
                       <label>鞎痊鈭?ChineseTextField value={task.owner || ''} onCommit={(value) => updateProjectTask(project.id, index, { owner: value })} commitOnBlur aria-label="鞎痊鈭? /></label>
-                      <label>????input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskStart} onChange={(event) => updateProjectTask(project.id, index, { start: event.target.value }, '?湔隞餃????乓?)} aria-label="???? /></label>
-                      <label>蝯???input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskEnd} onChange={(event) => updateProjectTask(project.id, index, { end: event.target.value }, '?湔隞餃?蝯??乓?)} aria-label="蝯??? /></label>
+                      <label>????input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskStart} onChange={(event) => updateProjectTask(project.id, index, { start: event.target.value }, '?湔隞餃????乓?)} aria-label="???? /></label>
+                      <label>蝯???input title={dateRangeLabel(taskStart, taskEnd)} type="date" value={taskEnd} onChange={(event) => updateProjectTask(project.id, index, { end: event.target.value }, '?湔隞餃?蝯??乓?)} aria-label="蝯??? /></label>
                       <label>?蔭隞餃?<select value={task.dependsOnTaskId || ''} onChange={(event) => {
                         const predecessorName = project.tasks.find((item) => item.id === event.target.value)?.name || ''
-                        updateProjectTask(project.id, index, { dependsOnTaskId: event.target.value }, event.target.value ? `閮剖??蔭隞餃??箝?{predecessorName}? : '皜?蔭隞餃???)
+                        updateProjectTask(project.id, index, { dependsOnTaskId: event.target.value }, event.target.value ? `閮剖??蔭隞餃??箝?{predecessorName}? : '皜?蔭隞餃???)
                       }} aria-label="?蔭隞餃?"><option value="">?∪?蝵桐遙??/option>{getAvailablePredecessorTasks(project, index).map((item) => <option key={item.id} value={item.id}>{item.name || '?芸?遙??}</option>)}</select><small>?蔭?交?霈??????亙?蝵桀??敺?憭?/small></label>
-                      <label>摰???input type="date" value={task.completedAt || ''} disabled={!task.done} onChange={(event) => updateProjectTask(project.id, index, { completedAt: event.target.value || todayDate(), done: true, progress: 100 }, '?湔隞餃?摰??乓?)} aria-label="摰??? /><small>{task.done ? '?航矽?游祕???' : '隞餃?摰?敺???}</small></label>
+                      <label>摰???input type="date" value={task.completedAt || ''} disabled={!task.done} onChange={(event) => updateProjectTask(project.id, index, { completedAt: event.target.value || todayDate(), done: true, progress: 100 }, '?湔隞餃?摰??乓?)} aria-label="摰??? /><small>{task.done ? '?航矽?游祕???' : '隞餃?摰?敺???}</small></label>
                       <label>?脣漲<input type="range" min="0" max="100" value={clampPercent(task.progress)} onChange={(event) => updateProjectTask(project.id, index, { progress: clampPercent(event.target.value) })} aria-label="?脣漲" /><small>{task.manualProgress ? '??%' : '?芸?%'}</small></label>
                     </div>
                     <div className="project-detail-card-actions">
@@ -5734,13 +5734,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   <div className="project-detail-card-head"><strong>{milestone.name || '?芸??蝔?'}</strong><span>{milestone.done ? '撌脣??? : '?脰?銝?}</span></div>
                   <div className="project-detail-form-grid compact-3">
                     <label>??蝣?蝔?ChineseTextField value={milestone.name || ''} onCommit={(value) => updateProjectMilestone(project.id, index, { name: value || '?芸??蝔?' })} commitOnBlur aria-label="??蝣?蝔? /></label>
-                    <label>?交?<input type="date" value={milestone.date || project.endDate} onChange={(event) => updateProjectMilestone(project.id, index, { date: event.target.value }, '?湔??蝣??)} aria-label="??蝣?? /></label>
-                    <label className="milestone-check"><span>摰????/span><input type="checkbox" checked={Boolean(milestone.done)} onChange={(event) => updateProjectMilestone(project.id, index, { done: event.target.checked }, event.target.checked ? '??蝣?閮??? : '??蝣?粹脰?銝准?)} /></label>
+                    <label>?交?<input type="date" value={milestone.date || project.endDate} onChange={(event) => updateProjectMilestone(project.id, index, { date: event.target.value }, '?湔??蝣??)} aria-label="??蝣?? /></label>
+                    <label className="milestone-check"><span>摰????/span><input type="checkbox" checked={Boolean(milestone.done)} onChange={(event) => updateProjectMilestone(project.id, index, { done: event.target.checked }, event.target.checked ? '??蝣?閮??? : '??蝣?粹脰?銝准?)} /></label>
                   </div>
                   <div className="project-detail-card-actions"><button type="button" onClick={() => removeProjectMilestone(project.id, index)}>?芷</button></div>
                 </div>
               ))}
-              {!project.milestones?.length && <div className="flow-empty-card">?桀?瘝???蝣?/div>}
+              {!project.milestones?.length && <div className="flow-empty-card">?桀?瘝???蝣?/div>}
             </div>
           </section>
         )}
@@ -5753,17 +5753,17 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   title="撠?甇豢?鞈?憭?
                   folder={project.archiveFolder}
                   suggestedName={buildArchiveFolderNameV67({ type: '撠?', id: project.id, title: project.name, department: project.owner, date: project.startDate })}
-                  onChange={(next) => updateProject(project.id, { archiveFolder: next }, '?湔撠?甇豢?鞈?憭整?)}
+                  onChange={(next) => updateProject(project.id, { archiveFolder: next }, '?湔撠?甇豢?鞈?憭整?)}
                 />
               </div>
               <div className="fd397-records-timeline">
-                <div className="detail-block-headline"><p className="eyebrow">??蝝??/p><small>撠??辣蝯曹??曉銝撠?甇豢?鞈?憭橘??ㄐ?芯????風蝔?/small></div>
+                <div className="detail-block-headline"><p className="eyebrow">??蝝??/p><small>撠??辣蝯曹??曉銝撠?甇豢?鞈?憭橘??ㄐ?芯????風蝔?/small></div>
                 <div className="fd203-record-input">
-                  <ChineseTextField multiline value={manualRecordText} onCommit={setManualRecordText} placeholder="?啣?銝蝑?獢???.." />
-                  <button type="button" onClick={addManualProjectRecord} disabled={!manualRecordText.trim()}>?啣?蝝??/button>
+                  <ChineseTextField multiline value={manualRecordText} onCommit={setManualRecordText} placeholder="?啣?銝蝑?獢???.." />
+                  <button type="button" onClick={addManualProjectRecord} disabled={!manualRecordText.trim()}>?啣?蝝??/button>
                 </div>
                 <div className="timeline-notes flow-timeline-notes">
-                  {project.records.length ? project.records.map((record, index) => <div key={`${record}-${index}`}><span>{index + 1}</span><p>{record}</p></div>) : <div className="flow-empty-card">?桀?瘝???蝝??/div>}
+                  {project.records.length ? project.records.map((record, index) => <div key={`${record}-${index}`}><span>{index + 1}</span><p>{record}</p></div>) : <div className="flow-empty-card">?桀?瘝???蝝??/div>}
                 </div>
               </div>
             </div>
@@ -5791,11 +5791,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
       <section className="project-overview-strip fd203-overview-strip">
         <article><span>撠???/span><strong>{projects.length}</strong></article>
-        <article><span>?瘜冽?</span><strong>{riskCount}</strong></article>
+        <article><span>?瘜冽?</span><strong>{riskCount}</strong></article>
         <article><span>?暹?撠?</span><strong>{overdueProjects}</strong></article>
         <article><span>擃??/span><strong>{highPriorityProjects}</strong></article>
-        <article><span>?餈???/span><strong>{hasSelectedProject ? selectedProject.name : '??}</strong></article>
-        <article><span>?郊???/span><strong>{flowdeskCloud ? (projectsCloudReady ? '?脩垢璅∪?' : '?郊銝?) : '?祆??'}</strong></article>
+        <article><span>?餈???/span><strong>{hasSelectedProject ? selectedProject.name : '??}</strong></article>
+        <article><span>?郊???/span><strong>{flowdeskCloud ? (projectsCloudReady ? '?脩垢璅∪?' : '?郊銝?) : '?祆??'}</strong></article>
       </section>
 
       <section className="fd88-case-filter-bar project-case-bar">
@@ -5808,20 +5808,20 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       <section className="fd203-attention-panel">
         <div>
           <p className="eyebrow">TODAY FOCUS</p>
-          <h3>隞?閬釣??/h3>
-          <span>靘?祟?貊???琿暹??撠???鞈?蝻箏??/span>
+          <h3>隞?閬釣??/h3>
+          <span>靘?祟?貊???琿暹??撠???鞈?蝻箏??/span>
         </div>
         <div className="fd203-attention-grid">
           <article className={attentionSummary.overdue.length ? 'danger' : ''}><span>?暹?撠?</span><strong>{attentionSummary.overdue.length}</strong><small>{attentionSummary.overdue.length ? attentionSummary.overdue.slice(0, 2).map((item) => item.name).join('??) : '?桀?瘝??暹?撠?'}</small></article>
           <article className={attentionSummary.dueSoon.length ? 'warning' : ''}><span>7 憭拙?唳?</span><strong>{attentionSummary.dueSoon.length}</strong><small>{attentionSummary.dueSoon.length ? attentionSummary.dueSoon.slice(0, 2).map((item) => item.name).join('??) : '?剜??唳?憯?甇?虜'}</small></article>
           <article className={attentionSummary.highPriority.length ? 'danger' : ''}><span>擃??/span><strong>{attentionSummary.highPriority.length}</strong><small>{attentionSummary.highPriority.length ? '撱箄降?芸??亦?' : '?桀?瘝?擃?郎蝷?}</small></article>
-          <article className={attentionSummary.noNext.length ? 'warning' : ''}><span>?芾身摰?銝甇?/span><strong>{attentionSummary.noNext.length}</strong><small>{attentionSummary.noRunning.length} ???脰?銝剝???/small></article>
+          <article className={attentionSummary.noNext.length ? 'warning' : ''}><span>?芾身摰?銝甇?/span><strong>{attentionSummary.noNext.length}</strong><small>{attentionSummary.noRunning.length} ???脰?銝剝???/small></article>
           <article className={attentionSummary.overdueTasks ? 'danger' : ''}><span>隞餃??暹?</span><strong>{attentionSummary.overdueTasks}</strong><small>{attentionSummary.overdueTasks ? '隢??Ⅱ隤? : '隞餃???甇?虜'}</small></article>
         </div>
       </section>
 
       <section className="fd203-filter-bar">
-        <ChineseTextField value={projectKeyword} onCommit={setProjectKeyword} placeholder="??撠??遙??隞餃???蝔?..." />
+        <ChineseTextField value={projectKeyword} onCommit={setProjectKeyword} placeholder="??撠??遙??隞餃???蝔?..." />
         <select value={projectPhaseFilter} onChange={(event) => setProjectPhaseFilter(event.target.value)}>{projectPhaseOptions.map((phase) => <option key={phase} value={phase}>{phase === '?券' ? '?券?挾' : phase}</option>)}</select>
         <select value={projectHealthFilter} onChange={(event) => setProjectHealthFilter(event.target.value)}>{projectHealthOptions.map((health) => <option key={health} value={health}>{health === '?券' ? '?券?亙熒摨? : health}</option>)}</select>
         <select value={projectPriorityFilter} onChange={(event) => setProjectPriorityFilter(event.target.value)}>{projectPriorityOptions.map((priority) => <option key={priority} value={priority}>{priority === '?券' ? '?券?芸?' : `?芸? ${priority}`}</option>)}</select>
@@ -5850,7 +5850,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             </div>
           </div>
 
-          {!projects.length && <div className="flow-empty-card"><strong>?桀?瘝?撠?</strong><span>?臬??啣?銝蝑?獢?憪遣蝡?蝔?/span></div>}
+          {!projects.length && <div className="flow-empty-card"><strong>?桀?瘝?撠?</strong><span>?臬??啣?銝蝑?獢?憪遣蝡?蝔?/span></div>}
 
           {projectViewMode === 'cards' ? (
             <div className={projectListExpandAllGantt ? 'fd203-project-card-list expanded-gantt' : 'fd203-project-card-list'}>
@@ -5858,7 +5858,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             </div>
           ) : (
             <div className="fd203-project-table">
-              <div className="fd203-project-table-head"><span>撠? / 甇??脰? / 銝?甇?/span><span>鞎痊 / ??</span><span>?脣漲</span><span>?賊?</span><span>???/span></div>
+              <div className="fd203-project-table-head"><span>撠? / 甇??脰? / 銝?甇?/span><span>鞎痊 / ??</span><span>?脣漲</span><span>?賊?</span><span>???/span></div>
               {paginatedProjects.map(renderProjectListRow)}
             </div>
           )}
@@ -5888,7 +5888,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <div>
                 <p className="eyebrow">NEW PROJECT</p>
                 <h3>?啣?撠?</h3>
-                <span>?‵撖怠?閬?閮??遣蝡?獢??????啣?嚗?仿????????/span>
+                <span>?‵撖怠?閬?閮??遣蝡?獢??????啣?嚗?仿????????/span>
               </div>
               <button type="button" className="ghost-btn" onClick={cancelCreateProject}>??</button>
             </header>
@@ -5904,12 +5904,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <section className="fd392-project-create-card main">
                 <div className="project-section-head compact"><div><p className="eyebrow">BASIC</p><h4>?箸鞈?</h4></div><small>撠??迂?箏?憛?/small></div>
                 <label className="required">撠??迂<ChineseTextField value={projectCreateForm.name} onCommit={(value) => updateProjectCreateForm({ name: value })} placeholder="靘?嚗utanix 撠閰摯" autoFocus /></label>
-                <label>銝?甇?ChineseTextField multiline value={projectCreateForm.next} onCommit={(value) => updateProjectCreateForm({ next: value })} placeholder="靘?嚗??瘙?撱? Demo?Ⅱ隤?孵皞?.." /></label>
-                <label>撱箇??酉<ChineseTextField multiline value={projectCreateForm.note} onCommit={(value) => updateProjectCreateForm({ note: value })} placeholder="?舫憛恬?撱箇?敺?撖怠??蝝?? /></label>
+                <label>銝?甇?ChineseTextField multiline value={projectCreateForm.next} onCommit={(value) => updateProjectCreateForm({ next: value })} placeholder="靘?嚗??瘙?撱? Demo?Ⅱ隤?孵皞?.." /></label>
+                <label>撱箇??酉<ChineseTextField multiline value={projectCreateForm.note} onCommit={(value) => updateProjectCreateForm({ note: value })} placeholder="?舫憛恬?撱箇?敺?撖怠??蝝?? /></label>
               </section>
 
               <section className="fd392-project-create-card">
-                <div className="project-section-head compact"><div><p className="eyebrow">OWNER</p><h4>???鞎痊</h4></div></div>
+                <div className="project-section-head compact"><div><p className="eyebrow">OWNER</p><h4>???鞎痊</h4></div></div>
                 <div className="fd392-create-two-col">
                   <label>?挾<select value={projectCreateForm.phase} onChange={(event) => updateProjectCreateForm({ phase: event.target.value })}>{PROJECT_PHASE_OPTIONS.filter((phase) => !['撌脣???, '撌脣?瘨?].includes(phase)).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
                   <label>?芸?<select value={projectCreateForm.priority} onChange={(event) => updateProjectCreateForm({ priority: event.target.value })}>{PROJECT_PRIORITY_OPTIONS.map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
@@ -5940,7 +5940,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       )}
 
       {projectModalOpen && hasSelectedProject && (
-        <div className="fd203-project-modal-backdrop" role="dialog" aria-modal="true" aria-label="撠?撌乩??" onMouseDown={(event) => { if (event.target === event.currentTarget) closeProjectModal() }}>
+        <div className="fd203-project-modal-backdrop" role="dialog" aria-modal="true" aria-label="撠?撌乩??" onMouseDown={(event) => { if (event.target === event.currentTarget) closeProjectModal() }}>
           <section className={`fd203-project-modal fd203-project-modal--${detailTab}`}>
             {renderProjectWorkspace(selectedProject)}
           </section>
@@ -6095,7 +6095,7 @@ function getWeekDayLinePercent(date, weekStart, weekEnd) {
 
 function formatMonthDayWeekday(value) {
   const date = parseDate(value)
-  const weekdayMap = ['??, '銝', '鈭?, '銝?, '??, '鈭?, '??]
+  const weekdayMap = ['??, '銝', '鈭?, '銝?, '??, '鈭?, '??]
   return `${date.getMonth() + 1}/${String(date.getDate()).padStart(2, '0')}(${weekdayMap[date.getDay()]})`
 }
 
@@ -6104,7 +6104,7 @@ function DocsPage({ docs }) {
     <div className="docs-layout">
       <aside className="doc-tree">
         <PanelTitle eyebrow="?辣??" title="?亥??渡?" />
-        {['??辣', '蝬脰楝', '鞈?', '蝬脩?', '?遢', '?降蝝??, '蝭'].map((folder) => <button key={folder} type="button">??{folder}</button>)}
+        {['??辣', '蝬脰楝', '鞈?', '蝬脩?', '?遢', '?降蝝??, '蝭'].map((folder) => <button key={folder} type="button">??{folder}</button>)}
       </aside>
       <section className="doc-canvas">
         <div className="doc-hero doc-hero-compact">
@@ -6177,7 +6177,7 @@ function buildCompletedCaseRows(data = {}) {
     .map((row) => ({ id: row.id || '', type: '撠?', title: row.name || '?芸??獢?, status: row.phase || '撌脣???, owner: row.owner || '?芣?摰?, date: getCaseCompletionDate(row), progress: row.progress || 100, meta: [row.health, row.priority].filter(Boolean).join('嚚?) }))
   const reminderRows = (data.reminders || [])
     .filter((row) => row.status === '撌脣???)
-    .map((row) => ({ id: row.id || '', type: '??', title: row.title || '?芸????, status: row.status || '撌脣???, owner: row.sourceType || '銝??, date: getCaseCompletionDate(row), meta: [row.type, row.priority, row.sourceTitle].filter(Boolean).join('嚚?) }))
+    .map((row) => ({ id: row.id || '', type: '??', title: row.title || '?芸????, status: row.status || '撌脣???, owner: row.sourceType || '銝??, date: getCaseCompletionDate(row), meta: [row.type, row.priority, row.sourceTitle].filter(Boolean).join('嚚?) }))
   return [...workRows, ...taskRows, ...purchaseRows, ...projectRows, ...reminderRows].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
 }
 
@@ -6254,7 +6254,7 @@ function InsightPage({ metrics, records, tickets }) {
   const reportRiskTotal = taskWaiting + projectRisk + reminderSummary.overdue + scopedPurchases.filter((row) => (row.arrivalStatus || '?芸鞎?) !== '撌脣鞎? && !['撌脣???, '撌脣?瘨?].includes(row.status || '')).length
   const reportEfficiencyScore = Math.max(0, Math.min(100, 100 - taskWaiting * 6 - projectRisk * 8 - reminderSummary.overdue * 9 - purchaseOpen * 2))
   const reportDecisionCards = [
-    { label: '蝞∠??', value: reportEfficiencyScore, note: reportRiskTotal ? `${reportRiskTotal} ??暺?? : '??帘摰? },
+    { label: '蝞∠??', value: reportEfficiencyScore, note: reportRiskTotal ? `${reportRiskTotal} ??暺?? : '??帘摰? },
     { label: '?∟頃敺???', value: scopedPurchases.length ? `${Math.round((purchaseOpen / scopedPurchases.length) * 100)}%` : '0%', note: `${purchaseOpen} / ${scopedPurchases.length} 蝑 },
     { label: '隞餃??⊿???, value: scopedTasks.length ? `${Math.round((taskWaiting / scopedTasks.length) * 100)}%` : '0%', note: `${taskWaiting} / ${scopedTasks.length} 蝑 },
     { label: '???暹?', value: reminderSummary.overdue, note: `${reminderSummary.open} 蝑蝯?? },
@@ -6267,7 +6267,7 @@ function InsightPage({ metrics, records, tickets }) {
   const purchasePendingArrival = scopedPurchases.filter((row) => (row.arrivalStatus || '?芸鞎?) !== '撌脣鞎? && !isPurchaseClosedForReport(row)).length
   const purchasePendingAcceptance = scopedPurchases.filter((row) => (row.acceptanceStatus || '?芷???) !== '撌脤??? && !isPurchaseClosedForReport(row)).length
   const purchaseUnfiled = scopedPurchases.filter((row) => purchaseArchiveStatusV72(row) !== '撌脫飛瑼?).length
-  const purchasePriorityOpen = scopedPurchases.filter((row) => ['蝺?, '擃?].includes(normalizePurchasePriority(row.priority)) && !isPurchaseClosedForReport(row)).length
+  const purchasePriorityOpen = scopedPurchases.filter((row) => ['蝺?, '擃?].includes(normalizePurchasePriority(row.priority)) && !isPurchaseClosedForReport(row)).length
   const purchaseItemRanking = buildPurchaseItemRanking(scopedPurchases).slice(0, 8)
   const purchaseCategoryRanking = buildPurchaseCategoryRanking(scopedPurchases).slice(0, 8)
   const departmentRanking = buildDepartmentPurchaseRanking(scopedPurchases).slice(0, 6)
@@ -6275,9 +6275,9 @@ function InsightPage({ metrics, records, tickets }) {
   const purchaseSummaryCards = [
     { label: '?祆??∟頃??', value: formatMoney(purchaseTotal), note: `${scopedPurchases.length} 蝑鞈嬋 },
     { label: '?脰?銝剜鞈?, value: purchaseOpenRows.length, note: `敺?甈?${purchasePendingPayment} / 敺鞎?${purchasePendingArrival}` },
-    { label: '敺???, value: purchasePendingAcceptance, note: '隞?蝣箄?撽??? },
+    { label: '敺???, value: purchasePendingAcceptance, note: '隞?蝣箄?撽??? },
     { label: '?芣飛瑼?, value: purchaseUnfiled, note: '撠摰??脩垢鞈?憭暹飛瑼? },
-    { label: '擃??/ 蝺?, value: purchasePriorityOpen, note: '??芸?餈質馱' },
+    { label: '擃??/ 蝺?, value: purchasePriorityOpen, note: '??芸?餈質馱' },
   ]
   const taskStatusRows = buildCountRows(scopedTasks, (row) => row.lane || row.status || '?芾身摰?).slice(0, 6)
   const upcomingReminders = [...reportData.reminders]
@@ -6301,8 +6301,8 @@ function InsightPage({ metrics, records, tickets }) {
       .filter((row) => !['撌脣???, '撌脣?瘨?].includes(row.status) || (row.paymentStatus || '?芯?甈?) !== '撌脖?甈? || (row.arrivalStatus || '?芸鞎?) !== '撌脣鞎?)
       .map((row) => ({ type: '?∟頃', title: purchaseTitle(row), meta: `${row.vendor || '?芣?摰???} 繚 ${row.status || '?芾身摰?} 繚 ${formatMoney(calculatePurchase(row).taxedTotal)}`, weight: calculatePurchase(row).taxedTotal + 3000 })),
     ...scopedTasks
-      .filter((row) => ['蝺?, '擃?].includes(row.priority) || ['蝑???', '蝑?閬?, '?⊿?'].includes(row.lane || row.status))
-      .map((row) => ({ type: row.__source || '隞餃?', title: row.title || row.id, meta: `${row.owner || '?芣?摰?} 繚 ${row.lane || row.status || '?芾身摰?} 繚 ${row.due || row.__date || '?芾身摰??}`, weight: ['蝺?, '擃?].includes(row.priority) ? 9000 : 4500 })),
+      .filter((row) => ['蝺?, '擃?].includes(row.priority) || ['蝑???', '蝑?閬?, '?⊿?'].includes(row.lane || row.status))
+      .map((row) => ({ type: row.__source || '隞餃?', title: row.title || row.id, meta: `${row.owner || '?芣?摰?} 繚 ${row.lane || row.status || '?芾身摰?} 繚 ${row.due || row.__date || '?芾身摰??}`, weight: ['蝺?, '擃?].includes(row.priority) ? 9000 : 4500 })),
     ...scopedProjects
       .filter((row) => String(row.health || '').includes('敺?) || row.tone === 'red')
       .map((row) => ({ type: '撠?', title: row.name || row.id, meta: `${row.phase || '?芾身摰?} 繚 ${row.owner || '?芣?摰?} 繚 ${row.progress || 0}%`, weight: 6000 })),
@@ -6329,7 +6329,7 @@ function InsightPage({ metrics, records, tickets }) {
   }
 
   function exportCompletedCases() {
-    const rows = visibleCompletedCaseRows.map((row) => ({ 憿?: row.type, 蝺刻?: row.id, 璅?: row.title, ??? row.status, 鞎痊??皞? row.owner, 摰??飛瑼?? row.date, ?酉: row.meta || '', ??: row.amount || '' }))
+    const rows = visibleCompletedCaseRows.map((row) => ({ 憿?: row.type, 蝺刻?: row.id, 璅?: row.title, ??? row.status, 鞎痊??皞? row.owner, 摰??飛瑼?? row.date, ?酉: row.meta || '', ??: row.amount || '' }))
     downloadFlowdeskText(`flowdesk_completed_cases_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
   }
 
@@ -6359,11 +6359,11 @@ function InsightPage({ metrics, records, tickets }) {
         <div>
           <p className="eyebrow">REPORT CENTER</p>
           <h2>?梯”??</h2>
-          <span>?游?撌乩??遙?鞈潦?獢???鞈?嚗翰???箇??餈賜?????/span>
+          <span>?游?撌乩??遙?鞈潦?獢???鞈?嚗翰???箇??餈賜?????/span>
         </div>
         <div className="flow-toolbar-actions report-toolbar-actions">
           <span className="toolbar-soft-chip">{cloudStatus}</span>
-          <label className="report-scope-select">??<select value={reportScope} onChange={(event) => setReportScope(event.target.value)}>{['?祇?, '?祆?', '?砍迤', '?券'].map((scope) => <option key={scope} value={scope}>{scope}</option>)}</select></label>
+          <label className="report-scope-select">??<select value={reportScope} onChange={(event) => setReportScope(event.target.value)}>{['?祇?, '?祆?', '?砍迤', '?券'].map((scope) => <option key={scope} value={scope}>{scope}</option>)}</select></label>
           <button className="ghost-btn" type="button" onClick={reloadReportData}>??渡?</button>
           <button className="ghost-btn" type="button" onClick={exportExecutiveSnapshot}>?臬敹怎</button>
           <button className="primary-btn" type="button" onClick={exportCurrentReport}>?臬?桀??梯”</button>
@@ -6397,7 +6397,7 @@ function InsightPage({ metrics, records, tickets }) {
           <div>
             <p className="eyebrow">PURCHASE INSIGHT</p>
             <h3>?∟頃蝯梯?????/h3>
-            <span>?函?祟?豢??絞閮鞈潮?憿雿?????嚗靘踹翰??蝑眺鈭?暻潦狐鞎瑯?隤啗眺?憭???/span>
+            <span>?函?祟?豢??絞閮鞈潮?憿雿?????嚗靘踹翰??蝑眺鈭?暻潦狐鞎瑯?隤啗眺?憭???/span>
           </div>
           <div className="fd20389-purchase-actions">
             <button type="button" className="ghost-btn" onClick={exportPurchaseItemStats}>?臬??</button>
@@ -6486,13 +6486,13 @@ function InsightPage({ metrics, records, tickets }) {
       <section className="panel wide fd88-completed-center">
         <div className="fd88-completed-head">
           <div>
-            <p className="eyebrow">摰?蝝?葉敹?/p>
+            <p className="eyebrow">摰?蝝?葉敹?/p>
             <h3>撌脣???/ 撌脣?瘨?/ 撌脫飛瑼?隞?/h3>
-            <span>銝餅??桅?閮凋??嗾瘛剁?甇瑕獢辣?葉?券ㄐ?亥岷??箝?/span>
+            <span>銝餅??桅?閮凋??嗾瘛剁?甇瑕獢辣?葉?券ㄐ?亥岷??箝?/span>
           </div>
           <div className="fd88-completed-actions">
             <input value={completedCaseSearch} onChange={(event) => setCompletedCaseSearch(event.target.value)} placeholder="??摰?獢辣..." />
-            <button type="button" className="ghost-btn" onClick={exportCompletedCases}>?臬摰?蝝??/button>
+            <button type="button" className="ghost-btn" onClick={exportCompletedCases}>?臬摰?蝝??/button>
           </div>
         </div>
         <div className="fd88-completed-tabs">
@@ -6503,7 +6503,7 @@ function InsightPage({ metrics, records, tickets }) {
           ))}
         </div>
         <div className="fd88-completed-table">
-          <div className="fd88-completed-table-head"><span>憿? / 獢辣</span><span>???/span><span>鞎痊 / 靘?</span><span>摰??交?</span><span>?酉</span></div>
+          <div className="fd88-completed-table-head"><span>憿? / 獢辣</span><span>???/span><span>鞎痊 / 靘?</span><span>摰??交?</span><span>?酉</span></div>
           {visibleCompletedCaseRows.map((row) => (
             <article key={`${row.type}-${row.id}-${row.title}`}>
               <div><Badge value={row.type} /><strong>{row.title}</strong><small>{row.id || '?芰楊??}</small></div>
@@ -6513,7 +6513,7 @@ function InsightPage({ metrics, records, tickets }) {
               <small>{row.amount ? formatMoney(row.amount) : row.meta || '??}</small>
             </article>
           ))}
-          {!visibleCompletedCaseRows.length && <div className="flow-empty-card">?桀?瘝?蝚血?璇辣??????/div>}
+          {!visibleCompletedCaseRows.length && <div className="flow-empty-card">?桀?瘝?蝚血?璇辣??????/div>}
         </div>
       </section>
 
@@ -6526,7 +6526,7 @@ function InsightPage({ metrics, records, tickets }) {
                 <span>{index + 1}</span>
                 <div><strong>{row.title}</strong><small>{row.type} 繚 {row.meta}</small></div>
               </article>
-            )) : <p>?桀?瘝??閬?亥蕭頩斤????/p>}
+            )) : <p>?桀?瘝??閬?亥蕭頩斤????/p>}
           </div>
         </article>
 
@@ -6535,7 +6535,7 @@ function InsightPage({ metrics, records, tickets }) {
           <div className="reminder-home-grid compact-reminder-grid">
             <article className="danger"><span>?暹?</span><strong>{reminderSummary.overdue}</strong></article>
             <article><span>隞</span><strong>{reminderSummary.today}</strong></article>
-            <article><span>?祇?/span><strong>{reminderSummary.week}</strong></article>
+            <article><span>?祇?/span><strong>{reminderSummary.week}</strong></article>
             <article><span>?芰?</span><strong>{reminderSummary.open}</strong></article>
           </div>
         </article>
@@ -6559,7 +6559,7 @@ function InsightPage({ metrics, records, tickets }) {
             <thead><tr>{reportRows.headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
             <tbody>
               {reportRows.rows.map((row, index) => <tr key={`${reportTab}-${index}`}>{row.map((cell, cellIndex) => <td key={`${index}-${cellIndex}`}>{cell}</td>)}</tr>)}
-              {!reportRows.rows.length && <tr><td colSpan={reportRows.headers.length}>?桀?瘝?蝚血?璇辣????/td></tr>}
+              {!reportRows.rows.length && <tr><td colSpan={reportRows.headers.length}>?桀?瘝?蝚血?璇辣????/td></tr>}
             </tbody>
           </table>
         </div>
@@ -6573,13 +6573,13 @@ function InsightPage({ metrics, records, tickets }) {
           </div>
         </article>
         <article className="panel">
-          <PanelTitle eyebrow="??? title="?∟頃??" />
+          <PanelTitle eyebrow="??? title="?∟頃??" />
           <div className="report-status-list">
-            {purchaseStatusRows.length ? purchaseStatusRows.map((row) => <article key={row.label}><span>{row.label}</span><strong>{row.count}</strong></article>) : <p>撠?∟頃?????/p>}
+            {purchaseStatusRows.length ? purchaseStatusRows.map((row) => <article key={row.label}><span>{row.label}</span><strong>{row.count}</strong></article>) : <p>撠?∟頃?????/p>}
           </div>
         </article>
         <article className="panel">
-          <PanelTitle eyebrow="隞餃?" title="撌乩????撣? />
+          <PanelTitle eyebrow="隞餃?" title="撌乩????撣? />
           <div className="report-status-list">
             {taskStatusRows.length ? taskStatusRows.map((row) => <article key={row.label}><span>{row.label}</span><strong>{row.count}</strong></article>) : <p>撠隞餃?鞈???/p>}
           </div>
@@ -6618,7 +6618,7 @@ function isReportInScope(value, scope) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const start = new Date(today)
-  if (scope === '?祇?) start.setDate(today.getDate() - today.getDay())
+  if (scope === '?祇?) start.setDate(today.getDate() - today.getDay())
   if (scope === '?祆?') start.setDate(1)
   if (scope === '?砍迤') {
     const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3
@@ -6654,7 +6654,7 @@ function guessPurchaseItemCategory(name = '') {
   const text = String(name || '').toLowerCase()
   if (/蝑|notebook|laptop|macbook|thinkpad|elitebook|latitude|?餉|銝餅?|pc|desktop/.test(text)) return '?餉 / 蝑'
   if (/?Ｗ?|monitor|display|憿舐內??.test(text)) return '?Ｗ? / 憿舐內閮剖?'
-  if (/ap|wifi|wi-fi|router|頝舐|?澈?育鈭斗??育switch|?脩?firewall|蝬脰楝|蝬脤?.test(text)) return '蝬脰楝閮剖?'
+  if (/ap|wifi|wi-fi|router|頝舐|?澈?育鈭斗??育switch|?脩?firewall|蝬脰楝|蝬脤?.test(text)) return '蝬脰楝閮剖?'
   if (/nas|蝖祉?|ssd|hdd|?脣?|storage|?遢|backup|ups/.test(text)) return '?脣? / ?遢'
   if (/??|license|licence|m365|office|adobe|頠?|software|veeam|sonarqube|?脫?/.test(text)) return '頠? / ??'
   if (/?萇|皛?|頧|dock|hub|蝺?|?單?|閬?|webcam|暻亙?憸育?券?/.test(text)) return '?券??辣'
@@ -6744,18 +6744,18 @@ function buildReportTableRows(tab, data) {
       const amount = calculatePurchase(row).taxedTotal
       const items = getPurchaseItems(row)
       return {
-        csv: { 蝺刻?: row.id, ?∟頃?批捆: purchaseTitle(row), ?芸?蝑?: normalizePurchasePriority(row.priority), 雿輻?桐?: row.department || '', ?唾?鈭? row.requester || '', 雿輻鈭? row.user || row.usedBy || '', 撱?: row.vendor || '', ??? row.status || '', ?怎???: amount, 隞狡: row.paymentStatus || '?芯?甈?, ?啗疏: row.arrivalStatus || '?芸鞎?, 撽: row.acceptanceStatus || '?芷???, 甇豢?: purchaseArchiveStatusV72(row), ???? items.length },
+        csv: { 蝺刻?: row.id, ?∟頃?批捆: purchaseTitle(row), ?芸?蝑?: normalizePurchasePriority(row.priority), 雿輻?桐?: row.department || '', ?唾?鈭? row.requester || '', 雿輻鈭? row.user || row.usedBy || '', 撱?: row.vendor || '', ??? row.status || '', ?怎???: amount, 隞狡: row.paymentStatus || '?芯?甈?, ?啗疏: row.arrivalStatus || '?芸鞎?, 撽: row.acceptanceStatus || '?芷???, 甇豢?: purchaseArchiveStatusV72(row), ???? items.length },
         cells: [row.id, purchaseTitle(row), normalizePurchasePriority(row.priority), row.department || '?芣?摰?, row.vendor || '?芣?摰?, row.status || '?芾身摰?, formatMoney(amount), row.paymentStatus || '?芯?甈?, row.arrivalStatus || '?芸鞎?, purchaseArchiveStatusV72(row)],
       }
     })
-    return { headers: ['蝺刻?', '?∟頃?批捆', '?芸?', '雿輻?桐?', '撱?', '???, '??', '隞狡', '?啗疏', '甇豢?'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
+    return { headers: ['蝺刻?', '?∟頃?批捆', '?芸?', '雿輻?桐?', '撱?', '???, '??', '隞狡', '?啗疏', '甇豢?'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
   }
   if (tab === '隞餃?') {
     const rows = data.tasks.map((row) => ({
-      csv: { 蝺刻?: row.id, 璅?: row.title || '', 靘?: row.__source || row.source || '', ??? row.lane || row.status || '', ?芸?蝝? row.priority || '', 鞎痊鈭? row.owner || '', ?唳??? row.due || row.__date || '' },
+      csv: { 蝺刻?: row.id, 璅?: row.title || '', 靘?: row.__source || row.source || '', ??? row.lane || row.status || '', ?芸?蝝? row.priority || '', 鞎痊鈭? row.owner || '', ?唳??? row.due || row.__date || '' },
       cells: [row.id, row.title || '?芸??, row.__source || row.source || '撌乩?', row.lane || row.status || '?芾身摰?, row.priority || '?芾身摰?, row.owner || '?芣?摰?, row.due || row.__date || '?芾身摰?],
     }))
-    return { headers: ['蝺刻?', '璅?', '靘?', '???, '?芸?蝝?, '鞎痊鈭?, '?唳???], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
+    return { headers: ['蝺刻?', '璅?', '靘?', '???, '?芸?蝝?, '鞎痊鈭?, '?唳???], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
   }
   if (tab === '撠?') {
     const rows = data.projects.map((row) => ({
@@ -6766,19 +6766,19 @@ function buildReportTableRows(tab, data) {
   }
   if (tab === '??') {
     const rows = data.reminders.map((row) => ({
-      csv: { 蝺刻?: row.id, ??: row.title || '', 憿?: row.type || '', ??? row.status || '', ?芸?蝝? row.priority || '', ?唳??? row.dueDate || '' },
-      cells: [row.id, row.title || '?芸????, row.type || '銝??, row.status || '?芾身摰?, row.priority || '?芾身摰?, row.dueDate || '?芾身摰?],
+      csv: { 蝺刻?: row.id, ??: row.title || '', 憿?: row.type || '', ??? row.status || '', ?芸?蝝? row.priority || '', ?唳??? row.dueDate || '' },
+      cells: [row.id, row.title || '?芸????, row.type || '銝??, row.status || '?芾身摰?, row.priority || '?芾身摰?, row.dueDate || '?芾身摰?],
     }))
-    return { headers: ['蝺刻?', '??', '憿?', '???, '?芸?蝝?, '?唳???], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
+    return { headers: ['蝺刻?', '??', '憿?', '???, '?芸?蝝?, '?唳???], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
   }
   const summary = [
-    { ?: '?∟頃蝑', ?詨? data.purchases.length, ?酉: '?桀?蝭拚???抒??∟頃蝝?? },
-    { ?: '?∟頃蝮賡?', ?詨? data.purchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0), ?酉: '?怎????蜇' },
-    { ?: '隞餃?蝑', ?詨? data.tasks.length, ?酉: '撌乩?鈭??遙?蕭頩文?雿? },
-    { ?: '撠?蝑', ?詨? data.projects.length, ?酉: '?桀?蝭拚???抒?撠?' },
-    { ?: '??蝑', ?詨? data.reminders.length, ?酉: '?桀?蝭拚???抒???' },
+    { ?: '?∟頃蝑', ?詨? data.purchases.length, ?酉: '?桀?蝭拚???抒??∟頃蝝?? },
+    { ?: '?∟頃蝮賡?', ?詨? data.purchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0), ?酉: '?怎????蜇' },
+    { ?: '隞餃?蝑', ?詨? data.tasks.length, ?酉: '撌乩?鈭??遙?蕭頩文?雿? },
+    { ?: '撠?蝑', ?詨? data.projects.length, ?酉: '?桀?蝭拚???抒?撠?' },
+    { ?: '??蝑', ?詨? data.reminders.length, ?酉: '?桀?蝭拚???抒???' },
   ]
-  return { headers: ['?', '?詨?, '?酉'], rows: summary.map((row) => [row.?, typeof row.?詨?=== 'number' && row.?.includes('蝮賡?') ? formatMoney(row.?詨? : row.?詨? row.?酉]), csv: summary }
+  return { headers: ['?', '?詨?, '?酉'], rows: summary.map((row) => [row.?, typeof row.?詨?=== 'number' && row.?.includes('蝮賡?') ? formatMoney(row.?詨? : row.?詨? row.?酉]), csv: summary }
 }
 
 function toCsv(rows = []) {
@@ -6834,13 +6834,13 @@ function getReminderSummary(reminders) {
 }
 
 function reminderPriorityRank(priority = '銝?) {
-  if (['蝺?, '擃?].includes(priority)) return 3
-  if (['銝?, '銝??].includes(priority)) return 2
+  if (['蝺?, '擃?].includes(priority)) return 3
+  if (['銝?, '銝??].includes(priority)) return 2
   return 1
 }
 
 function normalizeReminderPriority(priority = '銝?) {
-  if (priority === '蝺?) return '蝺?
+  if (priority === '蝺?) return '蝺?
   if (priority === '擃?) return '擃?
   if (priority === '雿?) return '雿?
   return '銝?
@@ -6885,11 +6885,11 @@ function buildAutoReminderRows({ purchases = [], workItems = [], tasks = [], pro
     const title = purchaseTitle(row)
     const priority = normalizePurchasePriority(row.priority)
     const purchaseKey = row.id || getPurchaseKey(row) || stableId('purchase-auto')
-    if ((row.paymentStatus || '?芯?甈?) !== '撌脖?甈?) pushAuto({ id: `AUTO-PURCHASE-PAY-${purchaseKey}`, title: `隞狡餈質馱嚚?{title}`, type: '隞狡??', priority: priority === '蝺? ? '蝺? : '擃?, dueDate: row.paymentDueDate || row.orderDate || row.requestDate || addDaysDate(1), sourceType: '?∟頃', sourceTitle: title, note: `${row.department || '?芸‵?桐?'} 繚 ${row.vendor || '?芸‵撱?'} 繚 ${row.paymentStatus || '?芯?甈?}` })
-    if ((row.arrivalStatus || '?芸鞎?) !== '撌脣鞎?) pushAuto({ id: `AUTO-PURCHASE-ARR-${purchaseKey}`, title: `?啗疏餈質馱嚚?{title}`, type: '?啗疏??', priority: priority === '蝺? ? '蝺? : priority === '擃? ? '擃? : '銝?, dueDate: row.arrivalDueDate || row.arrivalDate || row.orderDate || row.requestDate || addDaysDate(3), sourceType: '?∟頃', sourceTitle: title, note: `${row.department || '?芸‵?桐?'} 繚 ${row.vendor || '?芸‵撱?'} 繚 ${row.arrivalStatus || '?芸鞎?}` })
-    if ((row.acceptanceStatus || '?芷???) !== '撌脤???) pushAuto({ id: `AUTO-PURCHASE-ACC-${purchaseKey}`, title: `撽餈質馱嚚?{title}`, type: '撽??', priority: priority === '蝺? ? '蝺? : '銝?, dueDate: row.acceptanceDate || row.arrivalDate || row.arrivalDueDate || addDaysDate(5), sourceType: '?∟頃', sourceTitle: title, note: `${row.department || '?芸‵?桐?'} 繚 ${row.user || row.usedBy || '?芸‵雿輻鈭?} 繚 ${row.acceptanceStatus || '?芷???}` })
-    if (purchaseArchiveStatusV72(row) !== '撌脫飛瑼?) pushAuto({ id: `AUTO-PURCHASE-ARC-${purchaseKey}`, title: `甇豢?餈質馱嚚?{title}`, type: '甇豢???', priority: priority === '蝺? ? '擃? : '銝?, dueDate: row.acceptanceDate || row.arrivalDate || row.requestDate || addDaysDate(7), sourceType: '?∟頃', sourceTitle: title, note: `?桀?甇豢????${purchaseArchiveStatusV72(row)}嚗?蝣箄??脩垢鞈?憭曇??勗/PO/?潛巨/撽鞈?? })
-    if (['蝺?, '擃?].includes(priority)) pushAuto({ id: `AUTO-PURCHASE-PRI-${purchaseKey}`, title: `${priority}?芸??∟頃嚚?{title}`, type: '餈質馱??', priority, dueDate: row.requestDate || today, sourceType: '?∟頃', sourceTitle: title, note: `${row.status || '?芾身摰???} 繚 ${row.department || '?芸‵?桐?'} 繚 ${formatMoney(calculatePurchase(row).taxedTotal)}` })
+    if ((row.paymentStatus || '?芯?甈?) !== '撌脖?甈?) pushAuto({ id: `AUTO-PURCHASE-PAY-${purchaseKey}`, title: `隞狡餈質馱嚚?{title}`, type: '隞狡??', priority: priority === '蝺? ? '蝺? : '擃?, dueDate: row.paymentDueDate || row.orderDate || row.requestDate || addDaysDate(1), sourceType: '?∟頃', sourceTitle: title, note: `${row.department || '?芸‵?桐?'} 繚 ${row.vendor || '?芸‵撱?'} 繚 ${row.paymentStatus || '?芯?甈?}` })
+    if ((row.arrivalStatus || '?芸鞎?) !== '撌脣鞎?) pushAuto({ id: `AUTO-PURCHASE-ARR-${purchaseKey}`, title: `?啗疏餈質馱嚚?{title}`, type: '?啗疏??', priority: priority === '蝺? ? '蝺? : priority === '擃? ? '擃? : '銝?, dueDate: row.arrivalDueDate || row.arrivalDate || row.orderDate || row.requestDate || addDaysDate(3), sourceType: '?∟頃', sourceTitle: title, note: `${row.department || '?芸‵?桐?'} 繚 ${row.vendor || '?芸‵撱?'} 繚 ${row.arrivalStatus || '?芸鞎?}` })
+    if ((row.acceptanceStatus || '?芷???) !== '撌脤???) pushAuto({ id: `AUTO-PURCHASE-ACC-${purchaseKey}`, title: `撽餈質馱嚚?{title}`, type: '撽??', priority: priority === '蝺? ? '蝺? : '銝?, dueDate: row.acceptanceDate || row.arrivalDate || row.arrivalDueDate || addDaysDate(5), sourceType: '?∟頃', sourceTitle: title, note: `${row.department || '?芸‵?桐?'} 繚 ${row.user || row.usedBy || '?芸‵雿輻鈭?} 繚 ${row.acceptanceStatus || '?芷???}` })
+    if (purchaseArchiveStatusV72(row) !== '撌脫飛瑼?) pushAuto({ id: `AUTO-PURCHASE-ARC-${purchaseKey}`, title: `甇豢?餈質馱嚚?{title}`, type: '甇豢???', priority: priority === '蝺? ? '擃? : '銝?, dueDate: row.acceptanceDate || row.arrivalDate || row.requestDate || addDaysDate(7), sourceType: '?∟頃', sourceTitle: title, note: `?桀?甇豢????${purchaseArchiveStatusV72(row)}嚗?蝣箄??脩垢鞈?憭曇??勗/PO/?潛巨/撽鞈?? })
+    if (['蝺?, '擃?].includes(priority)) pushAuto({ id: `AUTO-PURCHASE-PRI-${purchaseKey}`, title: `${priority}?芸??∟頃嚚?{title}`, type: '餈質馱??', priority, dueDate: row.requestDate || today, sourceType: '?∟頃', sourceTitle: title, note: `${row.status || '?芾身摰???} 繚 ${row.department || '?芸‵?桐?'} 繚 ${formatMoney(calculatePurchase(row).taxedTotal)}` })
   })
 
   workItems.forEach((item) => {
@@ -6917,7 +6917,7 @@ function createEmptyReminder() {
   const today = new Date()
   today.setDate(today.getDate() + 3)
   const dueDate = today.toISOString().slice(0, 10)
-  return { title: '', type: '餈質馱??', priority: '銝?, status: '敺???, dueDate, sourceType: '銝??, sourceTitle: '', note: '' }
+  return { title: '', type: '餈質馱??', priority: '銝?, status: '敺???, dueDate, sourceType: '銝??, sourceTitle: '', note: '' }
 }
 
 function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSource }) {
@@ -6936,7 +6936,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
   const autoReminders = buildAutoReminderRows({ purchases, workItems, tasks, projects: projectRows }, autoDone, autoSnooze)
   const allReminderRows = [...reminders.map((item) => ({ ...item, virtual: false })), ...autoReminders]
   const summary = getReminderSummary(allReminderRows)
-  const highPriorityCount = allReminderRows.filter((item) => item.status !== '撌脣??? && ['蝺?, '擃?].includes(item.priority)).length
+  const highPriorityCount = allReminderRows.filter((item) => item.status !== '撌脣??? && ['蝺?, '擃?].includes(item.priority)).length
   const purchaseReminderCount = allReminderRows.filter((item) => item.status !== '撌脣??? && String(item.sourceType || '').includes('?∟頃')).length
   const workReminderCount = allReminderRows.filter((item) => item.status !== '撌脣??? && (String(item.sourceType || '').includes('撌乩?') || String(item.sourceType || '').includes('隞餃?'))).length
   const filtered = allReminderRows
@@ -6949,8 +6949,8 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
       if (focusFilter === '?暹?') return item.status !== '撌脣??? && due.days < 0
       if (focusFilter === '隞') return item.status !== '撌脣??? && due.days === 0
       if (focusFilter === '?') return item.status !== '撌脣??? && due.days === 1
-      if (focusFilter === '?祇?) return item.status !== '撌脣??? && due.days >= 0 && due.days <= 7
-      if (focusFilter === '擃??) return item.status !== '撌脣??? && ['蝺?, '擃?].includes(item.priority)
+      if (focusFilter === '?祇?) return item.status !== '撌脣??? && due.days >= 0 && due.days <= 7
+      if (focusFilter === '擃??) return item.status !== '撌脣??? && ['蝺?, '擃?].includes(item.priority)
       if (focusFilter === '?∟頃??') return item.status !== '撌脣??? && String(item.sourceType || '').includes('?∟頃')
       if (focusFilter === '撌乩?鈭?') return item.status !== '撌脣??? && (String(item.sourceType || '').includes('撌乩?') || String(item.sourceType || '').includes('隞餃?'))
       if (focusFilter === '撌脣???) return item.status === '撌脣???
@@ -6970,9 +6970,9 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
     { id: 'overdue', title: '?暹?', rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days < 0) },
     { id: 'today', title: '隞?唳?', rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days === 0) },
     { id: 'tomorrow', title: '??唳?', rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days === 1) },
-    { id: 'week', title: '?祇勗??, rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days > 1 && getReminderDueInfo(item.dueDate).days <= 7) },
-    { id: 'high', title: '擃??/ 蝺?, rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days > 7 && ['蝺?, '擃?].includes(item.priority)) },
-    { id: 'later', title: '銋?', rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days > 7 && !['蝺?, '擃?].includes(item.priority)) },
+    { id: 'week', title: '?祇勗??, rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days > 1 && getReminderDueInfo(item.dueDate).days <= 7) },
+    { id: 'high', title: '擃??/ 蝺?, rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days > 7 && ['蝺?, '擃?].includes(item.priority)) },
+    { id: 'later', title: '銋?', rows: filtered.filter((item) => item.status !== '撌脣??? && getReminderDueInfo(item.dueDate).days > 7 && !['蝺?, '擃?].includes(item.priority)) },
     { id: 'done', title: '撌脣???, rows: filtered.filter((item) => item.status === '撌脣???) },
   ].filter((group) => group.rows.length)
 
@@ -7045,7 +7045,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
   }
 
   function resetDemoReminders() {
-    if (!confirmResetAction('蝣箏?閬?蝛箔蒂?蔭??鞈?嚗????撱嗅?/摰?蝝?????扎?)) return
+    if (!confirmResetAction('蝣箏?閬?蝛箔蒂?蔭??鞈?嚗????撱嗅?/摰?蝝?????扎?)) return
     setReminders(initialReminders)
     setAutoDone({})
     setAutoSnooze({})
@@ -7059,7 +7059,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
     { key: '?暹?', label: '?暹?', count: summary.overdue },
     { key: '隞', label: '隞', count: summary.today },
     { key: '?', label: '?', count: summary.tomorrow },
-    { key: '?祇?, label: '?祇?, count: summary.week },
+    { key: '?祇?, label: '?祇?, count: summary.week },
     { key: '擃??, label: '擃??, count: highPriorityCount },
     { key: '?∟頃??', label: '?∟頃??', count: purchaseReminderCount },
     { key: '撌乩?鈭?', label: '撌乩? / 隞餃?', count: workReminderCount },
@@ -7072,7 +7072,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
         <div>
           <p className="eyebrow">??銝剖?</p>
           <h2>?唳?撌乩??蜓????/h2>
-          <span>?游??????鞈澆?颲艾極雿???撠??唳?嚗??暹????亥?擃??/span>
+          <span>?游??????鞈澆?颲艾極雿???撠??唳?嚗??暹????亥?擃??/span>
         </div>
         <div className="record-actions">
           <button className="ghost-btn" type="button" onClick={resetDemoReminders}>皜征??鞈?</button>
@@ -7084,7 +7084,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
         <Metric label="?暹?" value={summary.overdue} tone="red" />
         <Metric label="隞" value={summary.today} tone="amber" />
         <Metric label="?" value={summary.tomorrow} tone="blue" />
-        <Metric label="?祇? value={summary.week} tone="violet" />
+        <Metric label="?祇? value={summary.week} tone="violet" />
         <Metric label="擃?? value={highPriorityCount} tone="red" />
         <Metric label="?∟頃??" value={purchaseReminderCount} tone="green" />
       </section>
@@ -7092,14 +7092,14 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
       <section className="fd203-attention-panel reminder-command-panel">
         <div>
           <p className="eyebrow">ACTION FOCUS</p>
-          <h3>隞予????</h3>
-          <span>{summary.overdue ? `??${summary.overdue} 蝑暹?嚗遣霅啣???? : summary.today ? `隞予??${summary.today} 蝑? : '?桀?瘝??暹?嚗???祇梯?擃??}</span>
+          <h3>隞予????</h3>
+          <span>{summary.overdue ? `??${summary.overdue} 蝑暹?嚗遣霅啣???? : summary.today ? `隞予??${summary.today} 蝑? : '?桀?瘝??暹?嚗???祇梯?擃??}</span>
         </div>
         <div className="fd203-attention-grid reminder-command-grid">
-          <article className={summary.overdue ? 'danger' : ''}><span>撌脤暹?</span><strong>{summary.overdue}</strong><small>頞??唳??交摰?</small></article>
-          <article className={summary.today ? 'warning' : ''}><span>隞?唳?</span><strong>{summary.today}</strong><small>隞予?閬???/small></article>
+          <article className={summary.overdue ? 'danger' : ''}><span>撌脤暹?</span><strong>{summary.overdue}</strong><small>頞??唳??交摰?</small></article>
+          <article className={summary.today ? 'warning' : ''}><span>隞?唳?</span><strong>{summary.today}</strong><small>隞予?閬???/small></article>
           <article className={purchaseReminderCount ? 'warning' : ''}><span>?∟頃敺齒</span><strong>{purchaseReminderCount}</strong><small>隞狡 / ?啗疏 / 撽 / 甇豢?</small></article>
-          <article className={highPriorityCount ? 'danger' : ''}><span>蝺仿??芸?</span><strong>{highPriorityCount}</strong><small>撱箄降???</small></article>
+          <article className={highPriorityCount ? 'danger' : ''}><span>蝺仿??芸?</span><strong>{highPriorityCount}</strong><small>撱箄降???</small></article>
         </div>
       </section>
 
@@ -7113,7 +7113,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
             <label>?芸?蝝?select value={draft.priority} onChange={(event) => updateDraft('priority', event.target.value)}>{reminderPriorityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
             <label>?唳???input type="date" value={draft.dueDate} onChange={(event) => updateDraft('dueDate', event.target.value)} /></label>
             <label>?靘?<select value={draft.sourceType} onChange={(event) => updateDraft('sourceType', event.target.value)}>{reminderSourceOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-            <label>??迂<input value={draft.sourceTitle} onChange={(event) => updateDraft('sourceTitle', event.target.value)} placeholder="?∟頃?柴?獢?隞餃??迂" /></label>
+            <label>??迂<input value={draft.sourceTitle} onChange={(event) => updateDraft('sourceTitle', event.target.value)} placeholder="?∟頃?柴?獢?隞餃??迂" /></label>
             <label className="wide-field">?酉<textarea value={draft.note} onChange={(event) => updateDraft('note', event.target.value)} placeholder="鋆?閬蕭頩斤??批捆" /></label>
           </div>
           <div className="modal-actions inline-actions"><button type="button" onClick={() => setShowForm(false)}>??</button><button type="button" className="primary-btn" onClick={addReminder}>撱箇???</button></div>
@@ -7130,8 +7130,8 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
           <button type="button" className={caseFilter === '?券' ? 'active' : ''} onClick={() => { setCaseFilter('?券'); setStatusFilter('?券') }}>?券 <small>{allReminderRows.length}</small></button>
         </div>
         <div className="purchase-filter-bar reminder-filter-bar">
-          <label className="purchase-search-field">??<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="璅????臭?皞?閮?.." /></label>
-          <label>???select value={statusFilter} onChange={(event) => { const nextStatus = event.target.value; setStatusFilter(nextStatus); if (nextStatus === '撌脣???) setCaseFilter('?券') }}><option value="?券">?券</option>{reminderStatusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label className="purchase-search-field">??<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="璅????臭?皞?閮?.." /></label>
+          <label>???select value={statusFilter} onChange={(event) => { const nextStatus = event.target.value; setStatusFilter(nextStatus); if (nextStatus === '撌脣???) setCaseFilter('?券') }}><option value="?券">?券</option>{reminderStatusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <label>憿?<select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="?券">?券</option>{reminderTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <button className="ghost-btn" type="button" onClick={() => { setKeyword(''); setCaseFilter('?芸???); setStatusFilter('?券'); setTypeFilter('?券'); setFocusFilter('?券') }}>皜蝭拚</button>
         </div>
@@ -7162,8 +7162,8 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
                       <button type="button" onClick={() => completeReminder(item)}>{item.status === '撌脣??? ? '???' : '摰?'}</button>
                       <button type="button" onClick={() => deferReminder(item.id, 1, item.virtual)}>?予</button>
                       <button type="button" onClick={() => deferReminder(item.id, 3, item.virtual)}>銝予敺?/button>
-                      <button type="button" onClick={() => deferReminder(item.id, 7, item.virtual)}>銝?/button>
-                      {item.sourceType !== '銝?? && <button type="button" onClick={() => onNavigateSource?.(item)}>???</button>}
+                      <button type="button" onClick={() => deferReminder(item.id, 7, item.virtual)}>銝?/button>
+                      {item.sourceType !== '銝?? && <button type="button" onClick={() => onNavigateSource?.(item)}>???</button>}
                       {!item.virtual && <button className="danger" type="button" onClick={() => removeReminder(item.id)}>?芷</button>}
                     </div>
                   </article>
@@ -7349,7 +7349,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   async function clearWorkspaceModule(dataKey) {
     const target = backupWorkspaceKeys.find((item) => item.key === dataKey)
     if (!target) return
-    if (!window.confirm(`蝣箏?閬?蝛箝?{target.label}??甇文?雿??蝛箄府璅∠?鞈??)) return
+    if (!window.confirm(`蝣箏?閬?蝛箝?{target.label}??甇文?雿??蝛箄府璅∠?鞈??)) return
     setBackupBusy(true)
     try {
       const localMap = {
@@ -7372,7 +7372,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   }
 
   async function clearWorkspaceData() {
-    if (!window.confirm('蝣箏?閬?蝛?FlowDesk 撌乩?鞈?嚗迨??????亥身摰?)) return
+    if (!window.confirm('蝣箏?閬?蝛?FlowDesk 撌乩?鞈?嚗迨??????亥身摰?)) return
     setBackupBusy(true)
     try {
       backupLocalKeys.filter((key) => !key.includes('theme') && !key.includes('icon') && !key.includes('module-order')).forEach((key) => window.localStorage.removeItem(key))
@@ -7388,7 +7388,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   }
 
   function resetPurchaseDemo() {
-    if (!confirmResetAction('蝣箏?閬?蝛箸鞈潸????∟頃蝝?風蝔?瘚?閮剖??◤蝘駁??)) return
+    if (!confirmResetAction('蝣箏?閬?蝛箸鞈潸????∟頃蝝?風蝔?瘚?閮剖??◤蝘駁??)) return
     window.localStorage.removeItem('flowdesk-purchases-v19')
     window.localStorage.removeItem('flowdesk-purchase-history-v19')
     window.localStorage.removeItem('flowdesk-purchase-stages')
@@ -7470,7 +7470,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
         id: nextId,
         name,
         rows: 0,
-        fields: ['?迂', '???, '鞎痊鈭?, '?酉'],
+        fields: ['?迂', '???, '鞎痊鈭?, '?酉'],
         color: 'blue',
         icon: '??',
         visible: true,
@@ -7529,21 +7529,21 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   const settingCards = [
     { id: 'appearance', title: '憭?閮剖?', eyebrow: 'UI THEME', summary: `?桀??寞?嚗?{activeAppearancePreset?.name || '?芾?蝯?'} 繚 ${activeTheme.name}${themeShuffleSettings.enabled ? ' 繚 ?芸??冽?銝? : ''}`, icon: '?' },
     { id: 'purchase', title: '?∟頃閮剖?', eyebrow: 'PURCHASE', summary: '?∟頃鞈???蝔雁霅?, icon: '?屁' },
-    { id: 'collections', title: '鞈???閮剖?', eyebrow: 'COLLECTIONS', summary: `${collections.filter((item) => item.visible !== false).length} ?＊蝷箔葉嚗恣????????憭?`, icon: '??' },
+    { id: 'collections', title: '鞈???閮剖?', eyebrow: 'COLLECTIONS', summary: `${collections.filter((item) => item.visible !== false).length} ?＊蝷箔葉嚗恣????????憭?`, icon: '??' },
     { id: 'sidebar', title: '?湧?甈身摰?, eyebrow: 'LAYOUT', summary: '璅∠????????', icon: '?妣' },
     { id: 'icons', title: '?內閮剖?', eyebrow: 'ICONS', summary: `?桀?憸冽嚗?{iconStyleMode === 'auto' ? '頝 UI 銝駁?' : activeIconStyle.name}`, icon: '?? },
     { id: 'reminders', title: '??閮剖?', eyebrow: 'REMINDERS', summary: '??憿?????鞈??渡?', icon: '??' },
-    { id: 'data', title: '鞈??遢', eyebrow: 'BACKUP', summary: '?臬????蝛箄??郊瑼Ｘ', icon: '?' },
-    { id: 'focus', title: '?摰?', eyebrow: 'FLOWDESK', summary: '?嗆??????皜?璅∠??券?鈭斗閬?', icon: '?妣' },
+    { id: 'data', title: '鞈??遢', eyebrow: 'BACKUP', summary: '?臬????蝛箄??郊瑼Ｘ', icon: '?' },
+    { id: 'focus', title: '?摰?', eyebrow: 'FLOWDESK', summary: '?嗆??????皜?璅∠??券?鈭斗閬?', icon: '?妣' },
     { id: 'system', title: '蝟餌絞鞈?', eyebrow: 'VERSION', summary: FLOWDESK_VERSION_LABEL, icon: '??' },
   ]
   const v20Checklist = [
-    ['??嗆?', '撌乩?鈭??鞈潦?獢??葉敹???啣????踹?鈭??'],
-    ['?∟頃蝞∠?', '憭???憿蜇憿O/?勗??蝞榆?啜??風蝔?皜?詨?蝛拙???],
-    ['撠?蝞∠?', '???蝔?摰??遣蝡極雿脣漲隡啁???閬??],
-    ['??銝剖?', '?暹????乓??乓?勗?蝯??舀撱嗅????舫???],
+    ['??嗆?', '撌乩?鈭??鞈潦?獢??葉敹???啣????踹?鈭??'],
+    ['?∟頃蝞∠?', '憭???憿蜇憿O/?勗??蝞榆?啜??風蝔?皜?詨?蝛拙???],
+    ['撠?蝞∠?', '???蝔?摰??遣蝡極雿脣漲隡啁???閬??],
+    ['??銝剖?', '?暹????乓??乓?勗?蝯??舀撱嗅????舫???],
     ['閮剖??遢', '?臬?汗?????芸??遢??璅∠?皜征??甇亦???],
-    ['??銝?游?', '撌亙?征???湔?蝝啜?撠祟?貉??臬?亙?嗆?'],
+    ['??銝?游?', '撌亙?征???湔?蝝啜?撠祟?貉??臬?亙?嗆?'],
   ]
   const syncStatusText = flowdeskCloud ? '?脩垢鞈??郊撌脣??? : '?桀?雿輻?祆??鞈?'
   const lastSyncText = typeof window !== 'undefined' ? (window.localStorage.getItem('flowdesk-last-cloud-sync') || '撠摰??郊') : '??
@@ -7581,7 +7581,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             {settingsView === 'appearance' && (
         <section className="panel wide settings-panel fd30-appearance-panel fd31-vivid-appearance-panel">
           <PanelTitle eyebrow="憭?閮剖?" title="銝駁?閬死憟?" />
-          <p className="settings-note">??敺?蝡憟?唬蜓閬???蝐扎??脣漲璇??暺?撓?交? focus ?脰???遙???歇?舀銝駁??芸??冽?霈?嚗瘥?5 ??頛芣?銝駁?嚗??賣??璈??箏??桀?銝駁???/p>
+          <p className="settings-note">??敺?蝡憟?唬蜓閬???蝐扎??脣漲璇??暺?撓?交? focus ?脰???遙???歇?舀銝駁??芸??冽?霈?嚗瘥?5 ??頛芣?銝駁?嚗??賣??璈??箏??桀?銝駁???/p>
           <div className="fd40-appearance-nav">
             <a href="#fd40-presets">?刻?寞?</a>
             <a href="#fd40-mode">憭? / ??</a>
@@ -7608,7 +7608,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               <div>
                 <span>銝駁??芸??冽?</span>
                 <strong>{themeShuffleSettings.enabled ? `?芸?霈?銝?繚 ${themeShuffleCountdown}` : '?桀?撌脣摰蜓憿?}</strong>
-                <small>?芸???FlowDesk 銝駁??莎?銝??寡???????銋????∟頃皜閮剖???閮剜? 5 ??頛芣?銝甈～?/small>
+                <small>?芸???FlowDesk 銝駁??莎?銝??寡???????銋????∟頃皜閮剖???閮剜? 5 ??頛芣?銝甈～?/small>
               </div>
               <div className="fd84-theme-shuffle-actions">
                 <button className={themeShuffleSettings.enabled ? 'primary-btn' : 'ghost-btn'} type="button" onClick={() => toggleThemeShuffle(!themeShuffleSettings.enabled)}>
@@ -7642,18 +7642,18 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
                 <small>{themeShuffleModeOptions.find((item) => item.id === themeShuffleSettings.mode)?.description}</small>
               </div>
               <div className="fd84-theme-shuffle-card fd84-theme-shuffle-status">
-                <span>?桀????/span>
+                <span>?桀????/span>
                 <strong>{activeTheme.name}</strong>
-                <small>{themeShuffleSettings.enabled ? `銝活?芸???嚗?{themeShuffleCountdown}` : '撌脣摰?蜓憿??舀????單?銝??????}</small>
+                <small>{themeShuffleSettings.enabled ? `銝活?芸???嚗?{themeShuffleCountdown}` : '撌脣摰?蜓憿??舀????單?銝??????}</small>
               </div>
             </div>
           </div>
           <div className="fd38-preset-panel" id="fd40-presets">
             <div className="fd38-preset-head">
               <div>
-                <span>銝?萄?閫?寞?</span>
+                <span>銝?萄?閫?寞?</span>
                 <strong>{activeAppearancePreset?.name || '?芾?蝯?'}</strong>
-                <small>敹恍??撣詻???蝷箝???雿僕?暹芋撘?銝??隤踵銝駁???閫????/small>
+                <small>敹恍??撣詻???蝷箝???雿僕?暹芋撘?銝??隤踵銝駁???閫????/small>
               </div>
               <em>{activeTheme.name} 繚 {activeAppearanceMode.name} 繚 {activeMotionLevel.name}</em>
             </div>
@@ -7716,7 +7716,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
             <div>
               <span>??摰撱箄降</span>
               <strong>{motionLevel === 'holo' ? '?冽璆萄??拙?撅內嚗撣詨?寧璅?' : motionLevel === 'off' ? '撌脤??????拙?雿僕?暹?雿? : '?桀???閮剖??拙??亙虜雿輻'}</strong>
-              <small>?????鋆蔭???雿之???舐???閬?敶望??瑟???雿?嚗?雿僕?暹獢?/small>
+              <small>?????鋆蔭???雿之???舐???閬?敶望??瑟???雿?嚗?雿僕?暹獢?/small>
             </div>
             <button className="ghost-btn" type="button" onClick={() => setMotionLevel('standard')}>??璅???</button>
           </div>
@@ -7725,7 +7725,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               <div>
                 <span>銝駁??汗</span>
                 <strong>{activeTheme.name} 繚 {activeAppearanceMode.name}</strong>
-                <small>??????蝐扎脣漲????璇?憟????/small>
+                <small>??????蝐扎脣漲????璇?憟????/small>
               </div>
               <em>{activeMotionLevel.name}</em>
             </div>
@@ -7758,7 +7758,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               <div className="fd35-preview-card fd35-preview-card-glow">
                 <span>?∠? Highlight</span>
                 <strong>隞??</strong>
-                <small>銝駁??脫?憟?圈??芋蝯??????∠???/small>
+                <small>銝駁??脫?憟?圈??芋蝯??????∠???/small>
               </div>
             </div>
           </div>
@@ -7767,7 +7767,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
               <div>
                 <span>?芾?銝駁???/span>
                 <strong>撱箇??? FlowDesk ?脣蔗</strong>
-                <small>隤踵銝敹敺??舐??喳??冽????蜓憿?/small>
+                <small>隤踵銝敹敺??舐??喳??冽????蜓憿?/small>
               </div>
               <div className="fd36-builder-actions">
                 <button className="ghost-btn" type="button" onClick={protectCurrentCustomTheme}>?芸???撠?</button>
@@ -7819,7 +7819,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
       {settingsView === 'purchase' && (
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="?∟頃閮剖?" title="?∟頃鞈?" />
-          <p className="settings-note">?∟頃?舐蝡????剁?靽?憭???撠祟?詻???湔?蝝啜蝑?支?霅瑁??∟頃瘚?閮剖???/p>
+          <p className="settings-note">?∟頃?舐蝡????剁?靽?憭???撠祟?詻???湔?蝝啜蝑?支?霅瑁??∟頃瘚?閮剖???/p>
           <button className="ghost-btn" type="button" onClick={resetPurchaseDemo}>皜征?∟頃鞈?</button>
         </section>
       )}
@@ -7827,14 +7827,14 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
       {settingsView === 'sidebar' && (
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="?閮剖?" title="?湧?甈?摨? />
-          <p className="settings-note">?湧?甈芋蝯隞交??唾矽?湧?摨?蝟餌絞???雿????/p>
+          <p className="settings-note">?湧?甈芋蝯隞交??唾矽?湧?摨?蝟餌絞???雿????/p>
         </section>
       )}
 
       {settingsView === 'collections' && (
         <section className="panel wide settings-panel settings-detail-panel collection-settings-panel">
           <PanelTitle eyebrow="鞈???" title="蝞∠?鞈???" />
-          <p className="settings-note">?ㄐ?芰恣???葉敹?鞈????亙??蝷箝??脯＊蝷箇????身閬?嚗?蝔?雁?鞈潛蝡身摰?/p>
+          <p className="settings-note">?ㄐ?芰恣???葉敹?鞈????亙??蝷箝??脯＊蝷箇????身閬?嚗?蝔?雁?鞈潛蝡身摰?/p>
           <div className="collection-add-row">
             <input value={newCollectionName} onChange={(event) => setNewCollectionName(event.target.value)} placeholder="頛詨?啁?鞈????迂嚗?憒???皜" />
             <button className="primary-btn" type="button" onClick={addCollection}>?啣?鞈???</button>
@@ -7868,7 +7868,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
       {settingsView === 'icons' && (
         <section className="panel wide settings-panel settings-detail-panel icon-settings-panel">
           <PanelTitle eyebrow="?內閮剖?" title="銝駁?株?鞈?皜?內" />
-          <p className="settings-note">?ㄐ?臭誑???湔?撌血銝駁?株?蝝?葉敹????桃??內?靘????格憓?憿?嚗????曉?ㄐ??/p>
+          <p className="settings-note">?ㄐ?臭誑???湔?撌血銝駁?株?蝝?葉敹????桃??內?靘????格憓?憿?嚗????曉?ㄐ??/p>
           <div className="icon-style-panel">
             <div>
               <p className="eyebrow">ICON STYLE</p>
@@ -7915,11 +7915,11 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
       {settingsView === 'reminders' && (
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="??閮剖?" title="??銝剖?" />
-          <p className="settings-note">??銝剖??桀??舀銝?祆??蕭頩斗?????閬偷?詻鞎刻?蝥?????/p>
+          <p className="settings-note">??銝剖??桀??舀銝?祆??蕭頩斗?????閬偷?詻鞎刻?蝥?????/p>
           <div className="settings-info-list">
             <div><span>??憿?</span><strong>{reminderTypeOptions.length} 蝔?/strong></div>
-            <div><span>?????/span><strong>{reminderStatusOptions.join(' / ')}</strong></div>
-            <div><span>擐???</span><strong>?暹? / 隞 / ? / ?祇?/ ?芰?</strong></div>
+            <div><span>?????/span><strong>{reminderStatusOptions.join(' / ')}</strong></div>
+            <div><span>擐???</span><strong>?暹? / 隞 / ? / ?祇?/ ?芰?</strong></div>
           </div>
           <button className="ghost-btn" type="button" onClick={resetReminderDemo}>皜征??鞈?</button>
         </section>
@@ -7929,8 +7929,8 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
         <section className="panel wide settings-panel settings-detail-panel data-backup-panel">
           <PanelTitle eyebrow="鞈??遢" title="?遢???? />
           <div className="backup-sync-strip">
-            <article><span>?郊???/span><strong>{syncStatusText}</strong></article>
-            <article><span>?敺?甇?/span><strong>{lastSyncText}</strong></article>
+            <article><span>?郊???/span><strong>{syncStatusText}</strong></article>
+            <article><span>?敺?甇?/span><strong>{lastSyncText}</strong></article>
             <article><span>?遢?</span><strong>{FLOWDESK_VERSION_LABEL}</strong></article>
           </div>
           <div className="backup-action-grid">
@@ -7973,7 +7973,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
         <section className="panel wide settings-panel settings-detail-panel focus-definition-panel">
           <PanelTitle eyebrow="?摰?" title="FlowDesk v20.1.0 ?嗆???" />
           <FlowDeskBoundaryMap />
-          <p className="settings-note">????摰寞????????啣?雿????芣????踹??颲艾鞈潔??蜓瘚???獢?????怒?/p>
+          <p className="settings-note">????摰寞????????啣?雿????芣????踹??颲艾鞈潔??蜓瘚???獢?????怒?/p>
           <div className="focus-definition-grid">
             {Object.entries(modulePurposeMap).filter(([key]) => ['board', 'base', 'roadmap', 'reminders', 'desk', 'insight'].includes(key)).map(([key, item]) => (
               <article key={key}>
@@ -7990,16 +7990,16 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="蝟餌絞鞈?" title={FLOWDESK_VERSION_LABEL} />
           <div className="settings-info-list">
-            <div><span>????/span><strong>{FLOWDESK_VERSION_LABEL} ??嗆???/strong></div>
+            <div><span>????/span><strong>{FLOWDESK_VERSION_LABEL} ??嗆???/strong></div>
             <div><span>?脩垢?郊</span><strong>{flowdeskCloud ? '撌脣??? : '?祆?璅∪?'}</strong></div>
             <div><span>Supabase 閮剖?</span><strong>{hasSupabaseConfig ? '撌脰身摰? : '?芾身摰?}</strong></div>
-            <div><span>?敺?甇交???/span><strong>{lastSyncText}</strong></div>
-            <div><span>?敺炎??/span><strong>{new Date().toLocaleString('zh-TW', { hour12: false })}</strong></div>
+            <div><span>?敺?甇交???/span><strong>{lastSyncText}</strong></div>
+            <div><span>?敺炎??/span><strong>{new Date().toLocaleString('zh-TW', { hour12: false })}</strong></div>
             <div><span>?桀?銝駁?</span><strong>{activeTheme.name}</strong></div>
             <div><span>?內憸冽</span><strong>{iconStyleMode === 'auto' ? `頝 UI 銝駁?嚗?{activeIconStyle.name}嚗 : activeIconStyle.name}</strong></div>
             <div><span>??銝剖?</span><strong>?芸?????</strong></div>
             <div><span>?∟頃鞈?</span><strong>靽??∟頃銝餅?蝔?/strong></div>
-            <div><span>鞈???</span><strong>?寧頛蝝???/strong></div>
+            <div><span>鞈???</span><strong>?寧頛蝝???/strong></div>
           </div>
           <div className="flowdesk-v20-checklist">
             {v20Checklist.map(([title, detail]) => (
@@ -8053,7 +8053,7 @@ function ContextPanel({ selected, onUpdateItem, onDeleteItem, onDuplicateItem })
       title: selected.title || '',
       lane: selected.lane || '敺?憿?,
       priority: selected.priority || '銝?,
-      type: selected.type || '銝?砍極雿?,
+      type: selected.type || '銝?砍極雿?,
       owner: selected.owner || '',
       requester: selected.requester || '',
       due: selected.due || '',
@@ -8098,8 +8098,8 @@ function ContextPanel({ selected, onUpdateItem, onDeleteItem, onDuplicateItem })
 
       <div className="work-edit-form">
         <label className="work-edit-wide"><span>璅?</span><input value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} /></label>
-        <label><span>???/span><select value={draft.lane} onChange={(event) => updateDraft('lane', event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
-        <label><span>?芸?蝝?/span><select value={draft.priority} onChange={(event) => updateDraft('priority', event.target.value)}>{['蝺?, '擃?, '銝?, '雿?].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+        <label><span>???/span><select value={draft.lane} onChange={(event) => updateDraft('lane', event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
+        <label><span>?芸?蝝?/span><select value={draft.priority} onChange={(event) => updateDraft('priority', event.target.value)}>{['蝺?, '擃?, '銝?, '雿?].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
         <label><span>憿?</span><input value={draft.type} onChange={(event) => updateDraft('type', event.target.value)} /></label>
         <label><span>鞎痊鈭?/span><input value={draft.owner} onChange={(event) => updateDraft('owner', event.target.value)} /></label>
         <label><span>?鈭?/span><input value={draft.requester} onChange={(event) => updateDraft('requester', event.target.value)} /></label>
@@ -8129,11 +8129,11 @@ function CreateLauncher({ onClose }) {
     <div className="modal-backdrop">
       <section className="launcher">
         <div className="launcher-head">
-          <div><p className="eyebrow">敹恍遣蝡?/p><h2>撱箇??啁??</h2></div>
+          <div><p className="eyebrow">敹恍遣蝡?/p><h2>撱箇??啁??</h2></div>
           <button type="button" onClick={onClose}>??/button>
         </div>
         <div className="launcher-grid">
-          {['撌乩?敺齒', '?∟頃??, '撠?', '撱?蝝??, '?辣??', '??閬?'].map((title) => <button type="button" key={title}><strong>{title}</strong></button>)}
+          {['撌乩?敺齒', '?∟頃??, '撠?', '撱?蝝??, '?辣??', '??閬?'].map((title) => <button type="button" key={title}><strong>{title}</strong></button>)}
         </div>
       </section>
     </div>
@@ -8207,7 +8207,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
     arrivalDueDate: initial?.arrivalDueDate || '',
     acceptanceDate: initial?.acceptanceDate || '',
     priority: normalizePurchasePriority(initial?.priority),
-    status: initial?.status || stages?.[0]?.name || '?瘙Ⅱ隤?,
+    status: initial?.status || stages?.[0]?.name || '?瘙Ⅱ隤?,
     paymentStatus: initial?.paymentStatus || '?芯?甈?,
     arrivalStatus: initial?.arrivalStatus || '?芸鞎?,
     acceptanceStatus: initial?.acceptanceStatus || '?芷???,
@@ -8228,12 +8228,12 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
   const folderUrl = String(form.archiveFolder?.url || '').trim()
   const folderUrlLooksOk = !folderUrl || /^https?:\/\//i.test(folderUrl)
   const validationIssues = [
-    !String(form.department || '').trim() ? { type: 'block', text: '隢‵撖思蝙?典雿?皜?絞閮????? } : null,
-    !hasNamedItem ? { type: 'block', text: '?喳??閬‵撖思??鞈澆??? } : null,
-    amount.taxedTotal <= 0 ? { type: 'warn', text: '?桀??怎?蝮賡???0嚗?蝣箄??賊???寞?行迤蝣箝? } : null,
+    !String(form.department || '').trim() ? { type: 'block', text: '隢‵撖思蝙?典雿?皜?絞閮????? } : null,
+    !hasNamedItem ? { type: 'block', text: '?喳??閬‵撖思??鞈澆??? } : null,
+    amount.taxedTotal <= 0 ? { type: 'warn', text: '?桀??怎?蝮賡???0嚗?蝣箄??賊???寞?行迤蝣箝? } : null,
     !String(form.requester || '').trim() ? { type: 'warn', text: '撠憛怠神?唾?鈭綽?敺?餈質馱??頛?斗蝒?? } : null,
-    !String(form.user || '').trim() ? { type: 'warn', text: '撠憛怠神雿輻鈭綽??臬??征雿遣霅啗?銝? } : null,
-    folderUrl && !folderUrlLooksOk ? { type: 'warn', text: '?脩垢鞈?憭暸???絲靘???http/https ?嚗?蝣箄??臬?舫??? } : null,
+    !String(form.user || '').trim() ? { type: 'warn', text: '撠憛怠神雿輻鈭綽??臬??征雿遣霅啗?銝? } : null,
+    folderUrl && !folderUrlLooksOk ? { type: 'warn', text: '?脩垢鞈?憭暸???絲靘???http/https ?嚗?蝣箄??臬?舫??? } : null,
   ].filter(Boolean)
   const validationBlockers = validationIssues.filter((issue) => issue.type === 'block')
   const validationWarnings = validationIssues.filter((issue) => issue.type === 'warn')
@@ -8308,9 +8308,9 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
       <section className="launcher purchase-modal v16-modal fd20387-purchase-modal">
         <div className="launcher-head purchase-modal-head fd20387-purchase-modal-head">
           <div>
-            <p className="eyebrow">?∟頃蝝??/p>
+            <p className="eyebrow">?∟頃蝝??/p>
             <h2>{mode === 'edit' ? '蝺刻摩?∟頃' : '?啣??∟頃'}</h2>
-            <span>??憛怠神嚗????????蝞??脣?????祆炎?乓?/span>
+            <span>??憛怠神嚗????????蝞??脣?????祆炎?乓?/span>
           </div>
           <button type="button" onClick={onClose}>??/button>
         </div>
@@ -8339,10 +8339,10 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
 
           <section className="purchase-form-section">
             <div className="purchase-form-section-head">
-              <div><p className="eyebrow">?箸鞈?</p><h3>??琿??∟頃??閬扯??桀??挾</h3></div>
+              <div><p className="eyebrow">?箸鞈?</p><h3>??琿??∟頃??閬扯??桀??挾</h3></div>
             </div>
             <div className="form-grid fd20387-basic-grid">
-              <label>瘚????select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
+              <label>瘚????select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
               <label>?芸?蝑?<select value={form.priority} onChange={(event) => update('priority', event.target.value)}>{purchasePriorityOptions.map((priority) => <option key={priority.id} value={priority.id}>{priority.label}</option>)}</select></label>
               <label>撱?<input value={form.vendor} onChange={(event) => update('vendor', event.target.value)} placeholder="靘? ?? / ??" /></label>
               <label>?唾???input type="date" value={form.requestDate} onChange={(event) => update('requestDate', event.target.value)} /></label>
@@ -8362,7 +8362,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
               <div><p className="eyebrow">雿輻?隢?閮?/p><h3>霈?蝥蕭頩斤?狐?唾??狐雿輻??雿???/h3></div>
             </div>
             <div className="form-grid fd20387-people-grid">
-              <label>雿輻?桐?<input value={form.department} onChange={(event) => update('department', event.target.value)} placeholder="靘? 擃??平?" /></label>
+              <label>雿輻?桐?<input value={form.department} onChange={(event) => update('department', event.target.value)} placeholder="靘? 擃??平?" /></label>
               <label>?唾?鈭?input value={form.requester} onChange={(event) => update('requester', event.target.value)} /></label>
               <label>雿輻鈭?input value={form.user || ''} onChange={(event) => update('user', event.target.value)} placeholder="撖阡?雿輻鈭?/ ?券?" /></label>
             </div>
@@ -8371,7 +8371,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
           <section className="purchase-form-section purchase-form-section-flat">
             <div className="purchase-items-editor fd20387-purchase-items-editor">
               <div className="purchase-items-head">
-                <div><p className="eyebrow">?∟頃??</p><h3>銝蝑鞈澆?憭??/h3></div>
+                <div><p className="eyebrow">?∟頃??</p><h3>銝蝑鞈澆?憭??/h3></div>
                 <button className="ghost-btn" type="button" onClick={addItem}>?啣???</button>
               </div>
               <div className="purchase-item-summary">
@@ -8388,7 +8388,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
                       <label className="item-name">??<input value={item.name} onChange={(event) => updateItem(item.id, 'name', event.target.value)} placeholder="靘? Wi?i AP" /></label>
                       <label>?賊?<input type="number" min="0" value={item.quantity} onChange={(event) => updateItem(item.id, 'quantity', event.target.value)} /></label>
                       <label>?桀<input type="number" min="0" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', event.target.value)} /></label>
-                      <label className="item-note">?酉<input value={item.note || ''} onChange={(event) => updateItem(item.id, 'note', event.target.value)} placeholder="閬 / ?券? /></label>
+                      <label className="item-note">?酉<input value={item.note || ''} onChange={(event) => updateItem(item.id, 'note', event.target.value)} placeholder="閬 / ?券? /></label>
                       <div className="line-total"><span>撠?</span><strong>{formatMoney(lineTotal)}</strong></div>
                       <div className="line-actions">
                         <button type="button" onClick={() => duplicateItem(item.id)}>銴ˊ</button>
@@ -8403,7 +8403,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
 
           <section className="purchase-form-section">
             <div className="purchase-form-section-head">
-              <div><p className="eyebrow">????憿?/p><h3>???桀??葆?箸蝔?憿??怎?蝮賡?</h3></div>
+              <div><p className="eyebrow">????憿?/p><h3>???桀??葆?箸蝔?憿??怎?蝮賡?</h3></div>
             </div>
             <div className="form-grid money-grid fd20387-money-grid">
               <label>蝔<select value={form.taxMode} onChange={(event) => update('taxMode', event.target.value)}><option value="?芰?">?桀?芰?</option><option value="?怎?">?桀?怎?</option></select></label>
@@ -8424,12 +8424,12 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
 
           <section className="purchase-form-section">
             <div className="purchase-form-section-head">
-              <div><p className="eyebrow">瘚?????交?</p><h3>隞狡?鞎具??園?銝剔恣??敺???銋?瘥?皞?/h3></div>
+              <div><p className="eyebrow">瘚?????交?</p><h3>隞狡?鞎具??園?銝剔恣??敺???銋?瘥?皞?/h3></div>
             </div>
             <div className="form-grid fd20387-status-grid">
-              <label>隞狡???select value={form.paymentStatus} onChange={(event) => update('paymentStatus', event.target.value)}>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-              <label>?啗疏???select value={form.arrivalStatus} onChange={(event) => update('arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-              <label>撽???select value={form.acceptanceStatus} onChange={(event) => update('acceptanceStatus', event.target.value)}>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>隞狡???select value={form.paymentStatus} onChange={(event) => update('paymentStatus', event.target.value)}>{purchasePaymentStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>?啗疏???select value={form.arrivalStatus} onChange={(event) => update('arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label>撽???select value={form.acceptanceStatus} onChange={(event) => update('acceptanceStatus', event.target.value)}>{purchaseAcceptanceStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label>隞狡??<input type="date" value={form.paymentDueDate} onChange={(event) => update('paymentDueDate', event.target.value)} /></label>
               <label>???啗疏<input type="date" value={form.arrivalDueDate} onChange={(event) => update('arrivalDueDate', event.target.value)} /></label>
               <label>銝??input type="date" value={form.orderDate} onChange={(event) => update('orderDate', event.target.value)} /></label>
@@ -8452,7 +8452,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
 
           <section className="purchase-form-section">
             <div className="purchase-form-section-head">
-              <div><p className="eyebrow">?酉 / 甇瑞?鋆?</p><h3>閮?閰Ｗ?蜓蝞∠Ⅱ隤畾??潭?敺???隤芣?</h3></div>
+              <div><p className="eyebrow">?酉 / 甇瑞?鋆?</p><h3>閮?閰Ｗ?蜓蝞∠Ⅱ隤畾??潭?敺???隤芣?</h3></div>
             </div>
             <div className="form-grid">
               <label className="form-wide">?酉<textarea value={form.note} onChange={(event) => update('note', event.target.value)} placeholder="靘?嚗?銝餌恣蝣箄?閬?歇隢????勗???剝??Ｗ?雿輻..." /></label>
@@ -8576,7 +8576,7 @@ function PurchaseDetailModalV76({
   const amount = calculatePurchase(row)
   const items = getPurchaseItems(row)
   const archiveStatus = purchaseArchiveStatusV72(row)
-  const activeTabs = ['?箸鞈?', '???敦', '甇豢?鞈?', '甇瑞?蝝??]
+  const activeTabs = ['?箸鞈?', '???敦', '甇豢?鞈?', '甇瑞?蝝??]
 
   const closeDialog = () => {
     if (typeof onClose === 'function') onClose()
@@ -8635,7 +8635,7 @@ function PurchaseDetailModalV76({
         <section className="fd79-purchase-modal-summary" aria-label="?∟頃????">
           <article><span>雿輻?桐?</span><strong>{row.department || '?芣?摰?}</strong></article>
           <article><span>?唾?鈭?/ 雿輻鈭?/span><strong>{row.requester || '??} / {row.user || row.usedBy || row.requester || '??}</strong></article>
-          <article><span>?桀????/span><strong>{row.status || '?芾身摰?}</strong></article>
+          <article><span>?桀????/span><strong>{row.status || '?芾身摰?}</strong></article>
           <article><span>?芸?蝑?</span><strong><PurchasePriorityBadge value={row.priority} /></strong></article>
           <article><span>??</span><strong>{items.length} ??/strong></article>
           <article><span>?怎???</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
@@ -8677,21 +8677,21 @@ function PurchaseDetailModalV76({
               <PanelTitle eyebrow="???阡?" title="銝?甇亥??? />
               <div className="fd79-side-action-list">
                 <button type="button" onClick={onEdit}>蝺刻摩?∟頃鞈?</button>
-                <button type="button" onClick={onAdvance}>?券脖?銝瘚?</button>
+                <button type="button" onClick={onAdvance}>?券脖?銝瘚?</button>
                 <button type="button" onClick={onComplete}>閬摰?</button>
                 <button type="button" onClick={onCreateTask}>撱箇?餈質馱撌乩?</button>
               </div>
             </section>
 
             <section className="fd76-purchase-side-card fd79-purchase-side-card">
-              <PanelTitle eyebrow="??風蝔? title="?餈??? />
+              <PanelTitle eyebrow="??風蝔? title="?餈??? />
               <div className="history-list fd79-history-compact">
                 {purchaseHistory.length ? purchaseHistory.slice(0, 8).map((entry, index) => (
                   <article key={`${entry.time || 'time'}-${index}`}>
                     <span>{entry.message}</span>
                     <small>{entry.time}</small>
                   </article>
-                )) : <p>撠霈蝝??/p>}
+                )) : <p>撠霈蝝??/p>}
               </div>
             </section>
 
@@ -8787,13 +8787,13 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
 
   const relatedFlow = (
     <div className="purchase-related-flow fd79-related-flow">
-      <div className="line-detail-head"><strong>?賊?隞餃???銝甇?/strong><span>{relatedTasks.length} 蝑?/span></div>
+      <div className="line-detail-head"><strong>?賊?隞餃???銝甇?/strong><span>{relatedTasks.length} 蝑?/span></div>
       {relatedTasks.length ? relatedTasks.map((task) => (
         <article key={task.id}>
           <div><b>{task.title}</b><small>{task.status} 繚 {task.relatedVendor || row.vendor || '?芣?摰???}</small></div>
           <p>{task.next}</p>
         </article>
-      )) : <p>?桀?瘝??隞餃?嚗?澆極雿??遣蝡鞈潦???撠????/p>}
+      )) : <p>?桀?瘝??隞餃?嚗?澆極雿??遣蝡鞈潦???撠????/p>}
     </div>
   )
 
@@ -8805,7 +8805,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
           <i />
           <div><strong>{entry.title || purchaseTitle(row)}</strong><span>{entry.message}</span><small>{entry.time}</small></div>
         </article>
-      )) : <p>撠甇斗鞈澆?風蝔???/p>}
+      )) : <p>撠甇斗鞈澆?風蝔???/p>}
     </div>
   )
 
@@ -8843,9 +8843,9 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
       </div>
 
       <div className="purchase-progress-actions fd79-progress-actions">
-        <button type="button" className={(row.paymentStatus || '?芯?甈?) === '撌脖?甈? ? 'active' : ''} onClick={() => onUpdateMeta?.({ paymentStatus: (row.paymentStatus || '?芯?甈?) === '撌脖?甈? ? '?芯?甈? : '撌脖?甈? }, (row.paymentStatus || '?芯?甈?) === '撌脖?甈? ? '隞狡???箸隞狡?? : '隞狡???箏歇隞狡??)}>隞狡摰?</button>
-        <button type="button" className={(row.arrivalStatus || '?芸鞎?) === '撌脣鞎? ? 'active' : ''} onClick={() => onUpdateMeta?.({ arrivalStatus: (row.arrivalStatus || '?芸鞎?) === '撌脣鞎? ? '?芸鞎? : '撌脣鞎?, arrivalDate: (row.arrivalStatus || '?芸鞎?) === '撌脣鞎? ? row.arrivalDate : (row.arrivalDate || todayDate()) }, (row.arrivalStatus || '?芸鞎?) === '撌脣鞎? ? '?啗疏???箸?啗疏?? : '?啗疏???箏歇?啗疏??)}>?啗疏摰?</button>
-        <button type="button" className={(row.acceptanceStatus || '?芷???) === '撌脤??? ? 'active' : ''} onClick={() => onUpdateMeta?.({ acceptanceStatus: (row.acceptanceStatus || '?芷???) === '撌脤??? ? '?芷??? : '撌脤??? }, (row.acceptanceStatus || '?芷???) === '撌脤??? ? '撽???箸撽?? : '撽???箏歇撽??)}>撽摰?</button>
+        <button type="button" className={(row.paymentStatus || '?芯?甈?) === '撌脖?甈? ? 'active' : ''} onClick={() => onUpdateMeta?.({ paymentStatus: (row.paymentStatus || '?芯?甈?) === '撌脖?甈? ? '?芯?甈? : '撌脖?甈? }, (row.paymentStatus || '?芯?甈?) === '撌脖?甈? ? '隞狡???箸隞狡?? : '隞狡???箏歇隞狡??)}>隞狡摰?</button>
+        <button type="button" className={(row.arrivalStatus || '?芸鞎?) === '撌脣鞎? ? 'active' : ''} onClick={() => onUpdateMeta?.({ arrivalStatus: (row.arrivalStatus || '?芸鞎?) === '撌脣鞎? ? '?芸鞎? : '撌脣鞎?, arrivalDate: (row.arrivalStatus || '?芸鞎?) === '撌脣鞎? ? row.arrivalDate : (row.arrivalDate || todayDate()) }, (row.arrivalStatus || '?芸鞎?) === '撌脣鞎? ? '?啗疏???箸?啗疏?? : '?啗疏???箏歇?啗疏??)}>?啗疏摰?</button>
+        <button type="button" className={(row.acceptanceStatus || '?芷???) === '撌脤??? ? 'active' : ''} onClick={() => onUpdateMeta?.({ acceptanceStatus: (row.acceptanceStatus || '?芷???) === '撌脤??? ? '?芷??? : '撌脤??? }, (row.acceptanceStatus || '?芷???) === '撌脤??? ? '撽???箸撽?? : '撽???箏歇撽??)}>撽摰?</button>
       </div>
 
       {activeTab === '?箸鞈?' && (
@@ -8874,18 +8874,18 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
             folder={row.archiveFolder}
             suggestedName={suggestedArchiveName}
             compact
-            onChange={(folder) => onUpdateMeta?.({ archiveFolder: folder }, `?湔甇豢?鞈?憭曄????{folder.status || '撌脣遣蝡?}?)}
+            onChange={(folder) => onUpdateMeta?.({ archiveFolder: folder }, `?湔甇豢?鞈?憭曄????{folder.status || '撌脣遣蝡?}?)}
           />
           <PurchaseArchiveHintV72 row={row} />
           <div className="fd79-archive-checklist">
             <article><span>01</span><strong>撱箇?鞈?憭?/strong><small>銴ˊ撱箄降?迂敺??圈蝡舐′蝣遣蝡??冗??/small></article>
             <article><span>02</span><strong>鞎澆????</strong><small>撠??冗?澈???鞎澆? FlowDesk嚗?蝥?曆??函蕃靽∠拳??/small></article>
-            <article><span>03</span><strong>?葉摮?辣</strong><small>?勗?柴O?蟡具??嗉????芸??券?曉??鞈?憭整?/small></article>
+            <article><span>03</span><strong>?葉摮?辣</strong><small>?勗?柴O?蟡具??嗉????芸??券?曉??鞈?憭整?/small></article>
           </div>
         </section>
       )}
 
-      {activeTab === '甇瑞?蝝?? && (
+      {activeTab === '甇瑞?蝝?? && (
         <section className="fd79-tab-panel">
           {historyTimeline}
           {relatedFlow}
@@ -8922,7 +8922,7 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
     return (
       <section className="fd61-work-list-empty">
         <strong>?桀?瘝?蝚血?璇辣?極雿???/strong>
-        <span>?臭誑??蝭拚嚗??啣?銝蝑撣?Case??/span>
+        <span>?臭誑??蝭拚嚗??啣?銝蝑撣?Case??/span>
       </section>
     )
   }
@@ -8930,10 +8930,10 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
     <section className="fd61-work-list" aria-label="撌乩?鈭?皜">
       <div className="fd61-work-list-head">
         <span>撌乩?鈭?</span>
-        <span>???/span>
+        <span>???/span>
         <span>?芸?</span>
         <span>?唳? / 鞎痊</span>
-        <span>敹恍???/span>
+        <span>敹恍???/span>
       </div>
       {items.map((item) => {
         const isSelected = selected?.id === item.id
@@ -8945,7 +8945,7 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
             <button className="fd61-work-main" type="button" onClick={() => setSelected(item)}>
               <span>{item.id}</span>
               <strong>{item.title}</strong>
-              <small>{item.note || '撠??蝝??}</small>
+              <small>{item.note || '撠??蝝??}</small>
               <div>{(Array.isArray(item.tags) ? item.tags : []).slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}</div>
             </button>
             <div className="fd61-work-status"><Badge value={item.lane} /></div>
@@ -8953,7 +8953,7 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
             <div className="fd61-work-meta">
               <strong>{item.due || '?芾身摰?}</strong>
               <span>{item.owner || '?芣?摰?}</span>
-              <small>{item.channel || item.relation || '銝??}</small>
+              <small>{item.channel || item.relation || '銝??}</small>
             </div>
             <div className="fd61-work-actions">
               {quickLanes.map((lane) => (
@@ -8973,7 +8973,7 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
-                  const nextPriority = item.priority === '蝺? ? '擃? : item.priority === '擃? ? '銝? : '擃?
+                  const nextPriority = item.priority === '蝺? ? '擃? : item.priority === '擃? ? '銝? : '擃?
                   onUpdateItem?.(item.id, { priority: nextPriority })
                 }}
               >
@@ -9018,7 +9018,7 @@ function WorkGrid({ items, selected, setSelected, selectedIds = [], onToggleSele
   return (
     <section className="work-grid">
       <div className="work-grid-head work-grid-head-v199">
-        <span>?詨?</span><span>蝺刻?</span><span>璅?</span><span>???/span><span>?芸?蝝?/span><span>?</span><span>?唳???/span>
+        <span>?詨?</span><span>蝺刻?</span><span>璅?</span><span>???/span><span>?芸?蝝?/span><span>?</span><span>?唳???/span>
       </div>
       {items.map((item) => {
         const isSelected = selected?.id === item.id
@@ -9028,7 +9028,7 @@ function WorkGrid({ items, selected, setSelected, selectedIds = [], onToggleSele
               <label className="grid-select-check" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => onToggleSelect?.(item.id)} /></label>
               <span className="work-grid-id" data-label="蝺刻?">{item.id}</span>
               <strong className="work-grid-title" data-label="璅?">{item.title}</strong>
-              <span className="work-grid-status" data-label="???><Badge value={item.lane} /></span>
+              <span className="work-grid-status" data-label="???><Badge value={item.lane} /></span>
               <span className="work-grid-priority" data-label="?芸?蝝?><Badge value={item.priority} /></span>
               <span className="work-grid-relation" data-label="?">{item.relation}</span>
               <span className="work-grid-due" data-label="?唳???>{item.due}</span>
@@ -9063,7 +9063,7 @@ function ModuleScopeBar({ active }) {
         <strong>{purpose.role}</strong>
       </article>
       <article>
-        <span>?府?暸ㄐ</span>
+        <span>?府?暸ㄐ</span>
         <strong>{purpose.scope}</strong>
       </article>
       <article>
@@ -9133,7 +9133,7 @@ function PurchaseCardFocusMetaV74({ row, amount }) {
         <strong>{row.user || row.usedBy || row.requester || '??}</strong>
       </div>
       <div className="fd74-purchase-state">
-        <span>?桀????/span>
+        <span>?桀????/span>
         <StageBadge value={row.status} stages={[]} />
       </div>
       <div className="fd74-purchase-item">
@@ -9159,15 +9159,15 @@ function PurchaseArchiveHintV72({ row }) {
   const messages = {
     ?芸遣蝡? {
       title: '撠撱箇?甇豢?鞈?憭?,
-      detail: '隢?銴ˊ撱箄降鞈?憭曉?蝔梧???OneDrive / SharePoint / Google Drive 撱箇?鞈?憭橘???鞈?憭暸??鞎澆? FlowDesk??,
+      detail: '隢?銴ˊ撱箄降鞈?憭曉?蝔梧???OneDrive / SharePoint / Google Drive 撱箇?鞈?憭橘???鞈?憭暸??鞎澆? FlowDesk??,
     },
     撌脣遣蝡? {
       title: '鞈?憭曉歇撱箇?嚗?蝣箄??辣',
-      detail: '隢Ⅱ隤?孵?O?蟡具??嗉??? Mail ?芸??賢歇?曉?脩垢鞈?憭橘?蝣箄?敺????箏歇甇豢???,
+      detail: '隢Ⅱ隤?孵?O?蟡具??嗉??? Mail ?芸??賢歇?曉?脩垢鞈?憭橘?蝣箄?敺????箏歇甇豢???,
     },
     撌脫飛瑼? {
       title: '甇斗鞈澆歇摰?甇豢?',
-      detail: '敺??亥岷?辣???湔敺?FlowDesk ???脩垢鞈?憭曉?胯?,
+      detail: '敺??亥岷?辣???湔敺?FlowDesk ???脩垢鞈?憭曉?胯?,
     },
   }
   const message = messages[status] || messages.?芸遣蝡?  return (
@@ -9239,9 +9239,9 @@ function ArchiveFolderPanelV67({ title = '甇豢?鞈?憭?, folder, suggestedN
         <div>
           <span>ARCHIVE FOLDER</span>
           <strong>{title}</strong>
-          <small>隞?OneDrive / SharePoint / Google Drive 鞈?憭曄銝鳴?敺?瑼??湔?暸脰??冗?喳??/small>
+          <small>隞?OneDrive / SharePoint / Google Drive 鞈?憭曄銝鳴?敺?瑼??湔?暸脰??冗?喳??/small>
         </div>
-        <em className={draft.url ? 'ready' : 'empty'}>{draft.url ? '撌脤??' : '?芸遣蝡?}</em>
+        <em className={draft.url ? 'ready' : 'empty'}>{draft.url ? '撌脤??' : '?芸遣蝡?}</em>
       </div>
 
       <div className="fd67-archive-current">
@@ -9260,10 +9260,10 @@ function ArchiveFolderPanelV67({ title = '甇豢?鞈?憭?, folder, suggestedN
         <div className="fd67-archive-form">
           <label className="wide">鞈?憭曉?蝔?            <input value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} placeholder={suggestedName || safeFolder.name} />
           </label>
-          <label className="wide">?脩垢鞈?憭暸??
-            <input value={draft.url} onChange={(event) => updateDraft('url', event.target.value)} placeholder="鞎潔?鞈?憭曉?鈭恍??" />
+          <label className="wide">?脩垢鞈?憭暸??
+            <input value={draft.url} onChange={(event) => updateDraft('url', event.target.value)} placeholder="鞎潔?鞈?憭曉?鈭恍??" />
           </label>
-          <label>甇豢????            <select value={draft.status} onChange={(event) => updateDraft('status', event.target.value)}>
+          <label>甇豢????            <select value={draft.status} onChange={(event) => updateDraft('status', event.target.value)}>
               {['?芸遣蝡?, '撌脣遣蝡?, '撌脫飛瑼?].map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
           </label>
@@ -9306,7 +9306,7 @@ function AttachmentLinksPanelV66({ title = '?辣???', attachments = [], onCha
         <div>
           <span>GLOBAL ATTACHMENTS</span>
           <strong>{title}</strong>
-          <small>?桐?瑼??舀?脩垢鞈?憭橘?蝟餌絞銝餉?閮?甇豢?鞈?憭暸????/small>
+          <small>?桐?瑼??舀?脩垢鞈?憭橘?蝟餌絞銝餉?閮?甇豢?鞈?憭暸????/small>
         </div>
         <em>{safeAttachments.length} 隞?/em>
       </div>
@@ -9321,7 +9321,7 @@ function AttachmentLinksPanelV66({ title = '?辣???', attachments = [], onCha
                 <small>{item.note || item.createdAt || '??}</small>
               </div>
               <div className="fd66-attachment-actions">
-                {item.url ? <a href={item.url} target="_blank" rel="noreferrer">??</a> : <span>?⊿??</span>}
+                {item.url ? <a href={item.url} target="_blank" rel="noreferrer">??</a> : <span>?⊿??</span>}
                 {canEdit ? <button type="button" onClick={() => removeAttachment(item.id)}>?芷</button> : null}
               </div>
             </article>
@@ -9360,8 +9360,8 @@ function WorkItemPositionNoteV60() {
     <div className="fd60-work-position-note">
       <div>
         <span>撌乩?鈭?摰?</span>
-        <strong>瘥 Case?撣豢?渲??剜?頝?/strong>
-        <small>?∟頃銝餅?蝔??暹鞈潛恣???瑟?閮隢撠?蝞∠?嚗蝝??????暹??葉敹?/small>
+        <strong>瘥 Case?撣豢?渲??剜?頝?/strong>
+        <small>?∟頃銝餅?蝔??暹鞈潛恣???瑟?閮隢撠?蝞∠?嚗蝝??????暹??葉敹?/small>
       </div>
       <div className="fd60-work-chip-row">
         {workItemStatusOptionsV60.map((item) => <em key={item}>{item}</em>)}
@@ -9565,7 +9565,7 @@ if (typeof window !== 'undefined' && !window.__flowdeskProjectViewModalReady) {
 
     return `
       <div class="flow-project-table-head">
-        <span>摨?</span><span>撠??迂</span><span>???/span><span>?交?</span><span>?脣漲</span>
+        <span>摨?</span><span>撠??迂</span><span>???/span><span>?交?</span><span>?脣漲</span>
       </div>
       <div class="flow-project-table-body">${items.map(rowHtml).join('')}</div>
     `
@@ -9656,7 +9656,7 @@ if (typeof window !== 'undefined' && !window.__flowdeskProjectViewModalReady) {
           <section class="project-final-section-dom"><p class="eyebrow">?隞餃?</p><div class="project-final-related-list-dom">${relatedTaskHtml}</div></section>
           <section class="project-final-section-dom"><p class="eyebrow">??蝣?/p><div class="project-final-milestone-list-dom">${milestoneHtml}</div></section>
           <section class="project-final-section-dom"><p class="eyebrow">?鞈?</p><div class="tag-list">${relatedHtml}</div></section>
-          <section class="project-final-section-dom"><p class="eyebrow">??蝝??/p><div class="project-final-timeline-dom">${recordHtml}</div></section>
+          <section class="project-final-section-dom"><p class="eyebrow">??蝝??/p><div class="project-final-timeline-dom">${recordHtml}</div></section>
         </div>
       </div>
     `
