@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.81'
+const FLOWDESK_APP_VERSION = '20.4.82'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -6818,418 +6818,402 @@ function buildCompletedCaseRows(data = {}) {
 }
 
 function InsightPage({ metrics, records, tickets }) {
-  const [reportScope, setReportScope] = useState('本月')
-  const [reportTab, setReportTab] = useState('總覽')
-  const [reportSearch, setReportSearch] = useState('')
-  const [completedCaseType, setCompletedCaseType] = useState('全部')
-  const [completedCaseSearch, setCompletedCaseSearch] = useState('')
-  const [cloudStatus, setCloudStatus] = useState(flowdeskCloud ? '同步中' : '本機資料')
-  const [reportData, setReportData] = useState(() => ({
-    workItems: readFlowdeskLocalArray('flowdesk-work-items-v196'),
-    tasks: readFlowdeskLocalArray('flowdesk-tasks-v1972'),
-    purchases: readFlowdeskLocalArray('flowdesk-purchases-v19'),
-    projects: readFlowdeskLocalArray('flowdesk-projects-v1972'),
-    reminders: readFlowdeskLocalArray('flowdesk-reminders-v193'),
-  }))
+  const [insightTab, setInsightTab] = useState('總覽')
+  const [insightScope, setInsightScope] = useState('本月')
+  const [insightSearch, setInsightSearch] = useState('')
 
-  async function reloadReportData() {
-    const localData = {
-      workItems: readFlowdeskLocalArray('flowdesk-work-items-v196'),
-      tasks: readFlowdeskLocalArray('flowdesk-tasks-v1972'),
-      purchases: readFlowdeskLocalArray('flowdesk-purchases-v19'),
-      projects: readFlowdeskLocalArray('flowdesk-projects-v1972'),
-      reminders: readFlowdeskLocalArray('flowdesk-reminders-v193'),
+  const today = todayDate()
+
+  function safeArray(value) {
+    return Array.isArray(value) ? value : []
+  }
+
+  function safeNumber(value, fallback = 0) {
+    const numeric = Number(value)
+    return Number.isFinite(numeric) ? numeric : fallback
+  }
+
+  function safeText(value, fallback = '未設定') {
+    return value === undefined || value === null || value === '' ? fallback : String(value)
+  }
+
+  function safeDateValue(value) {
+    const text = String(value || '').slice(0, 10)
+    return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : ''
+  }
+
+  function dayDiffFromToday(value) {
+    const dateValue = safeDateValue(value)
+    if (!dateValue) return null
+    const base = new Date(`${today}T00:00:00`)
+    const target = new Date(`${dateValue}T00:00:00`)
+    if (Number.isNaN(target.getTime())) return null
+    return Math.ceil((target.getTime() - base.getTime()) / 86400000)
+  }
+
+  function inScope(dateValue) {
+    const value = safeDateValue(dateValue)
+    if (!value) return false
+    if (insightScope === '全部') return true
+    const diff = dayDiffFromToday(value)
+    if (diff === null) return false
+    if (insightScope === '今日') return diff === 0
+    if (insightScope === '本週') return diff >= -7 && diff <= 7
+    if (insightScope === '本月') return value.slice(0, 7) === today.slice(0, 7)
+    if (insightScope === '本季') {
+      const now = new Date(`${today}T00:00:00`)
+      const target = new Date(`${value}T00:00:00`)
+      const nowQuarter = Math.floor(now.getMonth() / 3)
+      const targetQuarter = Math.floor(target.getMonth() / 3)
+      return now.getFullYear() === target.getFullYear() && nowQuarter === targetQuarter
     }
-    if (!flowdeskCloud) {
-      setReportData(localData)
-      setCloudStatus('本機資料')
-      return
-    }
-    setCloudStatus('同步中')
+    return true
+  }
+
+  function purchaseTitle(row = {}) {
+    return row.title || row.subject || row.itemName || row.name || safeArray(row.items)[0]?.name || '未命名採購'
+  }
+
+  function purchaseAmount(row = {}) {
+    if (Number.isFinite(Number(row.taxedTotal))) return Number(row.taxedTotal)
+    if (Number.isFinite(Number(row.totalAmount))) return Number(row.totalAmount)
+    if (Number.isFinite(Number(row.total))) return Number(row.total)
+    if (Number.isFinite(Number(row.amount))) return Number(row.amount)
+    const items = safeArray(row.items || row.purchaseItems)
+    const subtotal = items.reduce((sum, item) => sum + safeNumber(item.qty || item.quantity || 1, 1) * safeNumber(item.price || item.unitPrice || item.amount, 0), 0)
+    const tax = safeNumber(row.taxAmount || row.tax, 0)
+    return subtotal + tax
+  }
+
+  function formatInsightMoney(value) {
     try {
-      const [workResult, taskResult, purchaseResult, projectResult, reminderResult] = await Promise.all([
-        flowdeskCloud.getWorkspaceData('work_items'),
-        flowdeskCloud.getWorkspaceData('tasks'),
-        flowdeskCloud.getWorkspaceData('purchases'),
-        flowdeskCloud.getWorkspaceData('projects'),
-        flowdeskCloud.getWorkspaceData('reminders'),
-      ])
-      setReportData({
-        workItems: Array.isArray(workResult.data) ? workResult.data : localData.workItems,
-        tasks: Array.isArray(taskResult.data) ? taskResult.data : localData.tasks,
-        purchases: Array.isArray(purchaseResult.data) ? purchaseResult.data : localData.purchases,
-        projects: Array.isArray(projectResult.data) ? projectResult.data : localData.projects,
-        reminders: Array.isArray(reminderResult.data) ? reminderResult.data : localData.reminders,
+      if (typeof formatMoney === 'function') return formatMoney(value)
+    } catch {}
+    return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(safeNumber(value))
+  }
+
+  const insightData = useMemo(() => {
+    const workItems = safeArray(readFlowdeskLocalArray('flowdesk-work-items-v196'))
+    const purchases = safeArray(readFlowdeskLocalArray('flowdesk-purchases-v19'))
+    const projects = safeArray(readFlowdeskLocalArray('flowdesk-projects-v1972'))
+    const reminders = safeArray(readFlowdeskLocalArray('flowdesk-reminders-v193'))
+    const docs = safeArray(readFlowdeskLocalArray('flowdesk-docs-v20481'))
+
+    const scopedWork = workItems.filter((item) => insightScope === '全部' || inScope(item.due || item.updatedAt || item.createdAt))
+    const scopedPurchases = purchases.filter((row) => insightScope === '全部' || inScope(row.requestDate || row.orderDate || row.arrivalDate || row.updatedAt))
+    const scopedProjects = projects.filter((project) => insightScope === '全部' || inScope(project.endDate || project.startDate || project.updatedAt))
+    const scopedReminders = reminders.filter((item) => insightScope === '全部' || inScope(item.dueDate || item.updatedAt))
+    const scopedDocs = docs.filter((doc) => insightScope === '全部' || inScope(doc.updated || doc.updatedAt))
+
+    const workOpen = workItems.filter((item) => item.lane !== '已完成').length
+    const workDone = workItems.filter((item) => item.lane === '已完成').length
+    const workOverdue = workItems.filter((item) => item.lane !== '已完成' && dayDiffFromToday(item.due) !== null && dayDiffFromToday(item.due) < 0).length
+    const workHigh = workItems.filter((item) => item.lane !== '已完成' && ['緊急', '高'].includes(item.priority)).length
+
+    const purchaseMonthTotal = purchases
+      .filter((row) => String(row.requestDate || row.orderDate || '').startsWith(today.slice(0, 7)))
+      .reduce((sum, row) => sum + purchaseAmount(row), 0)
+    const purchaseTotal = scopedPurchases.reduce((sum, row) => sum + purchaseAmount(row), 0)
+    const purchaseWaitingPayment = purchases.filter((row) => (row.paymentStatus || '未付款') !== '已付款' && !String(row.status || '').includes('完成')).length
+    const purchaseWaitingArrival = purchases.filter((row) => (row.arrivalStatus || '未到貨') !== '已到貨' && !String(row.status || '').includes('完成')).length
+    const purchaseWaitingAccept = purchases.filter((row) => (row.acceptanceStatus || '未驗收') !== '已驗收' && !String(row.status || '').includes('完成')).length
+    const vendorRanking = Array.from(purchases.reduce((map, row) => {
+      const vendor = row.vendor || '未指定廠商'
+      const current = map.get(vendor) || { vendor, amount: 0, count: 0 }
+      current.amount += purchaseAmount(row)
+      current.count += 1
+      map.set(vendor, current)
+      return map
+    }, new Map()).values()).sort((a, b) => b.amount - a.amount).slice(0, 5)
+
+    const activeProjects = projects.filter((project) => !['已完成', '已取消'].includes(project.phase || project.status)).length
+    const projectRisk = projects.filter((project) => ['高風險', '卡關'].includes(project.health) || safeNumber(project.progress) < 40 && dayDiffFromToday(project.endDate) !== null && dayDiffFromToday(project.endDate) <= 14).length
+    const avgProjectProgress = projects.length ? Math.round(projects.reduce((sum, project) => sum + safeNumber(project.progress), 0) / projects.length) : 0
+    const projectDueSoon = projects.filter((project) => {
+      const diff = dayDiffFromToday(project.endDate)
+      return diff !== null && diff >= 0 && diff <= 14 && !['已完成', '已取消'].includes(project.phase || project.status)
+    }).length
+
+    const reminderOpen = reminders.filter((item) => item.status !== '已完成').length
+    const reminderToday = reminders.filter((item) => item.status !== '已完成' && dayDiffFromToday(item.dueDate) === 0).length
+    const reminderOverdue = reminders.filter((item) => item.status !== '已完成' && dayDiffFromToday(item.dueDate) !== null && dayDiffFromToday(item.dueDate) < 0).length
+    const reminderWeek = reminders.filter((item) => {
+      const diff = dayDiffFromToday(item.dueDate)
+      return item.status !== '已完成' && diff !== null && diff >= 0 && diff <= 7
+    }).length
+
+    const docsNeedUpdate = docs.filter((doc) => doc.status === '需更新').length
+    const docsPinned = docs.filter((doc) => doc.pinned).length
+    const docsHigh = docs.filter((doc) => doc.importance === '高').length
+
+    const riskRows = [
+      ...workItems.filter((item) => item.lane !== '已完成' && dayDiffFromToday(item.due) !== null && dayDiffFromToday(item.due) < 0).slice(0, 5).map((item) => ({
+        type: '工作事項',
+        title: item.title,
+        meta: `${item.owner || '未指定'} · ${item.due || '未設定'} · ${item.priority || '中'}`,
+        tone: 'danger',
+      })),
+      ...reminders.filter((item) => item.status !== '已完成' && dayDiffFromToday(item.dueDate) !== null && dayDiffFromToday(item.dueDate) < 0).slice(0, 4).map((item) => ({
+        type: '提醒中心',
+        title: item.title,
+        meta: `${item.dueDate || '未設定'} · ${item.priority || '中'} · ${item.sourceType || '一般'}`,
+        tone: 'warning',
+      })),
+      ...projects.filter((project) => ['高風險', '卡關'].includes(project.health)).slice(0, 4).map((project) => ({
+        type: '專案管理',
+        title: project.name || project.title || '未命名專案',
+        meta: `${project.owner || '未指定'} · ${project.endDate || '未設定'} · ${project.progress || 0}%`,
+        tone: 'danger',
+      })),
+      ...purchases.filter((row) => (row.paymentStatus || '未付款') !== '已付款' && !String(row.status || '').includes('完成')).slice(0, 4).map((row) => ({
+        type: '採購管理',
+        title: purchaseTitle(row),
+        meta: `${row.vendor || '未指定廠商'} · ${formatInsightMoney(purchaseAmount(row))} · ${row.paymentStatus || '未付款'}`,
+        tone: 'warning',
+      })),
+    ].slice(0, 10)
+
+    const recentRows = [
+      ...scopedWork.slice(0, 6).map((item) => ({ type: '工作事項', title: item.title, date: item.due || '未設定', meta: `${item.lane || '待分類'} · ${item.owner || '未指定'}` })),
+      ...scopedPurchases.slice(0, 6).map((row) => ({ type: '採購管理', title: purchaseTitle(row), date: row.requestDate || row.orderDate || '未設定', meta: `${row.vendor || '未指定廠商'} · ${formatInsightMoney(purchaseAmount(row))}` })),
+      ...scopedProjects.slice(0, 6).map((project) => ({ type: '專案管理', title: project.name || project.title || '未命名專案', date: project.endDate || project.startDate || '未設定', meta: `${project.owner || '未指定'} · ${project.progress || 0}%` })),
+      ...scopedReminders.slice(0, 6).map((item) => ({ type: '提醒中心', title: item.title, date: item.dueDate || '未設定', meta: `${item.status || '待處理'} · ${item.priority || '中'}` })),
+      ...scopedDocs.slice(0, 6).map((doc) => ({ type: '文件備忘', title: doc.title, date: doc.updated || '未設定', meta: `${doc.folder || '其他'} · ${doc.status || '使用中'}` })),
+    ]
+      .filter((row) => {
+        const q = insightSearch.trim().toLowerCase()
+        if (!q) return true
+        return [row.type, row.title, row.date, row.meta].join(' ').toLowerCase().includes(q)
       })
-      setCloudStatus('雲端已同步')
-    } catch {
-      setReportData(localData)
-      setCloudStatus('使用本機備援')
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+      .slice(0, 14)
+
+    return {
+      workItems,
+      purchases,
+      projects,
+      reminders,
+      docItems: docs,
+      scopedWork,
+      scopedPurchases,
+      scopedProjects,
+      scopedReminders,
+      scopedDocs,
+      work: { open: workOpen, done: workDone, overdue: workOverdue, high: workHigh, total: workItems.length },
+      purchase: { monthTotal: purchaseMonthTotal, total: purchaseTotal, waitingPayment: purchaseWaitingPayment, waitingArrival: purchaseWaitingArrival, waitingAccept: purchaseWaitingAccept, count: purchases.length, vendorRanking },
+      project: { total: projects.length, active: activeProjects, risk: projectRisk, avgProgress: avgProjectProgress, dueSoon: projectDueSoon },
+      reminder: { open: reminderOpen, today: reminderToday, overdue: reminderOverdue, week: reminderWeek, total: reminders.length },
+      docs: { total: docs.length, needUpdate: docsNeedUpdate, pinned: docsPinned, high: docsHigh },
+      riskRows,
+      recentRows,
     }
-  }
+  }, [insightScope, insightSearch, today])
 
-  useEffect(() => {
-    reloadReportData()
-  }, [])
-
-  const keyword = reportSearch.trim().toLowerCase()
-  const workRows = reportData.workItems.map((row) => ({ ...row, __source: '工作事項', __date: row.due || row.createdAt || todayDate() }))
-  const taskRows = reportData.tasks.map((row) => ({ ...row, __source: '任務追蹤', __date: row.due || todayDate() }))
-  const allTaskRows = [...workRows, ...taskRows]
-  const scopedPurchases = reportData.purchases.filter((row) => isReportInScope(row.requestDate || row.orderDate || row.arrivalDate, reportScope)).filter((row) => matchReportKeyword(row, keyword))
-  const scopedTasks = allTaskRows.filter((row) => isReportInScope(row.__date, reportScope)).filter((row) => matchReportKeyword(row, keyword))
-  const scopedProjects = reportData.projects.filter((row) => isReportInScope(row.startDate || row.endDate, reportScope) || reportScope === '全部').filter((row) => matchReportKeyword(row, keyword))
-  const scopedReminders = reportData.reminders.filter((row) => isReportInScope(row.dueDate, reportScope)).filter((row) => matchReportKeyword(row, keyword))
-
-  const purchaseTotal = scopedPurchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
-  const purchaseOpen = scopedPurchases.filter((row) => !['已完成', '已取消'].includes(row.status)).length
-  const taskOpen = scopedTasks.filter((row) => !['已完成', '已收斂'].includes(row.lane || row.status)).length
-  const taskWaiting = scopedTasks.filter((row) => ['等待回覆', '等回覆', '卡關'].includes(row.lane || row.status)).length
-  const projectRisk = scopedProjects.filter((row) => String(row.health || row.tone || '').includes('待') || row.tone === 'red').length
-  const reminderSummary = getReminderSummary(reportData.reminders)
-  const reportRiskTotal = taskWaiting + projectRisk + reminderSummary.overdue + scopedPurchases.filter((row) => (row.arrivalStatus || '未到貨') !== '已到貨' && !['已完成', '已取消'].includes(row.status || '')).length
-  const reportEfficiencyScore = Math.max(0, Math.min(100, 100 - taskWaiting * 6 - projectRisk * 8 - reminderSummary.overdue * 9 - purchaseOpen * 2))
-  const reportDecisionCards = [
-    { label: '管理分數', value: reportEfficiencyScore, note: reportRiskTotal ? `${reportRiskTotal} 個重點訊號` : '狀態穩定' },
-    { label: '採購待處理率', value: scopedPurchases.length ? `${Math.round((purchaseOpen / scopedPurchases.length) * 100)}%` : '0%', note: `${purchaseOpen} / ${scopedPurchases.length} 筆` },
-    { label: '任務卡關率', value: scopedTasks.length ? `${Math.round((taskWaiting / scopedTasks.length) * 100)}%` : '0%', note: `${taskWaiting} / ${scopedTasks.length} 筆` },
-    { label: '提醒逾期', value: reminderSummary.overdue, note: `${reminderSummary.open} 筆未結提醒` },
+  const tabCards = [
+    { key: '總覽', label: '總覽' },
+    { key: '工作', label: '工作' },
+    { key: '採購', label: '採購' },
+    { key: '專案', label: '專案' },
+    { key: '提醒', label: '提醒' },
+    { key: '文件', label: '文件' },
   ]
-  const vendorRanking = buildVendorRanking(scopedPurchases).slice(0, 6)
-  const fullVendorRanking = buildVendorRanking(scopedPurchases)
-  const purchaseStatusRows = buildCountRows(scopedPurchases, (row) => row.status || '未設定').slice(0, 6)
-  const purchaseOpenRows = scopedPurchases.filter((row) => !isPurchaseClosedForReport(row))
-  const purchasePendingPayment = scopedPurchases.filter((row) => (row.paymentStatus || '未付款') !== '已付款' && !isPurchaseClosedForReport(row)).length
-  const purchasePendingArrival = scopedPurchases.filter((row) => (row.arrivalStatus || '未到貨') !== '已到貨' && !isPurchaseClosedForReport(row)).length
-  const purchasePendingAcceptance = scopedPurchases.filter((row) => (row.acceptanceStatus || '未驗收') !== '已驗收' && !isPurchaseClosedForReport(row)).length
-  const purchaseUnfiled = scopedPurchases.filter((row) => purchaseArchiveStatusV72(row) !== '已歸檔').length
-  const purchasePriorityOpen = scopedPurchases.filter((row) => ['緊急', '高'].includes(normalizePurchasePriority(row.priority)) && !isPurchaseClosedForReport(row)).length
-  const purchaseItemRanking = buildPurchaseItemRanking(scopedPurchases).slice(0, 8)
-  const purchaseCategoryRanking = buildPurchaseCategoryRanking(scopedPurchases).slice(0, 8)
-  const departmentRanking = buildDepartmentPurchaseRanking(scopedPurchases).slice(0, 6)
-  const purchaseTrendRows = buildPurchaseMonthlyTrend(reportData.purchases).slice(0, 6)
-  const purchaseSummaryCards = [
-    { label: '本期採購金額', value: formatMoney(purchaseTotal), note: `${scopedPurchases.length} 筆採購` },
-    { label: '進行中採購', value: purchaseOpenRows.length, note: `待付款 ${purchasePendingPayment} / 待到貨 ${purchasePendingArrival}` },
-    { label: '待驗收', value: purchasePendingAcceptance, note: '仍需確認驗收狀態' },
-    { label: '未歸檔', value: purchaseUnfiled, note: '尚未完成雲端資料夾歸檔' },
-    { label: '高優先 / 緊急', value: purchasePriorityOpen, note: '需優先追蹤' },
+
+  const headlineKpis = [
+    { label: '工作未完成', value: insightData.work.open, tone: insightData.work.overdue ? 'red' : 'blue', detail: `${insightData.work.overdue} 逾期 / ${insightData.work.high} 高優先` },
+    { label: '本月採購金額', value: formatInsightMoney(insightData.purchase.monthTotal), tone: 'green', detail: `${insightData.purchase.waitingPayment} 待付款 / ${insightData.purchase.waitingArrival} 待到貨` },
+    { label: '專案平均進度', value: `${insightData.project.avgProgress}%`, tone: insightData.project.risk ? 'amber' : 'violet', detail: `${insightData.project.active} 進行中 / ${insightData.project.risk} 風險` },
+    { label: '今日提醒', value: insightData.reminder.today, tone: insightData.reminder.overdue ? 'red' : 'amber', detail: `${insightData.reminder.overdue} 逾期 / ${insightData.reminder.week} 本週` },
+    { label: '文件需更新', value: insightData.docs.needUpdate, tone: insightData.docs.needUpdate ? 'red' : 'blue', detail: `${insightData.docs.pinned} 釘選 / ${insightData.docs.high} 高重要` },
   ]
-  const taskStatusRows = buildCountRows(scopedTasks, (row) => row.lane || row.status || '未設定').slice(0, 6)
-  const upcomingReminders = [...reportData.reminders]
-    .filter((row) => row.status !== '已完成')
-    .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
-    .slice(0, 5)
-  const completedCaseRows = buildCompletedCaseRows(reportData)
-  const completedCaseKeyword = completedCaseSearch.trim().toLowerCase()
-  const visibleCompletedCaseRows = completedCaseRows
-    .filter((row) => completedCaseType === '全部' || row.type === completedCaseType)
-    .filter((row) => !completedCaseKeyword || [row.id, row.type, row.title, row.status, row.owner, row.meta].join(' ').toLowerCase().includes(completedCaseKeyword))
-    .slice(0, 20)
-  const completedCaseTypeOptions = ['全部', '工作事項', '任務追蹤', '採購', '專案', '提醒']
-  const completedCaseSummary = completedCaseRows.reduce((summary, row) => {
-    summary[row.type] = (summary[row.type] || 0) + 1
-    return summary
-  }, {})
 
-  const focusRows = [
-    ...scopedPurchases
-      .filter((row) => !['已完成', '已取消'].includes(row.status) || (row.paymentStatus || '未付款') !== '已付款' || (row.arrivalStatus || '未到貨') !== '已到貨')
-      .map((row) => ({ type: '採購', title: purchaseTitle(row), meta: `${row.vendor || '未指定廠商'} · ${row.status || '未設定'} · ${formatMoney(calculatePurchase(row).taxedTotal)}`, weight: calculatePurchase(row).taxedTotal + 3000 })),
-    ...scopedTasks
-      .filter((row) => ['緊急', '高'].includes(row.priority) || ['等待回覆', '等回覆', '卡關'].includes(row.lane || row.status))
-      .map((row) => ({ type: row.__source || '任務', title: row.title || row.id, meta: `${row.owner || '未指定'} · ${row.lane || row.status || '未設定'} · ${row.due || row.__date || '未設定日期'}`, weight: ['緊急', '高'].includes(row.priority) ? 9000 : 4500 })),
-    ...scopedProjects
-      .filter((row) => String(row.health || '').includes('待') || row.tone === 'red')
-      .map((row) => ({ type: '專案', title: row.name || row.id, meta: `${row.phase || '未設定'} · ${row.owner || '未指定'} · ${row.progress || 0}%`, weight: 6000 })),
-  ].sort((a, b) => b.weight - a.weight).slice(0, 8)
+  const moduleBlocks = [
+    {
+      key: '工作',
+      title: '工作事項',
+      description: '掌握日常待辦、追蹤事項與高優先處理。',
+      cards: [
+        ['總工作', insightData.work.total],
+        ['未完成', insightData.work.open],
+        ['逾期', insightData.work.overdue],
+        ['已完成', insightData.work.done],
+      ],
+    },
+    {
+      key: '採購',
+      title: '採購管理',
+      description: '快速看付款、到貨、驗收與本月採購金額。',
+      cards: [
+        ['採購筆數', insightData.purchase.count],
+        ['範圍金額', formatInsightMoney(insightData.purchase.total)],
+        ['待付款', insightData.purchase.waitingPayment],
+        ['待驗收', insightData.purchase.waitingAccept],
+      ],
+    },
+    {
+      key: '專案',
+      title: '專案管理',
+      description: '追蹤專案數、進度、風險與近期到期。',
+      cards: [
+        ['專案總數', insightData.project.total],
+        ['進行中', insightData.project.active],
+        ['高風險', insightData.project.risk],
+        ['14天到期', insightData.project.dueSoon],
+      ],
+    },
+    {
+      key: '提醒',
+      title: '提醒中心',
+      description: '聚焦今日、逾期、本週與未完成提醒。',
+      cards: [
+        ['提醒總數', insightData.reminder.total],
+        ['未完成', insightData.reminder.open],
+        ['今日', insightData.reminder.today],
+        ['本週', insightData.reminder.week],
+      ],
+    },
+    {
+      key: '文件',
+      title: '文件備忘',
+      description: '檢視知識庫、釘選文件與待更新文件。',
+      cards: [
+        ['文件總數', insightData.docs.total],
+        ['釘選', insightData.docs.pinned],
+        ['需更新', insightData.docs.needUpdate],
+        ['高重要', insightData.docs.high],
+      ],
+    },
+  ]
 
-  const reportRows = buildReportTableRows(reportTab, { purchases: scopedPurchases, tasks: scopedTasks, projects: scopedProjects, reminders: scopedReminders })
+  const visibleBlocks = insightTab === '總覽' ? moduleBlocks : moduleBlocks.filter((block) => block.key === insightTab)
 
-  function exportCurrentReport() {
-    const csv = toCsv(reportRows.csv)
-    downloadFlowdeskText(`flowdesk_${reportTab}_${todayDate()}.csv`, csv, 'text/csv;charset=utf-8')
-  }
-
-  function exportExecutiveSnapshot() {
-    const snapshot = {
-      exportedAt: new Date().toISOString(),
-      scope: reportScope,
-      summary: { purchaseTotal, purchaseOpen, taskOpen, taskWaiting, projectRisk, reminders: reminderSummary, completedCases: completedCaseRows.length },
-      focusRows,
-      vendorRanking,
-      purchaseStatusRows,
-      taskStatusRows,
-    }
-    downloadFlowdeskText(`flowdesk_report_snapshot_${todayDate()}.json`, JSON.stringify(snapshot, null, 2), 'application/json;charset=utf-8')
-  }
-
-  function exportCompletedCases() {
-    const rows = visibleCompletedCaseRows.map((row) => ({ 類型: row.type, 編號: row.id, 標題: row.title, 狀態: row.status, 負責或來源: row.owner, 完成或歸檔日期: row.date, 備註: row.meta || '', 金額: row.amount || '' }))
-    downloadFlowdeskText(`flowdesk_completed_cases_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
-  }
-
-  function exportPurchaseVendorStats() {
-    const rows = fullVendorRanking.map((row) => ({ 廠商: row.vendor, 採購筆數: row.count, 含稅金額: row.amount }))
-    downloadFlowdeskText(`flowdesk_purchase_vendor_stats_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
-  }
-
-  function exportPurchaseDepartmentStats() {
-    const rows = departmentRanking.map((row) => ({ 使用單位: row.department, 採購筆數: row.count, 含稅金額: row.amount, 品項數: row.itemCount }))
-    downloadFlowdeskText(`flowdesk_purchase_department_stats_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
-  }
-
-  function exportPurchaseItemStats() {
-    const rows = purchaseItemRanking.map((row) => ({ 品項: row.name, 分類: row.category, 採購次數: row.count, 數量: row.quantity, 含稅金額: row.amount }))
-    downloadFlowdeskText(`flowdesk_purchase_item_stats_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
-  }
-
-  function exportPurchaseCategoryStats() {
-    const rows = purchaseCategoryRanking.map((row) => ({ 分類: row.category, 品項數: row.itemCount, 採購次數: row.count, 含稅金額: row.amount }))
-    downloadFlowdeskText(`flowdesk_purchase_category_stats_${todayDate()}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
+  function exportInsightSummary() {
+    const headers = ['區塊', '項目', '數值']
+    const rows = [
+      ...moduleBlocks.flatMap((block) => block.cards.map((card) => [block.title, card[0], card[1]])),
+      ...insightData.riskRows.map((row) => ['風險焦點', row.type, `${row.title}｜${row.meta}`]),
+    ]
+    const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
+    downloadFlowdeskText(`FlowDesk分析摘要_${todayDate()}.csv`, `\ufeff${csv}`, 'text/csv;charset=utf-8;')
   }
 
   return (
-    <div className="insight-layout insight-ops-layout">
-      <section className="flow-toolbar flowdesk-toolbar-v2 report-command-bar">
+    <div className="insight-layout fd20482-insight-layout">
+      <section className="surface-toolbar fd20482-insight-hero">
         <div>
-          <p className="eyebrow">REPORT CENTER</p>
-          <h2>報表分析</h2>
-          <span>整合工作、任務、採購、專案與提醒資料，快速看出目前要追的重點。</span>
+          <p className="eyebrow">分析摘要</p>
+          <h2>FlowDesk 管理儀表板</h2>
+          <span>彙整工作、採購、專案、提醒與文件，先看風險，再看趨勢。</span>
         </div>
-        <div className="flow-toolbar-actions report-toolbar-actions">
-          <span className="toolbar-soft-chip">{cloudStatus}</span>
-          <label className="report-scope-select">期間<select value={reportScope} onChange={(event) => setReportScope(event.target.value)}>{['本週', '本月', '本季', '全部'].map((scope) => <option key={scope} value={scope}>{scope}</option>)}</select></label>
-          <button className="ghost-btn" type="button" onClick={reloadReportData}>重新整理</button>
-          <button className="ghost-btn" type="button" onClick={exportExecutiveSnapshot}>匯出快照</button>
-          <button className="primary-btn" type="button" onClick={exportCurrentReport}>匯出目前報表</button>
+        <div className="record-actions fd20482-insight-actions">
+          <div className="segmented fd20482-insight-tab-switch">
+            {tabCards.map((tab) => <button key={tab.key} type="button" className={insightTab === tab.key ? 'active' : ''} onClick={() => setInsightTab(tab.key)}>{tab.label}</button>)}
+          </div>
+          <select value={insightScope} onChange={(event) => setInsightScope(event.target.value)}>
+            {['今日', '本週', '本月', '本季', '全部'].map((scope) => <option key={scope} value={scope}>{scope}</option>)}
+          </select>
+          <button className="ghost-btn" type="button" onClick={exportInsightSummary}>匯出摘要</button>
         </div>
       </section>
 
-      <section className="metric-strip full report-kpi-strip">
-        <Metric label="採購總額" value={formatMoney(purchaseTotal)} tone="green" />
-        <Metric label="未完成採購" value={purchaseOpen} tone="amber" />
-        <Metric label="未完成工作" value={taskOpen} tone="blue" />
-        <Metric label="等待 / 卡關" value={taskWaiting} tone="red" />
-        <Metric label="專案風險" value={projectRisk} tone="violet" />
+      <section className="fd20482-kpi-grid">
+        {headlineKpis.map((item) => (
+          <article key={item.label} className={`fd20482-kpi-card ${item.tone}`}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <small>{item.detail}</small>
+          </article>
+        ))}
       </section>
 
-      <section className="panel wide report-decision-panel">
-        <PanelTitle eyebrow="DECISION VIEW" title="管理決策摘要" action={reportScope} />
-        <div className="report-decision-grid">
-          {reportDecisionCards.map((card) => (
-            <article key={card.label}>
-              <span>{card.label}</span>
-              <strong>{card.value}</strong>
-              <small>{card.note}</small>
+      <section className="fd20482-risk-panel">
+        <div>
+          <p className="eyebrow">ACTION FOCUS</p>
+          <h3>優先處理焦點</h3>
+          <span>{insightData.riskRows.length ? `目前有 ${insightData.riskRows.length} 個需要關注的項目。` : '目前沒有明顯逾期或高風險項目。'}</span>
+        </div>
+        <div className="fd20482-risk-list">
+          {insightData.riskRows.length ? insightData.riskRows.map((row, index) => (
+            <article key={`${row.type}-${row.title}-${index}`} className={row.tone}>
+              <span>{row.type}</span>
+              <strong>{row.title}</strong>
+              <small>{row.meta}</small>
             </article>
-          ))}
-        </div>
-      </section>
-
-
-      <section className="panel wide fd20389-purchase-analytics">
-        <div className="fd20389-purchase-head">
-          <div>
-            <p className="eyebrow">PURCHASE INSIGHT</p>
-            <h3>採購統計與分析</h3>
-            <span>用目前篩選期間統計採購金額、單位、廠商與品項，方便快速回答「買了什麼、誰買、跟誰買、花多少」。</span>
-          </div>
-          <div className="fd20389-purchase-actions">
-            <button type="button" className="ghost-btn" onClick={exportPurchaseItemStats}>匯出品項</button>
-            <button type="button" className="ghost-btn" onClick={exportPurchaseDepartmentStats}>匯出單位</button>
-            <button type="button" className="ghost-btn" onClick={exportPurchaseVendorStats}>匯出廠商</button>
-          </div>
-        </div>
-
-        <div className="fd20389-purchase-kpis">
-          {purchaseSummaryCards.map((card) => (
-            <article key={card.label}>
-              <span>{card.label}</span>
-              <strong>{card.value}</strong>
-              <small>{card.note}</small>
+          )) : (
+            <article>
+              <span>狀態正常</span>
+              <strong>目前沒有需立即處理的風險</strong>
+              <small>可切換範圍或查看各模組明細。</small>
             </article>
-          ))}
-        </div>
-
-        <div className="fd20389-purchase-grid">
-          <article className="fd20389-stat-card">
-            <div className="fd20389-card-head">
-              <div><p className="eyebrow">ITEMS</p><h4>採購品項排行</h4></div>
-              <button type="button" onClick={exportPurchaseItemStats}>CSV</button>
-            </div>
-            <div className="fd20389-rank-list">
-              {purchaseItemRanking.length ? purchaseItemRanking.map((row, index) => (
-                <article key={`${row.name}-${index}`}>
-                  <b>{index + 1}</b>
-                  <div><strong>{row.name}</strong><small>{row.category} · {row.count} 次 · 數量 {row.quantity}</small></div>
-                  <span>{formatMoney(row.amount)}</span>
-                </article>
-              )) : <p>目前篩選期間沒有採購品項資料。</p>}
-            </div>
-          </article>
-
-          <article className="fd20389-stat-card">
-            <div className="fd20389-card-head">
-              <div><p className="eyebrow">CATEGORY</p><h4>品項分類摘要</h4></div>
-              <button type="button" onClick={exportPurchaseCategoryStats}>CSV</button>
-            </div>
-            <div className="fd20389-rank-list category">
-              {purchaseCategoryRanking.length ? purchaseCategoryRanking.map((row) => (
-                <article key={row.category}>
-                  <b>{row.itemCount}</b>
-                  <div><strong>{row.category}</strong><small>{row.count} 次採購</small></div>
-                  <span>{formatMoney(row.amount)}</span>
-                </article>
-              )) : <p>目前沒有可分類的品項。</p>}
-            </div>
-          </article>
-
-          <article className="fd20389-stat-card">
-            <div className="fd20389-card-head">
-              <div><p className="eyebrow">DEPARTMENT</p><h4>使用單位排行</h4></div>
-              <button type="button" onClick={exportPurchaseDepartmentStats}>CSV</button>
-            </div>
-            <div className="fd20389-rank-list">
-              {departmentRanking.length ? departmentRanking.map((row, index) => (
-                <article key={row.department}>
-                  <b>{index + 1}</b>
-                  <div><strong>{row.department}</strong><small>{row.count} 筆 · {row.itemCount} 項</small></div>
-                  <span>{formatMoney(row.amount)}</span>
-                </article>
-              )) : <p>尚無使用單位統計。</p>}
-            </div>
-          </article>
-
-          <article className="fd20389-stat-card">
-            <div className="fd20389-card-head">
-              <div><p className="eyebrow">TREND</p><h4>近期月度採購</h4></div>
-              <span className="fd20389-mini-note">近 6 個月份</span>
-            </div>
-            <div className="fd20389-trend-list">
-              {purchaseTrendRows.length ? purchaseTrendRows.map((row) => (
-                <article key={row.month}>
-                  <div><strong>{row.month}</strong><small>{row.count} 筆</small></div>
-                  <div className="fd20389-trend-bar"><span style={{ width: `${row.percent}%` }} /></div>
-                  <b>{formatMoney(row.amount)}</b>
-                </article>
-              )) : <p>尚無月份趨勢資料。</p>}
-            </div>
-          </article>
+          )}
         </div>
       </section>
 
-      <section className="panel wide fd88-completed-center">
-        <div className="fd88-completed-head">
-          <div>
-            <p className="eyebrow">完成紀錄中心</p>
-            <h3>已完成 / 已取消 / 已歸檔案件</h3>
-            <span>主清單預設保持乾淨，歷史案件集中在這裡查詢與匯出。</span>
-          </div>
-          <div className="fd88-completed-actions">
-            <input value={completedCaseSearch} onChange={(event) => setCompletedCaseSearch(event.target.value)} placeholder="搜尋完成案件..." />
-            <button type="button" className="ghost-btn" onClick={exportCompletedCases}>匯出完成紀錄</button>
-          </div>
-        </div>
-        <div className="fd88-completed-tabs">
-          {completedCaseTypeOptions.map((type) => (
-            <button key={type} type="button" className={completedCaseType === type ? 'active' : ''} onClick={() => setCompletedCaseType(type)}>
-              <span>{type}</span><strong>{type === '全部' ? completedCaseRows.length : completedCaseSummary[type] || 0}</strong>
-            </button>
-          ))}
-        </div>
-        <div className="fd88-completed-table">
-          <div className="fd88-completed-table-head"><span>類型 / 案件</span><span>狀態</span><span>負責 / 來源</span><span>完成日期</span><span>備註</span></div>
-          {visibleCompletedCaseRows.map((row) => (
-            <article key={`${row.type}-${row.id}-${row.title}`}>
-              <div><Badge value={row.type} /><strong>{row.title}</strong><small>{row.id || '未編號'}</small></div>
-              <span>{row.status}</span>
-              <span>{row.owner || '未指定'}</span>
-              <span>{row.date || '未設定'}</span>
-              <small>{row.amount ? formatMoney(row.amount) : row.meta || '—'}</small>
-            </article>
-          ))}
-          {!visibleCompletedCaseRows.length && <div className="flow-empty-card">目前沒有符合條件的完成紀錄。</div>}
-        </div>
+      <section className="fd20482-module-grid">
+        {visibleBlocks.map((block) => (
+          <article key={block.key} className="fd20482-module-card">
+            <div className="fd20482-module-head">
+              <div>
+                <p className="eyebrow">{block.key}</p>
+                <h3>{block.title}</h3>
+                <span>{block.description}</span>
+              </div>
+            </div>
+            <div className="fd20482-module-metrics">
+              {block.cards.map(([label, value]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
       </section>
 
-      <section className="report-grid-v1981">
-        <article className="panel wide report-focus-panel">
-          <PanelTitle eyebrow="處理焦點" title="下一步優先序" />
-          <div className="report-focus-list">
-            {focusRows.length ? focusRows.map((row, index) => (
+      <section className="fd20482-lower-grid">
+        <article className="fd20482-panel">
+          <div className="fd20482-panel-head">
+            <div>
+              <p className="eyebrow">RECENT</p>
+              <h3>範圍內近期資料</h3>
+            </div>
+            <input value={insightSearch} onChange={(event) => setInsightSearch(event.target.value)} placeholder="搜尋摘要資料..." />
+          </div>
+          <div className="fd20482-recent-list">
+            {insightData.recentRows.length ? insightData.recentRows.map((row, index) => (
               <article key={`${row.type}-${row.title}-${index}`}>
-                <span>{index + 1}</span>
-                <div><strong>{row.title}</strong><small>{row.type} · {row.meta}</small></div>
+                <span>{row.type}</span>
+                <strong>{row.title}</strong>
+                <small>{row.date} · {row.meta}</small>
               </article>
-            )) : <p>目前沒有需要特別追蹤的項目。</p>}
+            )) : <div className="purchase-empty-state">沒有符合條件的近期資料</div>}
           </div>
         </article>
 
-        <article className="panel report-side-card">
-          <PanelTitle eyebrow="提醒" title="到期摘要" />
-          <div className="reminder-home-grid compact-reminder-grid">
-            <article className="danger"><span>逾期</span><strong>{reminderSummary.overdue}</strong></article>
-            <article><span>今日</span><strong>{reminderSummary.today}</strong></article>
-            <article><span>本週</span><strong>{reminderSummary.week}</strong></article>
-            <article><span>未結</span><strong>{reminderSummary.open}</strong></article>
-          </div>
-        </article>
-      </section>
-
-      <section className="panel wide report-table-panel">
-        <div className="report-table-head">
-          <div>
-            <p className="eyebrow">資料報表</p>
-            <h3>{reportTab}</h3>
-          </div>
-          <div className="report-table-tools">
-            <input value={reportSearch} onChange={(event) => setReportSearch(event.target.value)} placeholder="搜尋報表內容..." />
-            <div className="report-tab-switcher">
-              {['總覽', '採購', '任務', '專案', '提醒'].map((tab) => <button key={tab} type="button" className={reportTab === tab ? 'active' : ''} onClick={() => setReportTab(tab)}>{tab}</button>)}
+        <article className="fd20482-panel">
+          <div className="fd20482-panel-head">
+            <div>
+              <p className="eyebrow">VENDOR</p>
+              <h3>廠商金額排行</h3>
             </div>
           </div>
-        </div>
-        <div className="report-table-scroll">
-          <table className="report-table-v1981">
-            <thead><tr>{reportRows.headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
-            <tbody>
-              {reportRows.rows.map((row, index) => <tr key={`${reportTab}-${index}`}>{row.map((cell, cellIndex) => <td key={`${index}-${cellIndex}`}>{cell}</td>)}</tr>)}
-              {!reportRows.rows.length && <tr><td colSpan={reportRows.headers.length}>目前沒有符合條件的資料。</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="report-grid-v1981 report-lower-grid">
-        <article className="panel">
-          <PanelTitle eyebrow="廠商" title="採購金額排行" />
-          <div className="report-rank-list">
-            {vendorRanking.length ? vendorRanking.map((row) => <article key={row.vendor}><div><strong>{row.vendor}</strong><span>{row.count} 筆</span></div><b>{formatMoney(row.amount)}</b></article>) : <p>尚無廠商採購資料。</p>}
-          </div>
-        </article>
-        <article className="panel">
-          <PanelTitle eyebrow="狀態" title="採購分布" />
-          <div className="report-status-list">
-            {purchaseStatusRows.length ? purchaseStatusRows.map((row) => <article key={row.label}><span>{row.label}</span><strong>{row.count}</strong></article>) : <p>尚無採購狀態資料。</p>}
-          </div>
-        </article>
-        <article className="panel">
-          <PanelTitle eyebrow="任務" title="工作狀態分布" />
-          <div className="report-status-list">
-            {taskStatusRows.length ? taskStatusRows.map((row) => <article key={row.label}><span>{row.label}</span><strong>{row.count}</strong></article>) : <p>尚無任務資料。</p>}
-          </div>
-        </article>
-        <article className="panel">
-          <PanelTitle eyebrow="到期" title="近期提醒" />
-          <div className="report-mini-list">
-            {upcomingReminders.length ? upcomingReminders.map((row) => <article key={row.id}><strong>{row.title}</strong><span>{row.dueDate || '未設定日期'} · {row.status}</span></article>) : <p>尚無未結提醒。</p>}
+          <div className="fd20482-ranking-list">
+            {insightData.purchase.vendorRanking.length ? insightData.purchase.vendorRanking.map((row, index) => (
+              <div key={row.vendor}>
+                <span>{index + 1}</span>
+                <strong>{row.vendor}</strong>
+                <small>{row.count} 筆</small>
+                <b>{formatInsightMoney(row.amount)}</b>
+              </div>
+            )) : <div className="purchase-empty-state">尚無採購金額資料</div>}
           </div>
         </article>
       </section>
     </div>
   )
 }
+
+
 
 function readFlowdeskLocalArray(key) {
   if (typeof window === 'undefined') return []
