@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.91'
+const FLOWDESK_APP_VERSION = '20.4.92'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1379,8 +1379,10 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
     purchases: readFlowdeskLocalArray('flowdesk-purchases-v19'),
     projects: readFlowdeskLocalArray('flowdesk-projects-v1972'),
     tasks: readFlowdeskLocalArray('flowdesk-tasks-v1972'),
+    docs: readFlowdeskLocalArray('flowdesk-docs-v20481'),
   }))
   const [homeCloudLoading, setHomeCloudLoading] = useState(Boolean(flowdeskCloud))
+  const [homeFocus, setHomeFocus] = useState('今日指揮')
 
   useEffect(() => {
     let cancelled = false
@@ -1400,6 +1402,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
         purchases: Array.isArray(purchaseResult.data) ? purchaseResult.data : readFlowdeskLocalArray('flowdesk-purchases-v19'),
         projects: Array.isArray(projectResult.data) ? projectResult.data : readFlowdeskLocalArray('flowdesk-projects-v1972'),
         tasks: Array.isArray(taskResult.data) ? taskResult.data : readFlowdeskLocalArray('flowdesk-tasks-v1972'),
+        docs: readFlowdeskLocalArray('flowdesk-docs-v20481'),
       })
       setHomeCloudLoading(false)
     }
@@ -1409,6 +1412,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
         purchases: readFlowdeskLocalArray('flowdesk-purchases-v19'),
         projects: readFlowdeskLocalArray('flowdesk-projects-v1972'),
         tasks: readFlowdeskLocalArray('flowdesk-tasks-v1972'),
+        docs: readFlowdeskLocalArray('flowdesk-docs-v20481'),
       })
       setHomeCloudLoading(false)
     })
@@ -1420,318 +1424,338 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
   const purchases = Array.isArray(homeData.purchases) ? homeData.purchases : []
   const projects = Array.isArray(homeData.projects) ? homeData.projects : []
   const taskRows = Array.isArray(homeData.tasks) ? homeData.tasks : []
+  const docs = Array.isArray(homeData.docs) ? homeData.docs : []
   const workItems = Array.isArray(items) ? items : []
+  const reminderRows = Array.isArray(reminders) ? reminders : []
   const today = todayDate()
-  const reminderSummary = getReminderSummary(reminders)
-  const openReminders = reminders.filter((item) => item.status !== '已完成')
-  const purchaseTotal = purchases.reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
+  const currentMonth = today.slice(0, 7)
+
+  function localMoney(value) {
+    try {
+      return formatMoney(value)
+    } catch {
+      return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(Number(value) || 0)
+    }
+  }
+
+  function safePurchaseAmount(row) {
+    try {
+      return calculatePurchase(row).taxedTotal || 0
+    } catch {
+      return Number(row?.taxedTotal || row?.totalAmount || row?.amount || 0)
+    }
+  }
+
+  function safePurchaseTitle(row) {
+    try {
+      return purchaseCardTitle(row)
+    } catch {
+      return row?.title || row?.subject || row?.itemName || '未命名採購'
+    }
+  }
+
+  function getDateDiff(value) {
+    const dateText = String(value || '').slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return null
+    const base = new Date(`${today}T00:00:00`)
+    const target = new Date(`${dateText}T00:00:00`)
+    if (Number.isNaN(target.getTime())) return null
+    return Math.ceil((target.getTime() - base.getTime()) / 86400000)
+  }
+
+  const reminderSummary = getReminderSummary(reminderRows)
+  const openReminders = reminderRows.filter((item) => item.status !== '已完成')
+  const openWork = workItems.filter((item) => item.lane !== '已完成')
+  const overdueWork = openWork.filter((item) => getDateDiff(item.due) !== null && getDateDiff(item.due) < 0)
+  const todayWork = openWork.filter((item) => getDateDiff(item.due) === 0)
+  const weekWork = openWork.filter((item) => {
+    const diff = getDateDiff(item.due)
+    return diff !== null && diff >= 0 && diff <= 7
+  })
+  const waitingWork = openWork.filter((item) => ['等待回覆', '等回覆', '卡關'].includes(item.lane || item.status || ''))
+  const highWork = openWork.filter((item) => ['緊急', '高'].includes(item.priority))
+
   const purchaseOpen = purchases.filter((row) => !['已完成', '已取消'].includes(row.status || '')).length
+  const purchaseMonthAmount = purchases
+    .filter((row) => String(row.requestDate || row.orderDate || row.createdAt || '').startsWith(currentMonth))
+    .reduce((sum, row) => sum + safePurchaseAmount(row), 0)
+  const purchaseTotalAmount = purchases.reduce((sum, row) => sum + safePurchaseAmount(row), 0)
   const purchaseWaitingQuote = purchases.filter((row) => String(row.status || '').includes('詢價') || String(row.status || '').includes('報價')).length
   const purchaseNotArrived = purchases.filter((row) => (row.arrivalStatus || '未到貨') !== '已到貨' && !['已完成', '已取消'].includes(row.status || '')).length
   const purchaseUnpaid = purchases.filter((row) => (row.paymentStatus || '未付款') !== '已付款' && !['已完成', '已取消'].includes(row.status || '')).length
-  const projectActive = projects.filter((project) => !['已完成', '完成', '已取消'].some((done) => String(project.phase || '').includes(done))).length
+  const purchaseUnaccepted = purchases.filter((row) => (row.acceptanceStatus || '未驗收') !== '已驗收' && !['已完成', '已取消'].includes(row.status || '')).length
+
+  const projectActive = projects.filter((project) => !['已完成', '完成', '已取消'].some((done) => String(project.phase || project.status || '').includes(done))).length
   const projectRisk = projects.filter((project) => String(project.health || '').includes('風險') || String(project.health || '').includes('卡關') || project.tone === 'red').length
   const projectAvgProgress = projects.length ? Math.round(projects.reduce((sum, project) => sum + Number(project.progress || 0), 0) / projects.length) : 0
+  const projectDueSoon = projects.filter((project) => {
+    const diff = getDateDiff(project.endDate)
+    return diff !== null && diff >= 0 && diff <= 14 && !['已完成', '完成', '已取消'].some((done) => String(project.phase || project.status || '').includes(done))
+  }).length
+
   const taskOpen = taskRows.filter((task) => !['已完成', '完成'].includes(task.status || '')).length
   const taskBlocked = taskRows.filter((task) => ['等回覆', '卡關', '等待回覆'].includes(task.status || task.lane || '')).length
-  const overdueWork = workItems.filter((item) => item.lane !== '已完成' && item.due && item.due < today).length
-  const todayDueWork = workItems.filter((item) => item.lane !== '已完成' && item.due === today).length
-  const waitingWork = workItems.filter((item) => ['等待回覆', '等回覆', '卡關'].includes(item.lane || item.status || '')).length
-  const riskTotal = overdueWork + reminderSummary.overdue + projectRisk + taskBlocked + waitingWork
-  const operationScore = Math.max(0, Math.min(100, 100 - overdueWork * 8 - reminderSummary.overdue * 8 - projectRisk * 7 - taskBlocked * 5 - purchaseNotArrived * 3 - purchaseUnpaid * 2))
+  const docsNeedUpdate = docs.filter((doc) => doc.status === '需更新').length
+  const docsPinned = docs.filter((doc) => doc.pinned).length
+
+  const riskScore = overdueWork.length * 10 + reminderSummary.overdue * 10 + projectRisk * 8 + taskBlocked * 6 + purchaseNotArrived * 4 + purchaseUnpaid * 3 + waitingWork.length * 4
+  const operationScore = Math.max(0, Math.min(100, 100 - riskScore))
   const operationTone = operationScore >= 85 ? 'green' : operationScore >= 70 ? 'blue' : operationScore >= 55 ? 'amber' : 'red'
-  const operationSignals = [
-    { title: '逾期 / 今日到期', value: overdueWork + todayDueWork + reminderSummary.overdue + reminderSummary.today, note: '先處理今天要回應與已逾期項目', tone: overdueWork + reminderSummary.overdue ? 'red' : 'blue', target: 'reminders' },
-    { title: '採購阻塞', value: purchaseWaitingQuote + purchaseNotArrived + purchaseUnpaid, note: '報價、到貨、付款狀態需追蹤', tone: purchaseNotArrived || purchaseUnpaid ? 'amber' : 'green', target: 'base' },
-    { title: '專案風險', value: projectRisk, note: '風險或卡關專案需確認下一步', tone: projectRisk ? 'red' : 'green', target: 'roadmap' },
-    { title: '等待回覆', value: waitingWork + taskBlocked, note: '等待廠商、同仁或主管回覆', tone: waitingWork + taskBlocked ? 'violet' : 'green', target: 'board' },
+  const riskTotal = overdueWork.length + reminderSummary.overdue + projectRisk + taskBlocked + waitingWork.length + purchaseNotArrived + purchaseUnpaid
+
+  const commanderCards = [
+    { label: '今日到期', value: todayWork.length + reminderSummary.today, detail: `${todayWork.length} 工作 / ${reminderSummary.today} 提醒`, tone: todayWork.length || reminderSummary.today ? 'amber' : 'green', target: 'reminders' },
+    { label: '逾期風險', value: overdueWork.length + reminderSummary.overdue, detail: `${overdueWork.length} 工作 / ${reminderSummary.overdue} 提醒`, tone: overdueWork.length || reminderSummary.overdue ? 'red' : 'green', target: 'board' },
+    { label: '採購待追', value: purchaseWaitingQuote + purchaseNotArrived + purchaseUnpaid + purchaseUnaccepted, detail: `${purchaseOpen} 筆未完成`, tone: purchaseOpen ? 'blue' : 'green', target: 'base' },
+    { label: '專案風險', value: projectRisk + projectDueSoon, detail: `${projectRisk} 風險 / ${projectDueSoon} 近14天`, tone: projectRisk ? 'red' : projectDueSoon ? 'amber' : 'green', target: 'roadmap' },
   ]
-  const dataHealthRows = [
-    { label: '工作資料', count: workItems.length + taskRows.length, meta: `${workItems.length} 看板 / ${taskRows.length} 任務`, target: 'board' },
-    { label: '採購資料', count: purchases.length, meta: `${purchaseOpen} 未完成 / ${formatMoney(purchaseTotal)}`, target: 'base' },
-    { label: '專案資料', count: projects.length, meta: `${projectActive} 進行中 / 平均 ${projectAvgProgress}%`, target: 'roadmap' },
-    { label: '提醒資料', count: reminders.length, meta: `${reminderSummary.open} 未結 / ${reminderSummary.week} 本週`, target: 'reminders' },
+
+  const moduleCards = [
+    { id: 'board', icon: '📌', title: '工作事項', value: openWork.length, note: `${highWork.length} 高優先 · ${waitingWork.length} 等回覆`, action: '查看工作' },
+    { id: 'base', icon: '🗂️', title: '採購 / 紀錄', value: purchaseOpen, note: `${localMoney(purchaseMonthAmount)} 本月採購`, action: '查看採購' },
+    { id: 'roadmap', icon: '📈', title: '專案管理', value: projectActive, note: `平均 ${projectAvgProgress}% · ${projectRisk} 風險`, action: '查看專案' },
+    { id: 'reminders', icon: '🔔', title: '提醒中心', value: reminderSummary.open, note: `${reminderSummary.today} 今日 · ${reminderSummary.week} 本週`, action: '查看提醒' },
+    { id: 'docs', icon: '📄', title: '文件備忘', value: docs.length, note: `${docsPinned} 釘選 · ${docsNeedUpdate} 需更新`, action: '查看文件' },
+    { id: 'insight', icon: '📊', title: '分析摘要', value: operationScore, note: `營運分數 · ${riskTotal} 風險訊號`, action: '查看分析' },
   ]
-  const briefingRows = [
-    `營運分數 ${operationScore}，目前${riskTotal ? `有 ${riskTotal} 個風險訊號` : '沒有明顯風險訊號'}。`,
-    purchaseOpen ? `採購尚有 ${purchaseOpen} 筆未完成，其中 ${purchaseNotArrived} 筆未到貨、${purchaseUnpaid} 筆未付款。` : '採購目前沒有未完成項目。',
-    projectRisk ? `專案有 ${projectRisk} 筆風險或卡關，建議先確認責任人與下一步。` : `專案平均進度 ${projectAvgProgress}%，目前無明顯風險。`,
-    reminderSummary.open ? `提醒中心有 ${reminderSummary.open} 筆未結，今日 ${reminderSummary.today} 筆，本週 ${reminderSummary.week} 筆。` : '提醒中心目前沒有未結事項。',
-  ]
-  const focusItems = workItems
-    .filter((item) => item.lane !== '已完成')
-    .slice()
-    .sort((a, b) => {
-      const priorityScore = (row) => row.priority === '緊急' ? 0 : row.priority === '高' ? 1 : row.priority === '中' ? 2 : 3
-      return priorityScore(a) - priorityScore(b) || String(a.due || '9999-12-31').localeCompare(String(b.due || '9999-12-31'))
-    })
-    .slice(0, 5)
-  const purchaseFocus = purchases
-    .map((row) => {
-      const actions = []
-      if ((row.arrivalStatus || '未到貨') !== '已到貨' && !['已完成', '已取消'].includes(row.status || '')) actions.push('到貨')
-      if ((row.paymentStatus || '未付款') !== '已付款' && !['已完成', '已取消'].includes(row.status || '')) actions.push('付款')
-      if ((row.acceptanceStatus || '未驗收') !== '已驗收' && !['已完成', '已取消'].includes(row.status || '')) actions.push('驗收')
-      if (String(row.status || '').includes('詢價') || String(row.status || '').includes('報價')) actions.push('報價')
-      return { row, actions, amount: calculatePurchase(row).taxedTotal }
-    })
-    .filter((item) => item.actions.length)
-    .sort((a, b) => b.actions.length - a.actions.length || b.amount - a.amount)
-    .slice(0, 5)
-  const projectFocus = projects
-    .filter((project) => Number(project.progress || 0) < 100)
-    .slice()
-    .sort((a, b) => {
-      const riskA = String(a.health || '').includes('風險') || String(a.health || '').includes('卡關') || a.tone === 'red' ? 0 : 1
-      const riskB = String(b.health || '').includes('風險') || String(b.health || '').includes('卡關') || b.tone === 'red' ? 0 : 1
-      return riskA - riskB || String(a.endDate || '9999-12-31').localeCompare(String(b.endDate || '9999-12-31'))
-    })
-    .slice(0, 4)
-  const reminderFocus = openReminders
-    .slice()
-    .sort((a, b) => String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31')))
-    .slice(0, 4)
-  const priorityRows = [
-    ...focusItems.map((item) => ({
-      id: `work-${item.id}`,
-      label: '工作',
+
+  const focusRows = [
+    ...overdueWork.slice(0, 4).map((item) => ({
+      id: `overdue-${item.id}`,
+      type: '工作逾期',
       title: item.title || '未命名工作',
-      subtitle: `${item.lane || '待分類'} · ${item.owner || '未指定'} · ${item.due || '未設定日期'}`,
-      badge: item.priority || '中',
+      meta: `${item.owner || '未指定'} · ${item.due || '未設定'} · ${item.priority || '中'}`,
+      tone: 'red',
       target: 'board',
       raw: item,
-      score: item.priority === '緊急' ? 90 : item.priority === '高' ? 75 : 45,
     })),
-    ...purchaseFocus.map(({ row, actions, amount }) => ({
-      id: `purchase-${row.id}`,
-      label: '採購',
-      title: purchaseTitle(row),
-      subtitle: `${row.vendor || '未指定廠商'} · ${actions.join(' / ')} · ${formatMoney(amount)}`,
-      badge: row.status || '待確認',
-      target: 'base',
-      score: 60 + actions.length * 8 + Math.min(20, Math.round(amount / 50000)),
+    ...todayWork.slice(0, 4).map((item) => ({
+      id: `today-${item.id}`,
+      type: '今日工作',
+      title: item.title || '未命名工作',
+      meta: `${item.owner || '未指定'} · ${item.lane || '待分類'} · ${item.priority || '中'}`,
+      tone: 'amber',
+      target: 'board',
+      raw: item,
     })),
-    ...projectFocus.map((project) => ({
-      id: `project-${project.id}`,
-      label: '專案',
-      title: project.name || '未命名專案',
-      subtitle: `${project.phase || '未設定階段'} · ${project.owner || '未指定'} · ${project.endDate || '未設定日期'}`,
-      badge: project.health || `${Number(project.progress || 0)}%`,
-      target: 'roadmap',
-      score: String(project.health || '').includes('風險') || String(project.health || '').includes('卡關') ? 82 : 50,
-    })),
-    ...reminderFocus.map((reminder) => ({
-      id: `reminder-${reminder.id}`,
-      label: '提醒',
-      title: reminder.title || '未命名提醒',
-      subtitle: `${reminder.type || '提醒'} · ${reminder.dueDate || '未設定日期'}`,
-      badge: reminder.priority || '中',
+    ...openReminders.slice().sort((a, b) => String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31'))).slice(0, 5).map((item) => ({
+      id: `reminder-${item.id}`,
+      type: '提醒',
+      title: item.title || '未命名提醒',
+      meta: `${item.sourceType || '一般'} · ${item.dueDate || '未設定'} · ${item.priority || '中'}`,
+      tone: getDateDiff(item.dueDate) < 0 ? 'red' : 'blue',
       target: 'reminders',
-      score: reminder.priority === '高' ? 78 : 48,
     })),
-  ].sort((a, b) => b.score - a.score).slice(0, 8)
+    ...purchases
+      .filter((row) => !['已完成', '已取消'].includes(row.status || '') && ((row.arrivalStatus || '未到貨') !== '已到貨' || (row.paymentStatus || '未付款') !== '已付款' || String(row.status || '').includes('詢價') || String(row.status || '').includes('報價')))
+      .slice(0, 5)
+      .map((row) => ({
+        id: `purchase-${row.id}`,
+        type: '採購',
+        title: safePurchaseTitle(row),
+        meta: `${row.vendor || '未指定廠商'} · ${row.status || '待確認'} · ${localMoney(safePurchaseAmount(row))}`,
+        tone: 'violet',
+        target: 'base',
+      })),
+    ...projects
+      .filter((project) => String(project.health || '').includes('風險') || String(project.health || '').includes('卡關') || project.tone === 'red')
+      .slice(0, 4)
+      .map((project) => ({
+        id: `project-${project.id}`,
+        type: '專案',
+        title: project.name || project.title || '未命名專案',
+        meta: `${project.owner || '未指定'} · ${project.phase || '未設定'} · ${project.progress || 0}%`,
+        tone: 'red',
+        target: 'roadmap',
+      })),
+  ].slice(0, 10)
 
-  function jumpToPriority(row) {
-    if (row.target === 'board' && row.raw) setSelected(row.raw)
-    setActive(row.target)
+  const timelineRows = [
+    ...weekWork.map((item) => ({ id: `work-${item.id}`, date: item.due, title: item.title, type: '工作', target: 'board', raw: item })),
+    ...openReminders.map((item) => ({ id: `rem-${item.id}`, date: item.dueDate, title: item.title, type: '提醒', target: 'reminders' })),
+    ...projects.filter((project) => getDateDiff(project.endDate) !== null && getDateDiff(project.endDate) >= 0 && getDateDiff(project.endDate) <= 30).map((project) => ({ id: `project-${project.id}`, date: project.endDate, title: project.name || project.title, type: '專案', target: 'roadmap' })),
+  ]
+    .filter((row) => row.date)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .slice(0, 8)
+
+  const purchaseLeaders = Array.from(purchases.reduce((map, row) => {
+    const vendor = row.vendor || '未指定廠商'
+    const current = map.get(vendor) || { vendor, amount: 0, count: 0 }
+    current.amount += safePurchaseAmount(row)
+    current.count += 1
+    map.set(vendor, current)
+    return map
+  }, new Map()).values()).sort((a, b) => b.amount - a.amount).slice(0, 5)
+
+  const dataStatus = [
+    { label: '工作', value: workItems.length, note: `${openWork.length} 未完成` },
+    { label: '採購', value: purchases.length, note: `${purchaseOpen} 未完成` },
+    { label: '專案', value: projects.length, note: `${projectActive} 進行中` },
+    { label: '提醒', value: reminderRows.length, note: `${reminderSummary.open} 未結` },
+    { label: '文件', value: docs.length, note: `${docsNeedUpdate} 需更新` },
+  ]
+
+  function jump(row) {
+    if (row?.target === 'board' && row.raw) setSelected(row.raw)
+    if (row?.target) setActive(row.target)
   }
 
-  function exportHomeBriefing() {
+  function exportCommandBrief() {
     const payload = {
       exportedAt: new Date().toISOString(),
-      score: operationScore,
-      signals: operationSignals,
-      dataHealth: dataHealthRows,
-      briefing: briefingRows,
-      priorityRows: priorityRows.map((row) => ({ label: row.label, title: row.title, subtitle: row.subtitle, badge: row.badge })),
+      version: FLOWDESK_VERSION_LABEL,
+      operationScore,
+      riskTotal,
+      commanderCards,
+      moduleCards,
+      focusRows: focusRows.map(({ type, title, meta, tone }) => ({ type, title, meta, tone })),
+      timelineRows,
+      dataStatus,
     }
-    downloadFlowdeskText(`flowdesk_home_briefing_${todayDate()}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8')
+    downloadFlowdeskText(`FlowDesk總覽中控台_${todayDate()}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8')
   }
 
   return (
-    <div className="home-layout home-cloud-dashboard">
-      <section className="command-hero compact-hero home-command-center">
-        <div>
-          <p className="eyebrow hero-eyebrow">今日焦點</p>
-          <h2>雲端工作總覽</h2>
-          <div className="hero-actions">
-            <button type="button" onClick={() => setActive('board')}>工作事項</button>
-            <button type="button" onClick={() => setActive('base')}>採購與紀錄</button>
-            <button type="button" onClick={() => setActive('roadmap')}>專案管理</button>
+    <div className="fd20492-overview">
+      <section className="fd20492-hero">
+        <div className="fd20492-hero-copy">
+          <p className="eyebrow">COMMAND CENTER</p>
+          <h2>今日工作中控台</h2>
+          <span>把工作、採購、專案、提醒與文件集中成一張戰情圖，先處理風險，再推進下一步。</span>
+          <div className="fd20492-hero-actions">
+            <button type="button" className="primary-btn" onClick={() => setActive('board')}>新增 / 查看工作</button>
+            <button type="button" onClick={() => setActive('base')}>採購管理</button>
+            <button type="button" onClick={exportCommandBrief}>匯出總覽</button>
           </div>
         </div>
-        <div className="hero-metrics home-hero-metrics-grid">
-          <Metric label="未完成工作" value={metrics.open} tone="blue" />
-          <Metric label="逾期工作" value={overdueWork} tone="red" />
-          <Metric label="待處理採購" value={purchaseOpen} tone="amber" />
-        </div>
+        <article className={`fd20492-score-card ${operationTone}`}>
+          <span>營運分數</span>
+          <strong>{operationScore}</strong>
+          <small>{riskTotal ? `${riskTotal} 個風險訊號需要追蹤` : '目前狀態穩定'}</small>
+          <div><i style={{ width: `${operationScore}%` }} /></div>
+        </article>
       </section>
 
-      <section className="flowdesk-focus-rules">
-        {flowdeskFocusRules.map((rule) => (
-          <article key={rule.title}>
-            <strong>{rule.title}</strong>
-            <span>{rule.detail}</span>
-          </article>
+      <section className="fd20492-commander-grid">
+        {commanderCards.map((card) => (
+          <button key={card.label} type="button" className={`fd20492-command-card ${card.tone}`} onClick={() => setActive(card.target)}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <small>{card.detail}</small>
+          </button>
         ))}
       </section>
 
-      <section className="metric-strip home-cloud-kpis">
-        <Metric label="今日到期" value={todayDueWork} tone="violet" />
-        <Metric label="任務未結" value={taskOpen} tone="blue" />
-        <Metric label="專案進行" value={projectActive} tone="green" />
-        <Metric label="專案風險" value={projectRisk} tone="red" />
-        <Metric label="採購總額" value={formatMoney(purchaseTotal)} tone="green" />
-      </section>
-
-      <section className="panel wide home-executive-briefing">
-        <div className="home-executive-head">
-          <div>
-            <p className="eyebrow">OPERATION BRIEFING</p>
-            <h3>今日指揮摘要</h3>
+      <section className="fd20492-body-grid">
+        <article className="fd20492-panel fd20492-focus-panel">
+          <div className="fd20492-panel-head">
+            <div>
+              <p className="eyebrow">PRIORITY</p>
+              <h3>下一步優先處理</h3>
+            </div>
+            <div className="fd20492-focus-tabs">
+              {['今日指揮', '風險優先', '全部焦點'].map((tab) => <button key={tab} type="button" className={homeFocus === tab ? 'active' : ''} onClick={() => setHomeFocus(tab)}>{tab}</button>)}
+            </div>
           </div>
-          <button className="ghost-btn" type="button" onClick={exportHomeBriefing}>匯出摘要</button>
-        </div>
-        <div className="home-executive-grid">
-          <article className={`home-score-card ${operationTone}`}>
-            <span>營運分數</span>
-            <strong>{operationScore}</strong>
-            <small>{riskTotal ? `目前有 ${riskTotal} 個風險訊號` : '目前狀態穩定'}</small>
-          </article>
-          <div className="home-signal-grid">
-            {operationSignals.map((signal) => (
-              <button key={signal.title} type="button" className={`home-signal-card ${signal.tone}`} onClick={() => setActive(signal.target)}>
-                <span>{signal.title}</span>
-                <strong>{signal.value}</strong>
-                <small>{signal.note}</small>
+          <div className="fd20492-focus-list">
+            {(homeFocus === '風險優先' ? focusRows.filter((row) => row.tone === 'red') : focusRows).slice(0, homeFocus === '全部焦點' ? 10 : 7).map((row) => (
+              <button key={row.id} type="button" className={`fd20492-focus-row ${row.tone}`} onClick={() => jump(row)}>
+                <span>{row.type}</span>
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{row.meta}</small>
+                </div>
+                <b>開啟</b>
               </button>
             ))}
+            {!focusRows.length && <EmptyState title="目前沒有優先處理項目" action="新增工作、提醒、採購或專案後會自動整理。" />}
           </div>
-        </div>
-        <div className="home-briefing-lines">
-          {briefingRows.map((line) => <p key={line}>{line}</p>)}
-        </div>
-      </section>
+        </article>
 
-      <section className="panel wide home-data-health">
-        <PanelTitle eyebrow="DATA HEALTH" title="資料健康檢查" action={homeCloudLoading ? '同步中' : '雲端 / 本機已讀取'} />
-        <div className="home-data-health-grid">
-          {dataHealthRows.map((row) => (
-            <button key={row.label} type="button" onClick={() => setActive(row.target)}>
-              <span>{row.label}</span>
-              <strong>{row.count}</strong>
-              <small>{row.meta}</small>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel wide home-priority-panel">
-        <PanelTitle eyebrow="整合待辦" title="下一步優先序" action={homeCloudLoading ? '同步中' : '已同步'} />
-        <div className="home-priority-list">
-          {priorityRows.length ? priorityRows.map((row) => (
-            <button key={row.id} className="home-priority-row" type="button" onClick={() => jumpToPriority(row)}>
-              <span>{row.label}</span>
-              <div>
-                <strong>{row.title}</strong>
-                <small>{row.subtitle}</small>
-              </div>
-              <Badge value={row.badge} />
-            </button>
-          )) : <EmptyState title="目前沒有待處理焦點" action="新增工作事項或採購後，這裡會自動彙整下一步。" />}
-        </div>
-      </section>
-
-      <section className="panel wide purchase-home home-live-panel">
-        <PanelTitle eyebrow="採購處理" title="採購流程總覽" action="紀錄中心" />
-        <div className="purchase-home-grid">
-          <article><span>採購總額</span><strong>{formatMoney(purchaseTotal)}</strong></article>
-          <article><span>詢價 / 報價</span><strong>{purchaseWaitingQuote}</strong></article>
-          <article><span>未到貨</span><strong>{purchaseNotArrived}</strong></article>
-          <article><span>未付款</span><strong>{purchaseUnpaid}</strong></article>
-        </div>
-        <div className="purchase-home-list">
-          {purchases.length ? purchases.slice(0, 5).map((row) => (
-            <button key={row.id} type="button" onClick={() => setActive('base')}>
-              <div><strong>{purchaseCardTitle(row)}</strong><small>{row.department || '未指定單位'} · {row.vendor || '未指定廠商'} · {getPurchaseItems(row).length} 項</small></div>
-              <Badge value={row.status || '待確認'} />
-            </button>
-          )) : <EmptyState title="尚無採購資料" action="進入紀錄中心新增採購後，總覽會即時彙整。" />}
-        </div>
-      </section>
-
-      <section className="panel wide home-project-panel">
-        <PanelTitle eyebrow="專案推進" title="專案管理摘要" action="專案管理" />
-        <div className="home-project-summary">
-          <article><span>專案數</span><strong>{projects.length}</strong></article>
-          <article><span>進行中</span><strong>{projectActive}</strong></article>
-          <article><span>平均進度</span><strong>{projectAvgProgress}%</strong></article>
-          <article><span>風險</span><strong>{projectRisk}</strong></article>
-        </div>
-        <div className="home-project-list">
-          {projectFocus.length ? projectFocus.map((project) => (
-            <button key={project.id} type="button" onClick={() => setActive('roadmap')}>
-              <div>
-                <strong>{project.name || '未命名專案'}</strong>
-                <small>{project.phase || '未設定階段'} · {project.owner || '未指定'} · {project.endDate || '未設定日期'}</small>
-                <i><em style={{ width: `${Math.max(0, Math.min(100, Number(project.progress || 0)))}%` }} /></i>
-              </div>
-              <Badge value={project.health || `${Number(project.progress || 0)}%`} />
-            </button>
-          )) : <EmptyState title="尚無進行中專案" action="建立專案後，這裡會顯示進度與風險。" />}
-        </div>
-      </section>
-
-      <section className="panel wide reminder-home-panel">
-        <PanelTitle eyebrow="提醒中心" title="今日與本週提醒" action="提醒事項" />
-        <div className="reminder-home-grid">
-          <article className="danger"><span>逾期</span><strong>{reminderSummary.overdue}</strong></article>
-          <article><span>今日</span><strong>{reminderSummary.today}</strong></article>
-          <article><span>本週</span><strong>{reminderSummary.week}</strong></article>
-          <article><span>未結</span><strong>{reminderSummary.open}</strong></article>
-        </div>
-        <div className="reminder-home-list">
-          {reminderFocus.length ? reminderFocus.map((item) => {
-            const due = getReminderDueInfo(item.dueDate)
-            return (
-              <button key={item.id} type="button" onClick={() => setActive('reminders')}>
-                <div><strong>{item.title}</strong><small>{item.sourceType} · {item.type} · {due.label}</small></div>
-                <Badge value={item.priority} />
+        <article className="fd20492-panel fd20492-timeline-panel">
+          <div className="fd20492-panel-head">
+            <div>
+              <p className="eyebrow">TIMELINE</p>
+              <h3>近期時程</h3>
+            </div>
+            <button type="button" onClick={() => setActive('reminders')}>提醒中心</button>
+          </div>
+          <div className="fd20492-timeline">
+            {timelineRows.length ? timelineRows.map((row) => (
+              <button key={row.id} type="button" onClick={() => jump(row)}>
+                <span>{row.date}</span>
+                <div><strong>{row.title}</strong><small>{row.type}</small></div>
               </button>
-            )
-          }) : <EmptyState title="目前沒有未結提醒" action="新增提醒後會出現在這裡。" />}
-        </div>
+            )) : <EmptyState title="近期沒有排程" action="本週工作、提醒與專案到期會出現在這裡。" />}
+          </div>
+        </article>
       </section>
 
-      <section className="panel">
-        <PanelTitle eyebrow="快速入口" title="常用視圖" />
-        <div className="view-launchers view-launchers-min">
-          <button type="button" onClick={() => setActive('board')}><span><Icon name="kanban" /></span><strong>工作事項</strong></button>
-          <button type="button" onClick={() => setActive('base')}><span><Icon name="records" /></span><strong>紀錄中心</strong></button>
-          <button type="button" onClick={() => setActive('roadmap')}><span><Icon name="project" /></span><strong>專案管理</strong></button>
-          <button type="button" onClick={() => setActive('insight')}><span><Icon name="report" /></span><strong>分析摘要</strong></button>
-          <button type="button" onClick={() => setActive('reminders')}><span>🔔</span><strong>提醒中心</strong></button>
-        </div>
+      <section className="fd20492-module-grid">
+        {moduleCards.map((card) => (
+          <button key={card.id} type="button" className="fd20492-module-card" onClick={() => setActive(card.id)}>
+            <span className="fd20492-module-icon">{card.icon}</span>
+            <div>
+              <strong>{card.title}</strong>
+              <small>{card.note}</small>
+            </div>
+            <b>{card.value}</b>
+            <em>{card.action}</em>
+          </button>
+        ))}
       </section>
 
-      <section className="panel wide">
-        <PanelTitle eyebrow="近期動態" title="工作狀態流" />
-        <div className="pulse-feed">
-          {workItems.length ? workItems.slice(0, 10).map((item) => (
-            <article key={item.id} className="pulse-item">
-              <span className={`dot ${toneMap[item.lane] || 'blue'}`} />
-              <div>
-                <strong>{item.title}</strong>
-                <small>{item.type} · {item.owner} · {item.note}</small>
+      <section className="fd20492-bottom-grid">
+        <article className="fd20492-panel">
+          <div className="fd20492-panel-head">
+            <div>
+              <p className="eyebrow">PURCHASE</p>
+              <h3>採購概況</h3>
+            </div>
+            <button type="button" onClick={() => setActive('base')}>開啟採購</button>
+          </div>
+          <div className="fd20492-purchase-summary">
+            <article><span>本月金額</span><strong>{localMoney(purchaseMonthAmount)}</strong></article>
+            <article><span>總金額</span><strong>{localMoney(purchaseTotalAmount)}</strong></article>
+            <article><span>未到貨</span><strong>{purchaseNotArrived}</strong></article>
+            <article><span>未付款</span><strong>{purchaseUnpaid}</strong></article>
+          </div>
+          <div className="fd20492-vendor-list">
+            {purchaseLeaders.length ? purchaseLeaders.map((row, index) => (
+              <div key={row.vendor}>
+                <span>{index + 1}</span>
+                <strong>{row.vendor}</strong>
+                <small>{row.count} 筆</small>
+                <b>{localMoney(row.amount)}</b>
               </div>
-              <Badge value={item.priority} />
-            </article>
-          )) : <EmptyState title="尚無工作動態" action="新增工作事項後，近期動態會自動顯示。" />}
-        </div>
+            )) : <EmptyState title="尚無採購排行" action="新增採購後會顯示廠商金額排行。" />}
+          </div>
+        </article>
+
+        <article className="fd20492-panel">
+          <div className="fd20492-panel-head">
+            <div>
+              <p className="eyebrow">DATA</p>
+              <h3>資料狀態</h3>
+            </div>
+            <span>{homeCloudLoading ? '同步中' : '已讀取'}</span>
+          </div>
+          <div className="fd20492-data-list">
+            {dataStatus.map((row) => (
+              <article key={row.label}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+                <small>{row.note}</small>
+              </article>
+            ))}
+          </div>
+        </article>
       </section>
     </div>
   )
 }
+
 
 function EmptyState({ title, action }) {
   return (

@@ -29472,3 +29472,496 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_91_REMOVE_WORK_RIGHT_PREVIEW_END */
 
+
+/* FLOWDESK_V20_4_92_OVERVIEW_COMMAND_CENTER_START */
+/* 總覽大改：工作中控台 / 戰情圖，不再是普通卡片堆疊 */
+
+.fd20492-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: 28px;
+}
+
+.fd20492-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, .6fr);
+  gap: 18px;
+  align-items: stretch;
+  padding: 22px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 122, 24, .18), transparent 28%),
+    radial-gradient(circle at top right, rgba(37, 99, 235, .13), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(248, 251, 255, .94));
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .08);
+}
+
+.fd20492-hero-copy h2 {
+  margin: 4px 0 0;
+  color: #0f172a;
+  font-size: clamp(34px, 4vw, 58px);
+  line-height: 1.02;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.fd20492-hero-copy > span {
+  display: block;
+  max-width: 780px;
+  margin-top: 12px;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.65;
+}
+
+.fd20492-hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.fd20492-hero-actions button,
+.fd20492-panel-head button,
+.fd20492-focus-tabs button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 14px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.fd20492-hero-actions .primary-btn {
+  border: 0;
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+  color: #fff;
+  box-shadow: 0 14px 28px var(--theme-shadow);
+}
+
+.fd20492-score-card {
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 22px;
+  border-radius: 28px;
+  background: #0f172a;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
+}
+
+.fd20492-score-card.green { background: linear-gradient(135deg, #047857, #0f766e); }
+.fd20492-score-card.blue { background: linear-gradient(135deg, #1d4ed8, #0891b2); }
+.fd20492-score-card.amber { background: linear-gradient(135deg, #b45309, #ea580c); }
+.fd20492-score-card.red { background: linear-gradient(135deg, #be123c, #7f1d1d); }
+
+.fd20492-score-card span {
+  opacity: .82;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.fd20492-score-card strong {
+  margin-top: 10px;
+  font-size: 72px;
+  line-height: .95;
+  font-weight: 950;
+  letter-spacing: -0.07em;
+}
+
+.fd20492-score-card small {
+  margin-top: 12px;
+  opacity: .86;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.fd20492-score-card div {
+  height: 9px;
+  overflow: hidden;
+  margin-top: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .24);
+}
+
+.fd20492-score-card i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #fff;
+}
+
+.fd20492-commander-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.fd20492-command-card,
+.fd20492-module-card,
+.fd20492-focus-row,
+.fd20492-timeline button {
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fff, #f8fbff);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, .06);
+  color: #0f172a;
+  cursor: pointer;
+  text-align: left;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.fd20492-command-card {
+  min-height: 126px;
+  padding: 16px;
+}
+
+.fd20492-command-card:hover,
+.fd20492-module-card:hover,
+.fd20492-focus-row:hover,
+.fd20492-timeline button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, .26);
+  box-shadow: 0 26px 52px rgba(15, 23, 42, .11);
+}
+
+.fd20492-command-card span,
+.fd20492-module-card small,
+.fd20492-panel-head span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.fd20492-command-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 32px;
+  font-weight: 950;
+}
+
+.fd20492-command-card small {
+  display: block;
+  margin-top: 8px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fd20492-command-card.red strong { color: #be123c; }
+.fd20492-command-card.amber strong { color: #b45309; }
+.fd20492-command-card.green strong { color: #047857; }
+.fd20492-command-card.blue strong { color: #1d4ed8; }
+
+.fd20492-body-grid,
+.fd20492-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, .65fr);
+  gap: 18px;
+}
+
+.fd20492-panel {
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, .06);
+}
+
+.fd20492-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.fd20492-panel-head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 21px;
+  font-weight: 950;
+}
+
+.fd20492-focus-tabs {
+  display: inline-flex;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.fd20492-focus-tabs button {
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+}
+
+.fd20492-focus-tabs button.active {
+  background: #fff;
+  color: #1d4ed8;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+}
+
+.fd20492-focus-list,
+.fd20492-timeline,
+.fd20492-vendor-list,
+.fd20492-data-list {
+  display: grid;
+  gap: 10px;
+}
+
+.fd20492-focus-row {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) 54px;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px;
+}
+
+.fd20492-focus-row > span {
+  display: inline-flex;
+  justify-content: center;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.fd20492-focus-row.red > span { background: #fff1f2; color: #be123c; }
+.fd20492-focus-row.amber > span { background: #fffbeb; color: #b45309; }
+.fd20492-focus-row.violet > span { background: #f5f3ff; color: #6d28d9; }
+
+.fd20492-focus-row strong,
+.fd20492-timeline strong,
+.fd20492-module-card strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.fd20492-focus-row small,
+.fd20492-timeline small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fd20492-focus-row b {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+  text-align: right;
+}
+
+.fd20492-timeline button {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 66px;
+  padding: 12px;
+}
+
+.fd20492-timeline button > span {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.fd20492-module-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.fd20492-module-card {
+  min-height: 158px;
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+}
+
+.fd20492-module-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #eff6ff;
+  font-size: 22px;
+}
+
+.fd20492-module-card b {
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.fd20492-module-card em {
+  color: #2563eb;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.fd20492-purchase-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.fd20492-purchase-summary article,
+.fd20492-data-list article {
+  padding: 12px;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.fd20492-purchase-summary span,
+.fd20492-data-list span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.fd20492-purchase-summary strong,
+.fd20492-data-list strong {
+  display: block;
+  margin-top: 7px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.fd20492-vendor-list div {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 48px auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.fd20492-vendor-list span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.fd20492-vendor-list strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fd20492-vendor-list small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fd20492-vendor-list b {
+  color: #047857;
+  font-size: 13px;
+  font-weight: 950;
+  text-align: right;
+}
+
+.fd20492-data-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fd20492-data-list article:last-child {
+  grid-column: 1 / -1;
+}
+
+.fd20492-data-list small {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 1280px) {
+  .fd20492-module-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .fd20492-commander-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .fd20492-hero,
+  .fd20492-body-grid,
+  .fd20492-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fd20492-module-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .fd20492-hero {
+    padding: 16px;
+    border-radius: 24px;
+  }
+
+  .fd20492-hero-actions,
+  .fd20492-panel-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fd20492-commander-grid,
+  .fd20492-module-grid,
+  .fd20492-purchase-summary,
+  .fd20492-data-list {
+    grid-template-columns: 1fr;
+  }
+
+  .fd20492-focus-row,
+  .fd20492-timeline button,
+  .fd20492-vendor-list div {
+    grid-template-columns: 1fr;
+  }
+
+  .fd20492-focus-row b,
+  .fd20492-vendor-list b {
+    text-align: left;
+  }
+}
+/* FLOWDESK_V20_4_92_OVERVIEW_COMMAND_CENTER_END */
+
