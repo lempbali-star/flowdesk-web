@@ -25880,3 +25880,14 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd20451-gantt-head .fd203-week-head {
   padding-bottom: 26px !important;
 }
+
+
+/* FlowDesk v20.4.52 - 今日標籤改用甘特整體像素座標，與紅色虛線完全同基準 */
+.fd20452-gantt-today-chip {
+  position: absolute !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+  bottom: 6px !important;
+  z-index: 48 !important;
+  pointer-events: none !important;
+}

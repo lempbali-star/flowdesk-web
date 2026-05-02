@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.51'
+const FLOWDESK_APP_VERSION = '20.4.52'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5282,7 +5282,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const gridColumns = `${labelColumnWidth}px repeat(${safeWeekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
     const todayValue = todayDate()
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
-    const todayLeft = showToday ? `${ganttPoint(todayValue, displayStart, displayEnd)}%` : null
+    const todayPoint = showToday ? ganttPoint(todayValue, displayStart, displayEnd) : 0
+    const todayLeft = showToday ? `${todayPoint}%` : null
+    const todayHeadLeft = showToday ? `${labelColumnWidth + ((todayPoint / 100) * (safeWeekTicks.length * weekCellWidth))}px` : null
     return (
       <div className={`fd203-gantt-panel fd203-gantt-fit-${fitMode}${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`} data-week-count={weekCount} data-fit-mode={fitMode} style={{ '--fd20426-gantt-grid-width': `${ganttGridWidth}px`, '--fd20426-gantt-label-width': `${labelColumnWidth}px` }}>
         <div className="fd203-gantt-summary">
@@ -5314,7 +5316,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </span>
             ))}
             {showToday ? (
-              <em className="fd20428-gantt-today-chip fd20450-gantt-today-chip fd20451-gantt-today-chip" style={{ left: `calc(${labelColumnWidth}px + ${todayLeft})` }}>
+              <em className="fd20428-gantt-today-chip fd20450-gantt-today-chip fd20451-gantt-today-chip fd20452-gantt-today-chip" style={{ left: todayHeadLeft }}>
                 今天 {formatMonthDay(todayValue)}
               </em>
             ) : null}
