@@ -1,6 +1,6 @@
 {
-  "installCommand": "npm ci --no-audit --no-fund && npm run build",
-  "buildCommand": "echo Build completed during install",
+  "installCommand": "npm ci --no-audit --no-fund",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite"
 }
