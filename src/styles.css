@@ -25861,3 +25861,22 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-today-line.subtle {
   transform: translateX(-50%);
 }
+
+
+/* FlowDesk v20.4.51 - 今日標籤與今日虛線使用同一座標基準 */
+.fd20451-gantt-head {
+  position: sticky !important;
+}
+
+.fd20451-gantt-today-chip {
+  position: absolute !important;
+  bottom: 6px;
+  transform: translateX(-50%);
+  margin: 0 !important;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.fd20451-gantt-head .fd203-week-head {
+  padding-bottom: 26px !important;
+}

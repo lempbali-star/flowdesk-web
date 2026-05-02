@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.50'
+const FLOWDESK_APP_VERSION = '20.4.51'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5305,15 +5305,19 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         </div>
 
         <div className="fd203-gantt-scroll fd20435-gantt-scroll">
-          <div className="fd203-gantt-grid fd203-gantt-head fd20435-gantt-head" style={{ gridTemplateColumns: gridColumns }}>
+          <div className="fd203-gantt-grid fd203-gantt-head fd20435-gantt-head fd20451-gantt-head" style={{ gridTemplateColumns: gridColumns }}>
             <span>項目</span>
             {safeWeekTicks.map((tick) => (
               <span key={tick.key} className="fd203-week-head">
                 <b>{formatWeekRange(tick.start, tick.end)}</b>
                 <small>{tick.days} 天 · {formatWeekSpanLabel(tick.start, tick.end)}</small>
-                {showToday && todayValue >= tick.start && todayValue <= tick.end ? <em className="fd20428-gantt-today-chip fd20450-gantt-today-chip" style={{ left: `${getWeekDayCenterPercent(todayValue, tick.start, tick.end)}%` }}>今天 {formatMonthDay(todayValue)}</em> : null}
               </span>
             ))}
+            {showToday ? (
+              <em className="fd20428-gantt-today-chip fd20450-gantt-today-chip fd20451-gantt-today-chip" style={{ left: `calc(${labelColumnWidth}px + ${todayLeft})` }}>
+                今天 {formatMonthDay(todayValue)}
+              </em>
+            ) : null}
           </div>
 
           <div className="fd203-gantt-grid fd203-gantt-row fd20435-gantt-project-row" style={{ gridTemplateColumns: gridColumns }}>
