@@ -3,10 +3,10 @@ import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient
 
 const FLOWDESK_APP_VERSION = '20.4.62'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
-const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
-const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
-const PROJECT_PRIORITY_OPTIONS = ['低', '中', '高', '緊急']
-const PROJECT_SORT_OPTIONS = ['?芸???', '????', '?唳???, '?脣漲', '?迂']
+const PROJECT_PHASE_OPTIONS = ['\u898f\u5283\u4e2d', '\u9700\u6c42\u78ba\u8a8d', '\u57f7\u884c\u4e2d', '\u6e2c\u8a66\u9a57\u6536', '\u5f85\u9a57\u6536', '\u4e0a\u7dda\u5c0e\u5165', '\u66ab\u7de9', '\u5df2\u5b8c\u6210', '\u5df2\u53d6\u6d88']
+const PROJECT_HEALTH_OPTIONS = ['\u7a69\u5b9a\u63a8\u9032', '\u5f85\u78ba\u8a8d', '\u9ad8\u98a8\u96aa', '\u5361\u95dc']
+const PROJECT_PRIORITY_OPTIONS = ['\u4f4e', '\u4e2d', '\u9ad8', '\u7dca\u6025']
+const PROJECT_SORT_OPTIONS = ['\u512a\u5148\u6392\u5e8f', '\u5230\u671f\u65e5', '\u9032\u5ea6', '\u8cc7\u6e90', '\u5df2\u903e\u671f']
 
 function mergeOptionList(base = [], current) {
   return Array.from(new Set([...base, current].filter(Boolean)))
