@@ -25922,3 +25922,47 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   opacity: 0 !important;
   visibility: hidden !important;
 }
+
+
+/* FlowDesk v20.4.55 - 今天標籤獨立顯示，避免被舊 i 標籤規則隱藏；專案進度按鈕不觸發 hover */
+.fd20455-gantt-today-chip-fixed {
+  position: absolute !important;
+  top: -34px !important;
+  transform: translateX(calc(-50% + 2px)) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 3px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 241, 242, 0.98) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(239, 68, 68, 0.26) !important;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.16) !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  z-index: 120 !important;
+  pointer-events: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.fd20435-gantt-project-row,
+.fd20435-gantt-project-row .fd203-gantt-track,
+.fd20435-gantt-project-row .fd203-gantt-bar.project {
+  overflow: visible !important;
+}
+
+.fd203-gantt-bar.project .fd203-gantt-progress-trigger,
+.fd203-gantt-bar.project .fd20448-gantt-progress-drag-zone {
+  pointer-events: none !important;
+}
+
+.fd203-gantt-bar.project .fd20426-gantt-hover-tip,
+.fd203-gantt-bar.project:hover .fd20426-gantt-hover-tip,
+.fd203-gantt-bar.project:focus-within .fd20426-gantt-hover-tip {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
