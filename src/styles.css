@@ -27381,3 +27381,259 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_79_REMINDER_CARD_POLISH_END */
 
+
+/* FLOWDESK_V20_4_80_WORK_CARDS_POLISH_START */
+/* 工作事項卡片重整：改成採購 / 專案管理同型的摘要卡，不再像舊待辦卡片 */
+
+.board-card-view {
+  align-items: stretch !important;
+}
+
+.card-wall.board-card-view {
+  grid-template-columns: repeat(auto-fill, minmax(318px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.fd20480-work-card-shell {
+  position: relative !important;
+  display: flex !important;
+  min-width: 0 !important;
+  min-height: 100% !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.fd20480-work-select-check {
+  top: 12px !important;
+  left: 12px !important;
+  z-index: 2 !important;
+  min-height: 28px !important;
+  padding: 4px 8px !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.90) !important;
+  color: #64748b !important;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08) !important;
+}
+
+.fd20480-work-card {
+  width: 100% !important;
+  min-height: 286px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 13px !important;
+  padding: 16px !important;
+  padding-top: 48px !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 32%),
+    linear-gradient(180deg, #ffffff, #f8fbff) !important;
+  color: #0f172a !important;
+  text-align: left !important;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.07) !important;
+  cursor: pointer !important;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease !important;
+}
+
+.fd20480-work-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(37, 99, 235, 0.28) !important;
+  box-shadow: 0 26px 52px rgba(15, 23, 42, 0.12) !important;
+}
+
+.fd20480-work-card-shell.selected .fd20480-work-card {
+  border-color: rgba(37, 99, 235, 0.42) !important;
+  box-shadow: 0 24px 54px rgba(37, 99, 235, 0.16) !important;
+}
+
+.fd20480-work-card-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+.fd20480-work-id {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 27px !important;
+  padding: 4px 9px !important;
+  border-radius: 999px !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  letter-spacing: .02em !important;
+}
+
+.fd20480-work-badges {
+  display: flex !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+.fd20480-work-title-block {
+  display: grid !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+}
+
+.fd20480-work-title-block small {
+  color: #2563eb !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.35 !important;
+}
+
+.fd20480-work-title-block strong {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  min-height: 44px !important;
+  margin: 0 !important;
+  color: #0f172a !important;
+  font-size: 18px !important;
+  line-height: 1.28 !important;
+  font-weight: 950 !important;
+}
+
+.fd20480-work-title-block p {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  min-height: 60px !important;
+  margin: 0 !important;
+  color: #475569 !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+}
+
+.fd20480-work-focus-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.fd20480-work-focus-grid span {
+  min-width: 0 !important;
+  padding: 9px 10px !important;
+  border: 1px solid rgba(148, 163, 184, 0.13) !important;
+  border-radius: 15px !important;
+  background: rgba(248, 250, 252, 0.92) !important;
+}
+
+.fd20480-work-focus-grid em {
+  display: block !important;
+  margin-bottom: 4px !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+}
+
+.fd20480-work-focus-grid b {
+  display: block !important;
+  overflow: hidden !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.fd20480-work-progress {
+  height: 8px !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  background: #e2e8f0 !important;
+}
+
+.fd20480-work-progress i {
+  display: block !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, #2563eb, #0ea5e9) !important;
+}
+
+.fd20480-work-card-foot {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-top: auto !important;
+}
+
+.fd20480-work-tags {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+.fd20480-work-tags span {
+  max-width: 112px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.fd20480-work-priority-dot {
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 28px !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+}
+
+.fd20480-work-priority-dot.danger {
+  background: #fff1f2 !important;
+  color: #be123c !important;
+}
+
+.fd20480-work-priority-dot.warning {
+  background: #fffbeb !important;
+  color: #b45309 !important;
+}
+
+.fd20480-work-priority-dot.blue {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+.fd20480-work-priority-dot.soft {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+}
+
+@media (max-width: 900px) {
+  .card-wall.board-card-view {
+    grid-template-columns: 1fr !important;
+  }
+
+  .fd20480-work-card {
+    min-height: auto !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .fd20480-work-card {
+    padding: 14px !important;
+    padding-top: 46px !important;
+    border-radius: 20px !important;
+  }
+
+  .fd20480-work-focus-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* FLOWDESK_V20_4_80_WORK_CARDS_POLISH_END */
+

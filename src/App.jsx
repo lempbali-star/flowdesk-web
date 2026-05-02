@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.79'
+const FLOWDESK_APP_VERSION = '20.4.80'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -9198,20 +9198,49 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
 
 function WorkCard({ item, onSelect, selected, selectable = false, checked = false, onToggleSelect, onUpdateItem }) {
   const isSelected = selected?.id === item.id
+  const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : []
+  const health = Number.isFinite(Number(item.health)) ? Math.max(0, Math.min(100, Number(item.health))) : 0
+  const priorityTone = item.priority === '緊急' ? 'danger' : item.priority === '高' ? 'warning' : item.priority === '低' ? 'soft' : 'blue'
   return (
-    <article className={isSelected ? 'work-card-shell selected' : 'work-card-shell'}>
+    <article className={isSelected ? 'work-card-shell fd20480-work-card-shell selected' : 'work-card-shell fd20480-work-card-shell'}>
       {selectable && (
-        <label className="work-select-check" onClick={(event) => event.stopPropagation()}>
+        <label className="work-select-check fd20480-work-select-check" onClick={(event) => event.stopPropagation()}>
           <input type="checkbox" checked={checked} onChange={onToggleSelect} />
           <span>選取</span>
         </label>
       )}
-      <button className="work-card" type="button" onClick={onSelect}>
-        <div className="card-top"><span>{item.id}</span><Badge value={item.priority} /></div>
-        <strong>{item.title}</strong>
-        <p>{item.note}</p>
-        <div className="tag-list">{item.tags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}</div>
-        <div className="card-bottom"><span>{item.owner}</span><span>{item.due}</span></div>
+      <button className="work-card fd20480-work-card" type="button" onClick={onSelect}>
+        <div className="fd20480-work-card-head">
+          <span className="fd20480-work-id">{item.id}</span>
+          <div className="fd20480-work-badges">
+            <Badge value={item.lane || '待分類'} />
+            <Badge value={item.priority || '中'} />
+          </div>
+        </div>
+
+        <div className="fd20480-work-title-block">
+          <small>{item.type || '一般工作'}｜{item.channel || '手動新增'}</small>
+          <strong>{item.title || '未命名工作'}</strong>
+          <p>{item.note || '尚未填寫處理紀錄或下一步。'}</p>
+        </div>
+
+        <div className="fd20480-work-focus-grid">
+          <span><em>負責人</em><b>{item.owner || '未指定'}</b></span>
+          <span><em>到期日</em><b>{item.due || '未設定'}</b></span>
+          <span><em>關聯</em><b>{item.relation || '未設定'}</b></span>
+          <span><em>健康度</em><b>{health}%</b></span>
+        </div>
+
+        <div className="fd20480-work-progress" aria-hidden="true">
+          <i style={{ width: `${health}%` }} />
+        </div>
+
+        <div className="fd20480-work-card-foot">
+          <div className="tag-list fd20480-work-tags">
+            {tags.length ? tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>) : <span>未分類</span>}
+          </div>
+          <span className={`fd20480-work-priority-dot ${priorityTone}`}>{item.priority || '中'}</span>
+        </div>
       </button>
     </article>
   )
