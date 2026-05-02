@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.61'
+const FLOWDESK_APP_VERSION = '20.4.64'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5113,6 +5113,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   const attentionSummary = buildProjectAttentionSummary(filteredProjects)
+  const commandFocusProjects = filteredProjects
+    .map((project) => ({ project, priority: getProjectPriorityMeta(project), status: getProjectStatusMeta(project), listInfo: getProjectListInfo(project) }))
+    .filter((item) => clampPercent(item.project.progress) < 100 && !String(item.project.phase || '').includes('取消') && !String(item.project.phase || '').includes('暫緩'))
+    .sort((a, b) => (b.priority.score - a.priority.score) || String(a.project.endDate || '9999-12-31').localeCompare(String(b.project.endDate || '9999-12-31')))
+    .slice(0, 3)
+  const projectStageSummary = filteredProjects.map(normalizeProject).reduce((summary, project) => {
+    const phase = project.phase || '未分階段'
+    summary[phase] = (summary[phase] || 0) + 1
+    return summary
+  }, {})
+  const projectStageEntries = Object.entries(projectStageSummary).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const filteredOpenProjectCount = filteredProjects.filter((project) => clampPercent(project.progress) < 100 && !String(project.phase || '').includes('取消') && !String(project.phase || '').includes('暫緩')).length
+  const filteredDueSoonCount = attentionSummary.dueSoon.length
+  const filteredNoNextCount = attentionSummary.noNext.length
+  const filteredTaskOverdueCount = attentionSummary.overdueTasks
 
   function renderProjectCard(project) {
     const isActive = selectedProject?.id === project.id && projectModalOpen
@@ -5153,6 +5168,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <span><b>{project.tasks?.length || 0}</b><small>任務</small></span>
             <span><b>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0}</b><small>子任務</small></span>
             <span><b>{project.milestones?.filter((item) => item.done).length || 0}/{project.milestones?.length || 0}</b><small>里程碑</small></span>
+          </div>
+          <div className="fd20464-project-card-ops">
+            <span>{getProjectStatusMeta(project).overdueItems.length ? `${getProjectStatusMeta(project).overdueItems.length} 項逾期` : '任務期程正常'}</span>
+            <span>{daysBetween(todayDate(), project.endDate || todayDate()) >= 0 ? `剩 ${daysBetween(todayDate(), project.endDate || todayDate())} 天` : `逾期 ${Math.abs(daysBetween(todayDate(), project.endDate || todayDate()))} 天`}</span>
+            <span>{listInfo.next === '尚未設定下一步' ? '缺下一步' : '已有下一步'}</span>
           </div>
           <div className="fd203-project-card-meta">
             <span>{project.owner || '未指定'}</span>
@@ -5790,6 +5810,39 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <button type="button" className={projectCaseFilter === '已完成' ? 'active done' : ''} onClick={() => setProjectCaseFilter('已完成')}>已完成 <small>{projectCaseCounts.done}</small></button>
         <button type="button" className={projectCaseFilter === '已取消' ? 'active muted' : ''} onClick={() => setProjectCaseFilter('已取消')}>已取消 / 暫緩 <small>{projectCaseCounts.cancelled}</small></button>
         <button type="button" className={projectCaseFilter === '全部' ? 'active' : ''} onClick={() => setProjectCaseFilter('全部')}>全部 <small>{projectCaseCounts.all}</small></button>
+      </section>
+
+      <section className="fd20464-project-command-board">
+        <div className="fd20464-command-main">
+          <div className="fd20464-command-headline">
+            <p className="eyebrow">PROJECT COMMAND</p>
+            <h3>專案指揮板</h3>
+            <span>先看高優先、逾期、即將到期與缺下一步的專案，避免列表太多時漏追。</span>
+          </div>
+          <div className="fd20464-command-kpis">
+            <article className={filteredOpenProjectCount ? '' : 'muted'}><span>篩選中進行</span><strong>{filteredOpenProjectCount}</strong><small>目前列表未結專案</small></article>
+            <article className={filteredDueSoonCount ? 'warning' : ''}><span>7 天內到期</span><strong>{filteredDueSoonCount}</strong><small>{filteredDueSoonCount ? '需要確認下一步' : '短期到期壓力正常'}</small></article>
+            <article className={filteredNoNextCount ? 'warning' : ''}><span>缺下一步</span><strong>{filteredNoNextCount}</strong><small>建議補上具體行動</small></article>
+            <article className={filteredTaskOverdueCount ? 'danger' : ''}><span>任務逾期</span><strong>{filteredTaskOverdueCount}</strong><small>{filteredTaskOverdueCount ? '請回甘特圖調整' : '任務節奏正常'}</small></article>
+          </div>
+        </div>
+        <div className="fd20464-command-focus">
+          <div className="fd20464-command-subhead"><strong>建議先看</strong><span>{commandFocusProjects.length ? '依優先分數與期限排序' : '目前沒有需要優先追蹤的專案'}</span></div>
+          <div className="fd20464-focus-list">
+            {commandFocusProjects.length ? commandFocusProjects.map(({ project, priority, listInfo, status }) => (
+              <button type="button" key={project.id} onClick={() => openProject(project.id)} className={`fd20464-focus-item ${priority.tone}`}>
+                <span><b>{project.name}</b><small>{project.id} · 優先 {priority.label} · {priority.score}</small></span>
+                <em>{status.notices[0]?.label || listInfo.next}</em>
+              </button>
+            )) : <div className="fd20464-focus-empty">目前篩選結果沒有高風險專案。</div>}
+          </div>
+        </div>
+        <div className="fd20464-stage-box">
+          <div className="fd20464-command-subhead"><strong>階段分佈</strong><span>{filteredProjects.length} 筆</span></div>
+          <div className="fd20464-stage-list">
+            {projectStageEntries.length ? projectStageEntries.map(([phase, count]) => <span key={phase}><b>{phase}</b><em>{count}</em></span>) : <span><b>無資料</b><em>0</em></span>}
+          </div>
+        </div>
       </section>
 
       <section className="fd203-attention-panel">
