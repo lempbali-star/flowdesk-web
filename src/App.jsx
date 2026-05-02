@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.87'
+const FLOWDESK_APP_VERSION = '20.4.88'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -7978,25 +7978,41 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
               {group.rows.map((item) => {
                 const due = getReminderDueInfo(item.dueDate)
                 return (
-                  <article className={`reminder-card ${item.status === '已完成' ? 'done' : ''} ${item.virtual ? 'auto' : ''}`} key={item.id} onClick={() => openReminderEditor(item)}>
-                    <div className="reminder-card-main">
+                  <article
+                    className={`reminder-card ${item.status === '已完成' ? 'done' : ''} ${item.virtual ? 'auto' : ''}`}
+                    key={item.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => {
+                      if (event.target.closest('button, select, input, textarea, a')) return
+                      openReminderEditor(item)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        openReminderEditor(item)
+                      }
+                    }}
+                  >
+                    <button className="reminder-card-main fd20488-reminder-card-open" type="button" onClick={(event) => { event.stopPropagation(); openReminderEditor(item) }}>
                       <span className="record-id">{item.virtual ? 'AUTO' : item.id}</span>
                       <strong>{item.title}</strong>
                       <small>{item.sourceType} · {item.sourceTitle || '未指定'} · {item.type}</small>
                       <p>{item.note}</p>
-                    </div>
-                    <div className="reminder-card-meta">
+                    </button>
+                    <div className="reminder-card-meta" onClick={(event) => event.stopPropagation()}>
                       <Badge value={item.priority} />
                       <span className={`due-chip ${due.tone}`}>{due.label}</span>
                       {item.virtual ? <span className="auto-reminder-chip">自動提醒</span> : <select value={item.status} onClick={(event) => event.stopPropagation()} onChange={(event) => { event.stopPropagation(); updateReminder(item.id, { status: event.target.value }) }}>{reminderStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>}
                     </div>
-                    <div className="reminder-card-actions">
+                    <div className="reminder-card-actions" onClick={(event) => event.stopPropagation()}>
                       <button type="button" onClick={() => completeReminder(item)}>{item.status === '已完成' ? '重新開啟' : '完成'}</button>
                       <button type="button" onClick={() => deferReminder(item.id, 1, item.virtual)}>明天</button>
                       <button type="button" onClick={() => deferReminder(item.id, 3, item.virtual)}>三天後</button>
                       <button type="button" onClick={() => deferReminder(item.id, 7, item.virtual)}>下週</button>
+                      <button type="button" onClick={() => openReminderEditor(item)}>編輯</button>
                       {item.sourceType !== '一般' && <button type="button" onClick={() => onNavigateSource?.(item)}>開啟關聯</button>}
-                      <button className="danger" type="button" onClick={() => removeReminderRow(item)}>{item.virtual ? '刪除' : '刪除'}</button>
+                      <button className="danger" type="button" onClick={() => removeReminderRow(item)}>刪除</button>
                     </div>
                   </article>
                 )

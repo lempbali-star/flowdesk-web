@@ -29261,3 +29261,50 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_87_REMINDER_EDIT_MODAL_ACTIONS_END */
 
+
+/* FLOWDESK_V20_4_88_REMINDER_CARD_CLICK_MODAL_FIX_START */
+/* 提醒中心：強制卡片主體可點開彈窗，避免只有按鈕可操作 */
+
+.reminder-card[role="button"] {
+  cursor: pointer !important;
+  outline: none !important;
+}
+
+.reminder-card[role="button"]:focus-visible {
+  border-color: rgba(37, 99, 235, .42) !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .12), 0 24px 48px rgba(15, 23, 42, .11) !important;
+}
+
+.fd20488-reminder-card-open {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  font: inherit !important;
+}
+
+.fd20488-reminder-card-open strong,
+.fd20488-reminder-card-open small,
+.fd20488-reminder-card-open p,
+.fd20488-reminder-card-open span {
+  pointer-events: none !important;
+}
+
+.fd20488-reminder-card-open:hover strong {
+  color: #1d4ed8 !important;
+}
+
+.reminder-card-actions {
+  cursor: default !important;
+}
+
+.reminder-card-actions button {
+  cursor: pointer !important;
+}
+/* FLOWDESK_V20_4_88_REMINDER_CARD_CLICK_MODAL_FIX_END */
+
