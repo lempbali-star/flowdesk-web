@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.66'
+const FLOWDESK_APP_VERSION = '20.4.77'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -815,7 +815,7 @@ function FlowDeskShell({ authSession, onLogout }) {
     }
     setWorkItems((current) => [nextItem, ...current])
     setSelected(nextItem)
-    setView('看板')
+    setView('卡片')
   }
 
   function updateWorkItem(itemId, patch) {
@@ -838,7 +838,7 @@ function FlowDeskShell({ authSession, onLogout }) {
         lane: '待分類',
       }
       setSelected(next)
-      setView('看板')
+      setView('卡片')
       return [next, ...current]
     })
   }
@@ -1758,6 +1758,9 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
   const [bulkPriority, setBulkPriority] = useState('中')
   const [bulkOwner, setBulkOwner] = useState('Kyle')
   const [hideDone, setHideDone] = useState(false)
+  const [detailId, setDetailId] = useState(null)
+  const [openAfterAdd, setOpenAfterAdd] = useState(false)
+  const workView = view === '清單' ? '清單' : '卡片'
   const ownerOptions = useMemo(() => ['全部', ...Array.from(new Set(items.map((item) => item.owner).filter(Boolean)))], [items])
   const scopedItems = useMemo(() => {
     const next = items
@@ -1791,6 +1794,17 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
       { id: 'done', label: hideDone ? '顯示已完成' : '收合已完成', count: items.filter((item) => item.lane === '已完成').length, action: () => setHideDone((value) => !value) },
     ]
   }, [items, hideDone])
+  const detailItem = detailId ? items.find((item) => item.id === detailId) : null
+
+  useEffect(() => {
+    if (!['卡片', '清單'].includes(view)) setView('卡片')
+  }, [view, setView])
+
+  useEffect(() => {
+    if (!openAfterAdd || !selected?.id) return
+    setDetailId(selected.id)
+    setOpenAfterAdd(false)
+  }, [openAfterAdd, selected])
 
   function toggleSelectedId(itemId) {
     setSelectedIds((current) => current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId])
@@ -1826,31 +1840,53 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
     clearBoardSelection()
   }
 
+  function openWorkDetail(item) {
+    if (!item) return
+    setSelected(item)
+    setDetailId(item.id)
+  }
+
+  function closeWorkDetail() {
+    setDetailId(null)
+  }
+
+  function handleAddWorkItem() {
+    setOpenAfterAdd(true)
+    setView('卡片')
+    onAddItem?.()
+  }
+
+  function handleDeleteWorkItem(itemId) {
+    onDeleteItem?.(itemId)
+    setDetailId(null)
+  }
+
   return (
-    <div className="page-stack board-page board-page-v198">
-      <section className="surface-toolbar board-toolbar">
+    <div className="page-stack board-page board-page-v198 fd20477-work-page">
+      <section className="surface-toolbar board-toolbar fd20477-work-toolbar">
         <div>
           <p className="eyebrow">工作管理</p>
           <h2>工作事項</h2>
+          <span className="fd20477-toolbar-note">介面統一採購 / 專案管理：卡片或清單檢視，點擊後以彈窗處理。</span>
         </div>
         <div className="board-toolbar-actions">
-          <div className="segmented board-view-switch">
-            {['清單', '表格', '卡片', '看板'].map((name) => (
-              <button key={name} className={view === name ? 'active' : ''} type="button" onClick={() => setView(name)}>{name}</button>
+          <div className="segmented board-view-switch fd20477-view-toggle" aria-label="工作事項檢視切換">
+            {['卡片', '清單'].map((name) => (
+              <button key={name} className={workView === name ? 'active' : ''} type="button" onClick={() => setView(name)}>{name}</button>
             ))}
           </div>
-          <button className="primary-btn board-add-btn" type="button" onClick={onAddItem}>新增工作事項</button>
+          <button className="primary-btn board-add-btn" type="button" onClick={handleAddWorkItem}>新增工作事項</button>
         </div>
       </section>
 
-      <section className="board-control-center">
-        <div className="board-control-metrics">
+      <section className="board-control-center fd20477-work-control">
+        <div className="board-control-metrics fd20477-work-metrics">
           <article><span>總工作</span><strong>{boardSummary.total}</strong></article>
           <article><span>未完成</span><strong>{boardSummary.open}</strong></article>
           <article><span>等待回覆</span><strong>{boardSummary.waiting}</strong></article>
           <article><span>高優先</span><strong>{boardSummary.urgent}</strong></article>
         </div>
-        <div className="board-filter-grid">
+        <div className="board-filter-grid fd20477-filter-bar">
           <label>狀態<select value={laneFilter} onChange={(event) => setLaneFilter(event.target.value)}><option value="全部">全部</option>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
           <label>優先級<select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option value="全部">全部</option>{['緊急', '高', '中', '低'].map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
           <label>負責人<select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>{ownerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}</select></label>
@@ -1860,7 +1896,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         <div className="board-result-hint">目前顯示 {scopedItems.length} / {items.length} 筆</div>
       </section>
 
-      <section className="board-focus-strip v199-focus-strip">
+      <section className="board-focus-strip v199-focus-strip fd20477-work-focus">
         {focusRows.map((row) => (
           <button key={row.id} type="button" onClick={row.action}>
             <span>{row.label}</span>
@@ -1869,7 +1905,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         ))}
       </section>
 
-      <section className="board-bulk-panel v199-bulk-panel">
+      <section className="board-bulk-panel v199-bulk-panel fd20477-bulk-panel">
         <div><strong>批次處理</strong><span>已選取 {selectedIds.length} 筆 / 目前視圖 {scopedItems.length} 筆</span></div>
         <div className="bulk-actions-grid">
           <button type="button" onClick={selectScopedItems} disabled={!scopedItems.length}>選取目前視圖</button>
@@ -1888,7 +1924,7 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         <section className="board-empty-state">
           <strong>目前沒有工作項目</strong>
           <span>可先新增一筆工作，或稍後從採購、專案流程建立追蹤項目。</span>
-          <button type="button" className="primary-btn" onClick={onAddItem}>新增第一筆工作</button>
+          <button type="button" className="primary-btn" onClick={handleAddWorkItem}>新增第一筆工作</button>
         </section>
       )}
 
@@ -1900,44 +1936,176 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         </section>
       )}
 
-      {selected && <BoardFloatingPreview selected={selected} />}
-
-      {view === '清單' && (
+      {workView === '清單' && (
         <WorkItemDailyList
           items={scopedItems}
           selected={selected}
-          setSelected={setSelected}
+          setSelected={openWorkDetail}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelectedId}
           onUpdateItem={onUpdateItem}
           onDuplicateItem={onDuplicateItem}
-          onDeleteItem={onDeleteItem}
+          onDeleteItem={handleDeleteWorkItem}
         />
       )}
 
-      {view === '看板' && (
-        <section className="kanban board-kanban-view">
-          {lanes.map((lane) => {
-            const laneItems = scopedItems.filter((item) => item.lane === lane.id)
-            return (
-              <article className="lane" key={lane.id}>
-                <div className="lane-title">
-                  <strong>{lane.title}</strong>
-                  <span>{laneItems.length}</span>
-                </div>
-                <div className="lane-cards">
-                  {laneItems.length ? laneItems.map((item) => (
-                    <WorkCard key={item.id} item={item} selected={selected} onSelect={() => setSelected(item)} selectable checked={selectedIds.includes(item.id)} onToggleSelect={() => toggleSelectedId(item.id)} onUpdateItem={onUpdateItem} />
-                  )) : <div className="lane-empty">尚無項目</div>}
-                </div>
-              </article>
-            )
-          })}
-        </section>
-      )}
+      {workView === '卡片' && <CardWall items={scopedItems} selected={selected} setSelected={openWorkDetail} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} onUpdateItem={onUpdateItem} />}
 
-      {view === '表格' && <WorkGrid items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} onUpdateItem={onUpdateItem} />}
-      {view === '卡片' && <CardWall items={scopedItems} selected={selected} setSelected={setSelected} selectedIds={selectedIds} onToggleSelect={toggleSelectedId} onUpdateItem={onUpdateItem} />}
+      {detailItem && (
+        <BoardWorkItemDetailDialog
+          item={detailItem}
+          onClose={closeWorkDetail}
+          onUpdateItem={onUpdateItem}
+          onDuplicateItem={onDuplicateItem}
+          onDeleteItem={handleDeleteWorkItem}
+        />
+      )}
+    </div>
+  )
+}
+
+function BoardWorkItemDetailDialog({ item, onClose, onUpdateItem, onDuplicateItem, onDeleteItem }) {
+  const [draft, setDraft] = useState(() => ({
+    title: item.title || '',
+    type: item.type || '一般工作',
+    lane: item.lane || '待分類',
+    priority: item.priority || '中',
+    channel: item.channel || '手動新增',
+    relation: item.relation || '未設定',
+    requester: item.requester || '',
+    owner: item.owner || '',
+    due: item.due || todayDate(),
+    health: Number.isFinite(Number(item.health)) ? Number(item.health) : 85,
+    note: item.note || '',
+    tagsText: Array.isArray(item.tags) ? item.tags.join('、') : '',
+  }))
+
+  useEffect(() => {
+    setDraft({
+      title: item.title || '',
+      type: item.type || '一般工作',
+      lane: item.lane || '待分類',
+      priority: item.priority || '中',
+      channel: item.channel || '手動新增',
+      relation: item.relation || '未設定',
+      requester: item.requester || '',
+      owner: item.owner || '',
+      due: item.due || todayDate(),
+      health: Number.isFinite(Number(item.health)) ? Number(item.health) : 85,
+      note: item.note || '',
+      tagsText: Array.isArray(item.tags) ? item.tags.join('、') : '',
+    })
+  }, [item?.id])
+
+  function patchDraft(key, value) {
+    setDraft((current) => ({ ...current, [key]: value }))
+  }
+
+  function saveWorkItem(event) {
+    event.preventDefault()
+    const patch = {
+      title: draft.title.trim() || '未命名工作',
+      type: draft.type.trim() || '一般工作',
+      lane: draft.lane || '待分類',
+      priority: draft.priority || '中',
+      channel: draft.channel.trim() || '手動新增',
+      relation: draft.relation.trim() || '未設定',
+      requester: draft.requester.trim() || 'Kyle',
+      owner: draft.owner.trim() || 'Kyle',
+      due: draft.due || todayDate(),
+      health: Math.max(0, Math.min(100, Number(draft.health || 0))),
+      note: draft.note.trim(),
+      tags: draft.tagsText.split(/[、,，\n]/).map((tag) => tag.trim()).filter(Boolean),
+    }
+    onUpdateItem?.(item.id, patch)
+    onClose?.()
+  }
+
+  function completeWorkItem() {
+    onUpdateItem?.(item.id, { lane: '已完成', health: 100 })
+    onClose?.()
+  }
+
+  return (
+    <div className="fd20477-work-modal-layer" role="presentation">
+      <button className="fd20477-modal-backdrop" type="button" aria-label="關閉工作事項視窗" onClick={onClose} />
+      <section className="fd20477-work-dialog" role="dialog" aria-modal="true" aria-label="工作事項詳情">
+        <form onSubmit={saveWorkItem}>
+          <header className="fd20477-dialog-head">
+            <div>
+              <p className="eyebrow">WORK ITEM</p>
+              <h3>{item.title || '未命名工作事項'}</h3>
+              <span>{item.id} · {item.channel || '手動新增'} · {item.relation || '未設定關聯'}</span>
+            </div>
+            <button className="ghost-btn" type="button" onClick={onClose}>關閉</button>
+          </header>
+
+          <div className="fd20477-dialog-body">
+            <section className="fd20477-dialog-card main">
+              <h4>基本資料</h4>
+              <label className="fd20477-field wide"><span>工作事項</span><ChineseTextField value={draft.title} onCommit={(value) => patchDraft('title', value)} placeholder="輸入工作事項標題" /></label>
+              <div className="fd20477-dialog-grid">
+                <label className="fd20477-field"><span>狀態</span><select value={draft.lane} onChange={(event) => patchDraft('lane', event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
+                <label className="fd20477-field"><span>優先級</span><select value={draft.priority} onChange={(event) => patchDraft('priority', event.target.value)}>{['緊急', '高', '中', '低'].map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+                <label className="fd20477-field"><span>類型</span><ChineseTextField value={draft.type} onCommit={(value) => patchDraft('type', value)} /></label>
+                <label className="fd20477-field"><span>到期 / 提醒日</span><input type="date" value={draft.due} onChange={(event) => patchDraft('due', event.target.value)} /></label>
+                <label className="fd20477-field"><span>申請人</span><ChineseTextField value={draft.requester} onCommit={(value) => patchDraft('requester', value)} /></label>
+                <label className="fd20477-field"><span>負責人</span><ChineseTextField value={draft.owner} onCommit={(value) => patchDraft('owner', value)} /></label>
+                <label className="fd20477-field"><span>來源</span><ChineseTextField value={draft.channel} onCommit={(value) => patchDraft('channel', value)} /></label>
+                <label className="fd20477-field"><span>關聯資料</span><ChineseTextField value={draft.relation} onCommit={(value) => patchDraft('relation', value)} /></label>
+                <label className="fd20477-field"><span>健康度</span><input type="number" min="0" max="100" value={draft.health} onChange={(event) => patchDraft('health', event.target.value)} /></label>
+                <label className="fd20477-field"><span>標籤</span><ChineseTextField value={draft.tagsText} onCommit={(value) => patchDraft('tagsText', value)} placeholder="用頓號或逗號分隔" /></label>
+              </div>
+            </section>
+
+            <section className="fd20477-dialog-card side">
+              <h4>提醒摘要</h4>
+              <div className="fd20477-reminder-summary">
+                <span>狀態</span><strong>{draft.lane}</strong>
+                <span>優先級</span><strong>{draft.priority}</strong>
+                <span>到期日</span><strong>{draft.due || '未設定'}</strong>
+                <span>負責</span><strong>{draft.owner || '未指定'}</strong>
+              </div>
+              <div className="fd20477-quick-actions">
+                <button type="button" onClick={() => patchDraft('due', todayDate())}>提醒今天</button>
+                <button type="button" onClick={() => patchDraft('due', addDaysDate(1))}>延後明天</button>
+                <button type="button" onClick={() => patchDraft('due', addDaysDate(7))}>延後下週</button>
+              </div>
+            </section>
+
+            <section className="fd20477-dialog-card main note-card">
+              <h4>處理紀錄 / 下一步</h4>
+              <label className="fd20477-field wide"><span>處理內容與備註</span><ChineseTextField multiline value={draft.note} onCommit={(value) => patchDraft('note', value)} placeholder="記錄處理內容、下一步、等待誰回覆或注意事項" /></label>
+            </section>
+
+            <section className="fd20477-dialog-card side">
+              <h4>歸檔與附件</h4>
+              <ArchiveFolderPanelV67
+                title="工作事項歸檔資料夾"
+                folder={item.archiveFolder}
+                suggestedName={buildArchiveFolderNameV67({ type: '工作事項', id: item.id, title: draft.title, department: draft.owner, date: draft.due })}
+                compact
+                onChange={(next) => onUpdateItem?.(item.id, { archiveFolder: next })}
+              />
+              <AttachmentLinksPanelV66
+                title="工作事項附件"
+                attachments={item.attachments}
+                compact
+                onChange={(next) => onUpdateItem?.(item.id, { attachments: next })}
+              />
+            </section>
+          </div>
+
+          <footer className="fd20477-dialog-footer">
+            <button className="danger" type="button" onClick={() => onDeleteItem?.(item.id)}>刪除</button>
+            <div>
+              <button type="button" onClick={() => onDuplicateItem?.(item.id)}>複製</button>
+              <button type="button" onClick={completeWorkItem}>視為完成</button>
+              <button className="primary-btn" type="submit">儲存</button>
+            </div>
+          </footer>
+        </form>
+      </section>
     </div>
   )
 }
@@ -9075,7 +9243,6 @@ function WorkItemDailyList({ items, selected, setSelected, selectedIds = [], onT
               <button type="button" onClick={(event) => { event.stopPropagation(); onDuplicateItem?.(item.id) }}>複製</button>
               <button type="button" className="danger" onClick={(event) => { event.stopPropagation(); onDeleteItem?.(item.id) }}>刪除</button>
             </div>
-            {isSelected && <BoardInlinePreview selected={item} onUpdateItem={onUpdateItem} />}
           </article>
         )
       })}
@@ -9098,10 +9265,9 @@ function WorkCard({ item, onSelect, selected, selectable = false, checked = fals
         <div className="card-top"><span>{item.id}</span><Badge value={item.priority} /></div>
         <strong>{item.title}</strong>
         <p>{item.note}</p>
-        <div className="tag-list">{item.tags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}</div>
+        <div className="tag-list">{(Array.isArray(item.tags) ? item.tags : []).slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}</div>
         <div className="card-bottom"><span>{item.owner}</span><span>{item.due}</span></div>
       </button>
-      {isSelected && <BoardInlinePreview selected={item} onUpdateItem={onUpdateItem} />}
     </article>
   )
 }
@@ -9126,7 +9292,6 @@ function WorkGrid({ items, selected, setSelected, selectedIds = [], onToggleSele
               <span className="work-grid-relation" data-label="關聯">{item.relation}</span>
               <span className="work-grid-due" data-label="到期日">{item.due}</span>
             </button>
-            {isSelected && <BoardInlinePreview selected={item} onUpdateItem={onUpdateItem} />}
           </article>
         )
       })}
