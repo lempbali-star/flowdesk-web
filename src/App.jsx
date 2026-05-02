@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.89'
+const FLOWDESK_APP_VERSION = '20.4.90'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1957,12 +1957,12 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
         </section>
       )}
 
-      <section className="fd20489-work-view-topbar">
-        <div className="fd20489-work-view-topbar-left">
+      <section className="fd20490-list-topbar fd20489-work-view-topbar">
+        <div className="fd20490-list-topbar-left fd20489-work-view-topbar-left">
           <strong>工作清單</strong>
-          <span>{normalizedBoardView === '卡片' ? '卡片檢視' : '清單檢視'} · 放在資料列表上方</span>
+          <span>{normalizedBoardView === '卡片' ? '卡片檢視' : '清單檢視'} · 目前 {pagedBoardItems.length} / 篩選後 {scopedItems.length} 筆</span>
         </div>
-        <div className="collection-view-control purchase-local-view-control board-view-switch fd20485-exact-purchase-view fd20489-work-view-switch" aria-label="工作事項視圖">
+        <div className="collection-view-control purchase-local-view-control board-view-switch fd20485-exact-purchase-view fd20489-work-view-switch fd20490-list-view-control" aria-label="工作事項視圖">
           <span className="collection-control-label">視圖</span>
           {[
             { id: '清單', icon: '☰', name: '清單' },
@@ -6076,17 +6076,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <select value={projectPageSize} onChange={(event) => setProjectPageSize(Number(event.target.value))} aria-label="每頁筆數">
           {[10, 20, 30, 40, 50].map((size) => <option key={size} value={size}>每頁 {size} 筆</option>)}
         </select>
-        <div className="collection-view-control purchase-local-view-control project-view-toggle fd20486-project-exact-purchase-view" aria-label="專案管理視圖">
-          <span className="collection-control-label">視圖</span>
-          {[
-            { id: 'list', icon: '☰', name: '清單' },
-            { id: 'cards', icon: '▦', name: '卡片' },
-          ].map((option) => (
-            <button key={option.id} type="button" className={projectViewMode === option.id ? 'active' : ''} onClick={() => setProjectViewMode(option.id)}>
-              <span aria-hidden="true">{option.icon}</span>{option.name}
-            </button>
-          ))}
-        </div>
+
       </section>
 
       <section className="fd203-main-layout modal-mode">
@@ -6103,6 +6093,24 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               </button>
             </div>
           </div>
+
+          <section className="fd20490-list-topbar fd20490-project-list-topbar">
+            <div className="fd20490-list-topbar-left">
+              <strong>專案清單</strong>
+              <span>{projectViewMode === 'cards' ? '卡片檢視' : '清單檢視'} · 第 {safeProjectPage} / {projectPageTotal} 頁 · 目前 {paginatedProjects.length} / 篩選後 {filteredProjects.length} 筆</span>
+            </div>
+            <div className="collection-view-control purchase-local-view-control project-view-toggle fd20486-project-exact-purchase-view fd20490-list-view-control" aria-label="專案管理視圖">
+              <span className="collection-control-label">視圖</span>
+              {[
+                { id: 'list', icon: '☰', name: '清單' },
+                { id: 'cards', icon: '▦', name: '卡片' },
+              ].map((option) => (
+                <button key={option.id} type="button" className={projectViewMode === option.id ? 'active' : ''} onClick={() => setProjectViewMode(option.id)}>
+                  <span aria-hidden="true">{option.icon}</span>{option.name}
+                </button>
+              ))}
+            </div>
+          </section>
 
           {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
 
@@ -6654,17 +6662,7 @@ function DocsPage({ docs = [] }) {
           <span>整理 SOP、設定筆記、會議紀錄與常用範本；卡片看摘要，清單看明細。</span>
         </div>
         <div className="record-actions fd20481-docs-actions">
-          <div className="collection-view-control purchase-local-view-control fd20481-doc-view-switch fd20485-exact-purchase-view" aria-label="文件備忘視圖">
-            <span className="collection-control-label">視圖</span>
-            {[
-              { id: '清單', icon: '☰', name: '清單' },
-              { id: '卡片', icon: '▦', name: '卡片' },
-            ].map((option) => (
-              <button key={option.id} type="button" className={docView === option.id ? 'active' : ''} onClick={() => setDocView(option.id)}>
-                <span aria-hidden="true">{option.icon}</span>{option.name}
-              </button>
-            ))}
-          </div>
+
           <button className="ghost-btn" type="button" onClick={exportDocs}>匯出</button>
           <button className="primary-btn" type="button" onClick={openNewDoc}>新增文件</button>
         </div>
@@ -6698,7 +6696,23 @@ function DocsPage({ docs = [] }) {
             <button type="button" className="ghost-btn" onClick={clearDocFilters}>清除篩選</button>
           </div>
 
-          <div className="fd20481-doc-result-hint">目前顯示 {pagedDocs.length} / 篩選後 {filteredDocs.length} 筆｜全部 {docItems.length} 筆</div>
+          <section className="fd20490-list-topbar fd20490-doc-list-topbar">
+            <div className="fd20490-list-topbar-left">
+              <strong>文件列表</strong>
+              <span>{docView === '卡片' ? '卡片檢視' : '清單檢視'} · 目前 {pagedDocs.length} / 篩選後 {filteredDocs.length} 筆｜全部 {docItems.length} 筆</span>
+            </div>
+            <div className="collection-view-control purchase-local-view-control fd20481-doc-view-switch fd20485-exact-purchase-view fd20490-list-view-control" aria-label="文件備忘視圖">
+              <span className="collection-control-label">視圖</span>
+              {[
+                { id: '清單', icon: '☰', name: '清單' },
+                { id: '卡片', icon: '▦', name: '卡片' },
+              ].map((option) => (
+                <button key={option.id} type="button" className={docView === option.id ? 'active' : ''} onClick={() => setDocView(option.id)}>
+                  <span aria-hidden="true">{option.icon}</span>{option.name}
+                </button>
+              ))}
+            </div>
+          </section>
 
           {filteredDocs.length ? (
             docView === '卡片' ? (
@@ -7965,7 +7979,14 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
         <div className="reminder-bulk-actions">
           <button type="button" onClick={() => { setCaseFilter('全部'); setStatusFilter('全部'); setTypeFilter('全部'); setKeyword(''); setFocusFilter('全部') }}>全部提醒</button>
           <button type="button" onClick={completeAllOverdue} disabled={!summary.overdue}>逾期全部完成</button>
-          <div className="collection-view-control purchase-local-view-control fd20478-reminder-view-switch fd20485-exact-purchase-view" aria-label="提醒中心視圖">
+
+        </div>
+        <section className="fd20490-list-topbar fd20490-reminder-list-topbar">
+          <div className="fd20490-list-topbar-left">
+            <strong>提醒列表</strong>
+            <span>{reminderView === '卡片' ? '卡片檢視' : '清單檢視'} · 目前 {pagedFilteredReminders.length} / 篩選後 {filtered.length} 筆｜全部 {allReminderRows.length} 筆</span>
+          </div>
+          <div className="collection-view-control purchase-local-view-control fd20478-reminder-view-switch fd20485-exact-purchase-view fd20490-list-view-control" aria-label="提醒中心視圖">
             <span className="collection-control-label">視圖</span>
             {[
               { id: '清單', icon: '☰', name: '清單' },
@@ -7976,8 +7997,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
               </button>
             ))}
           </div>
-        </div>
-        <div className="fd20483-reminder-result-hint">目前顯示 {pagedFilteredReminders.length} / 篩選後 {filtered.length} 筆｜全部 {allReminderRows.length} 筆</div>
+        </section>
         <div className={`reminder-card-list reminder-grouped-list fd20478-reminder-${reminderView === '清單' ? 'list' : 'card'}-view`}>
           {reminderGroups.length ? reminderGroups.map((group) => (
             <section className="reminder-date-group" key={group.id}>

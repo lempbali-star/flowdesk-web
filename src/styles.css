@@ -29359,3 +29359,85 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_89_WORK_VIEW_BUTTON_MOVE_TOPBAR_END */
 
+
+/* FLOWDESK_V20_4_90_LIST_TOPBAR_UNIFIED_START */
+/* 全系統列表上方工具列一致化：視圖切換統一放在資料列表上方 */
+
+.fd20490-list-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 8px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .05);
+}
+
+.fd20490-list-topbar-left {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fd20490-list-topbar-left strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.fd20490-list-topbar-left span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.fd20490-list-view-control {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.fd20490-project-list-topbar {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.fd20490-reminder-list-topbar,
+.fd20490-doc-list-topbar {
+  margin-top: 4px;
+}
+
+/* 原本工作事項 v20.4.89 topbar 套用共用樣式後避免重複 margin */
+.fd20489-work-view-topbar.fd20490-list-topbar {
+  margin-top: 8px;
+}
+
+/* 上方主工具列只放主操作按鈕，視圖按鈕回到資料區 */
+.board-toolbar-actions,
+.fd20481-docs-actions,
+.reminder-bulk-actions {
+  align-items: center !important;
+}
+
+.fd20481-docs-actions:empty {
+  display: none !important;
+}
+
+@media (max-width: 820px) {
+  .fd20490-list-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fd20490-list-view-control {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    overflow: auto;
+  }
+}
+/* FLOWDESK_V20_4_90_LIST_TOPBAR_UNIFIED_END */
+
