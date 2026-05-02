@@ -26108,3 +26108,23 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   opacity: 0 !important;
   visibility: hidden !important;
 }
+
+
+/* FlowDesk v20.4.58 - 甘特圖標籤收斂 */
+.fd20447-gantt-dependency-pill {
+  display: none !important;
+}
+
+.fd20458-gantt-project-row {
+  margin-bottom: 8px !important;
+}
+
+.fd20458-gantt-project-row + .fd203-gantt-task-group {
+  margin-top: 8px !important;
+}
+
+.fd20457-gantt-today-chip-head {
+  z-index: 60 !important;
+  pointer-events: none !important;
+  transform: translateX(-50%) !important;
+}

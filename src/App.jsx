@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.57'
+const FLOWDESK_APP_VERSION = '20.4.58'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5231,7 +5231,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       <span className={`fd203-gantt-bar fd20431-gantt-draggable ${className} ${tone} ${done ? 'done' : ''}`.trim()} style={ganttStyle(safeStart, safeEnd, displayStart, displayEnd)} onPointerDown={moveHandler} title={scope === 'project' ? undefined : `${title}｜拖曳任務條可平移日期`}>
         {activePreview ? <span className="fd203-gantt-drag-tip">{activePreview.label}</span> : null}
         {scope !== 'project' ? <span className="fd20433-gantt-date-label">{`${formatMonthDayWeekday(safeStart)} → ${formatMonthDayWeekday(safeEnd)}`}</span> : null}
-        {scope === 'task' && task?.dependsOnTaskId ? <span className="fd20447-gantt-dependency-pill">依賴前置</span> : null}
         {!activePreview && scope !== 'project' ? (
           <span className="fd20426-gantt-hover-tip" aria-hidden="true">
             <strong>{label}</strong>
@@ -5323,7 +5322,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             ))}
           </div>
 
-          <div className="fd203-gantt-grid fd203-gantt-row fd20435-gantt-project-row" style={{ gridTemplateColumns: gridColumns }}>
+          <div className="fd203-gantt-grid fd203-gantt-row fd20435-gantt-project-row fd20458-gantt-project-row" style={{ gridTemplateColumns: gridColumns }}>
             <div className="fd203-gantt-label" title={dateRangeLabel(project.startDate, project.endDate)}>
               <strong>專案總期程</strong>
               <small>{project.phase} · {project.progress}%</small>
