@@ -1,8 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.92'
+const FLOWDESK_APP_VERSION = '20.4.93'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
+const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
+const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
+
+function normalizePlatformName(value) {
+  const next = String(value || '').trim()
+  return next || FLOWDESK_DEFAULT_PLATFORM_NAME
+}
+
+function readFlowDeskPlatformName() {
+  if (typeof window === 'undefined') return FLOWDESK_DEFAULT_PLATFORM_NAME
+  return normalizePlatformName(window.localStorage.getItem(FLOWDESK_PLATFORM_NAME_STORAGE_KEY) || FLOWDESK_DEFAULT_PLATFORM_NAME)
+}
+
+function getPlatformMark(value) {
+  const text = normalizePlatformName(value)
+  const first = text.match(/[A-Za-z0-9]/)?.[0] || text.slice(0, 1) || 'F'
+  return first.toUpperCase()
+}
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
 const PROJECT_PRIORITY_OPTIONS = ['緊急', '高', '中', '低']
@@ -586,6 +604,7 @@ function FlowDeskShell({ authSession, onLogout }) {
   const [showLauncher, setShowLauncher] = useState(false)
   const [showAppearanceQuick, setShowAppearanceQuick] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [platformName, setPlatformName] = useState(() => readFlowDeskPlatformName())
   const [uiTheme, setUiTheme] = useState(() => {
     if (typeof window === 'undefined') return 'blue'
     return window.localStorage.getItem('flowdesk-ui-theme') || 'blue'
@@ -985,6 +1004,13 @@ function FlowDeskShell({ authSession, onLogout }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    const nextName = normalizePlatformName(platformName)
+    window.localStorage.setItem(FLOWDESK_PLATFORM_NAME_STORAGE_KEY, nextName)
+    if (typeof document !== 'undefined') document.title = `${nextName}｜${FLOWDESK_VERSION_LABEL}`
+  }, [platformName])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
     window.localStorage.setItem('flowdesk-active-module-v20316', active)
   }, [active])
 
@@ -1049,9 +1075,9 @@ function FlowDeskShell({ authSession, onLogout }) {
     <div className={`product-shell ${sidebarOpen ? 'sidebar-open' : ''}`}>
       <aside className="workspace-sidebar" aria-label="側邊選單" onMouseEnter={() => setSidebarOpen(true)} onMouseLeave={() => setSidebarOpen(false)}>
         <div className="workspace-card">
-          <div className="brand-mark">F</div>
+          <div className="brand-mark">{getPlatformMark(platformName)}</div>
           <div className="sidebar-copy">
-            <strong>FlowDesk</strong>
+            <strong>{platformName}</strong>
             <small>{FLOWDESK_VERSION_LABEL}</small>
           </div>
         </div>
@@ -1179,7 +1205,7 @@ function FlowDeskShell({ authSession, onLogout }) {
             setActive('board')
           }
         }} />}
-        {active === 'settings' && <SettingsPage themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} customTheme={customTheme} setCustomTheme={setCustomTheme} themeShuffleSettings={themeShuffleSettings} setThemeShuffleSettings={setThemeShuffleSettings} themeShuffleCountdown={themeShuffleCountdown} randomizeThemeNow={randomizeThemeNow} freezeThemeShuffle={freezeThemeShuffle} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
+        {active === 'settings' && <SettingsPage platformName={platformName} setPlatformName={setPlatformName} themeOptions={themeOptions} uiTheme={uiTheme} setUiTheme={setUiTheme} appearanceMode={appearanceMode} setAppearanceMode={setAppearanceMode} motionLevel={motionLevel} setMotionLevel={setMotionLevel} customTheme={customTheme} setCustomTheme={setCustomTheme} themeShuffleSettings={themeShuffleSettings} setThemeShuffleSettings={setThemeShuffleSettings} themeShuffleCountdown={themeShuffleCountdown} randomizeThemeNow={randomizeThemeNow} freezeThemeShuffle={freezeThemeShuffle} iconStyleMode={iconStyleMode} setIconStyleMode={setIconStyleMode} resolvedIconStyle={resolvedIconStyle} modules={modules} collections={visibleCollections} setCollections={setCollections} moduleIcons={moduleIcons} setModuleIcons={setModuleIcons} baseTableIcons={baseTableIcons} setBaseTableIcons={setBaseTableIcons} setReminders={setReminders} />}
       </main>
 
       {showLauncher && <CreateLauncher onClose={() => setShowLauncher(false)} />}
@@ -1264,6 +1290,7 @@ function App() {
 }
 
 function LoginScreen({ mode, configMissing }) {
+  const [loginPlatformName] = useState(() => readFlowDeskPlatformName())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -1283,9 +1310,9 @@ function LoginScreen({ mode, configMissing }) {
     <div className="flowdesk-login-page">
       <form className="flowdesk-login-card" onSubmit={handleSubmit}>
         <div className="flowdesk-login-brand">
-          <div className="brand-mark">F</div>
+          <div className="brand-mark">{getPlatformMark(loginPlatformName)}</div>
           <div>
-            <strong>FlowDesk</strong>
+            <strong>{loginPlatformName}</strong>
             <span>登入</span>
           </div>
         </div>
@@ -8157,7 +8184,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
   )
 }
 
-function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, customTheme, setCustomTheme, themeShuffleSettings, setThemeShuffleSettings, themeShuffleCountdown, randomizeThemeNow, freezeThemeShuffle, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
+function SettingsPage({ platformName, setPlatformName, themeOptions, uiTheme, setUiTheme, appearanceMode, setAppearanceMode, motionLevel, setMotionLevel, customTheme, setCustomTheme, themeShuffleSettings, setThemeShuffleSettings, themeShuffleCountdown, randomizeThemeNow, freezeThemeShuffle, iconStyleMode, setIconStyleMode, resolvedIconStyle, modules, collections, setCollections, moduleIcons, setModuleIcons, baseTableIcons, setBaseTableIcons, setReminders }) {
   const [settingsView, setSettingsView] = useState('home')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState('')
@@ -8171,6 +8198,22 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   const selectedIconStyle = iconStyleOptions.find((style) => style.id === iconStyleMode) || iconStyleOptions[0]
   const sortedCollections = [...collections].sort((a, b) => (a.order || 0) - (b.order || 0))
   const [newCollectionName, setNewCollectionName] = useState('')
+  const [platformNameDraft, setPlatformNameDraft] = useState(platformName)
+
+  useEffect(() => {
+    setPlatformNameDraft(platformName)
+  }, [platformName])
+
+  function savePlatformName() {
+    const nextName = normalizePlatformName(platformNameDraft)
+    setPlatformName(nextName)
+    setPlatformNameDraft(nextName)
+  }
+
+  function resetPlatformName() {
+    setPlatformName(FLOWDESK_DEFAULT_PLATFORM_NAME)
+    setPlatformNameDraft(FLOWDESK_DEFAULT_PLATFORM_NAME)
+  }
   const backupWorkspaceKeys = [
     { key: 'work_items', label: '工作事項' },
     { key: 'reminders', label: '提醒中心' },
@@ -8507,6 +8550,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
   }
 
   const settingCards = [
+    { id: 'branding', title: '平台名稱', eyebrow: 'BRANDING', summary: `目前名稱：${platformName}`, icon: '🏷️' },
     { id: 'appearance', title: '外觀設定', eyebrow: 'UI THEME', summary: `目前方案：${activeAppearancePreset?.name || '自訂組合'} · ${activeTheme.name}${themeShuffleSettings.enabled ? ' · 自動隨機中' : ''}`, icon: '🎨' },
     { id: 'purchase', title: '採購設定', eyebrow: 'PURCHASE', summary: '採購資料與流程維護', icon: '🧾' },
     { id: 'collections', title: '資料集合設定', eyebrow: 'COLLECTIONS', summary: `${collections.filter((item) => item.visible !== false).length} 個顯示中，管理集合入口、視圖與外觀`, icon: '📚' },
@@ -8554,6 +8598,43 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
                 <p>{card.summary}</p>
               </button>
             ))}
+          </div>
+        </section>
+      )}
+
+      {settingsView === 'branding' && (
+        <section className="panel wide settings-panel settings-detail-panel fd20493-branding-panel">
+          <PanelTitle eyebrow="平台名稱" title="自訂系統顯示名稱" />
+          <p className="settings-note">可調整側邊欄、登入頁與瀏覽器標題顯示的名稱。預設為 FlowDesk 工作流管理平台。</p>
+          <div className="fd20493-branding-editor">
+            <div className="fd20493-brand-preview">
+              <div className="brand-mark">{getPlatformMark(platformNameDraft)}</div>
+              <div>
+                <span>目前預覽</span>
+                <strong>{normalizePlatformName(platformNameDraft)}</strong>
+                <small>{FLOWDESK_VERSION_LABEL}</small>
+              </div>
+            </div>
+            <label>
+              <span>平台名稱</span>
+              <input
+                value={platformNameDraft}
+                onChange={(event) => setPlatformNameDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') savePlatformName()
+                }}
+                placeholder={FLOWDESK_DEFAULT_PLATFORM_NAME}
+              />
+            </label>
+            <div className="fd20493-branding-actions">
+              <button className="primary-btn" type="button" onClick={savePlatformName}>套用名稱</button>
+              <button className="ghost-btn" type="button" onClick={resetPlatformName}>恢復預設</button>
+            </div>
+          </div>
+          <div className="settings-info-list fd20493-branding-info">
+            <div><span>目前名稱</span><strong>{platformName}</strong></div>
+            <div><span>預設名稱</span><strong>{FLOWDESK_DEFAULT_PLATFORM_NAME}</strong></div>
+            <div><span>儲存位置</span><strong>本機瀏覽器設定</strong></div>
           </div>
         </section>
       )}
@@ -8970,6 +9051,7 @@ function SettingsPage({ themeOptions, uiTheme, setUiTheme, appearanceMode, setAp
         <section className="panel settings-panel settings-detail-panel">
           <PanelTitle eyebrow="系統資訊" title={FLOWDESK_VERSION_LABEL} />
           <div className="settings-info-list">
+            <div><span>平台名稱</span><strong>{platformName}</strong></div>
             <div><span>版本狀態</span><strong>{FLOWDESK_VERSION_LABEL} 功能收斂版</strong></div>
             <div><span>雲端同步</span><strong>{flowdeskCloud ? '已啟用' : '本機模式'}</strong></div>
             <div><span>Supabase 設定</span><strong>{hasSupabaseConfig ? '已設定' : '未設定'}</strong></div>
