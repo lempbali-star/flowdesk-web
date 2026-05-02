@@ -26486,3 +26486,93 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     grid-template-columns: 1fr;
   }
 }
+
+/* FLOWDESK_V20_4_65_GANTT_LABEL_TOOLTIP_FIX_START */
+/* FlowDesk v20.4.65 - 甘特圖今天標籤與任務 hover 提示重疊修正 */
+.fd203-gantt-scroll {
+  padding-top: 14px !important;
+}
+
+.fd203-gantt-head,
+.fd203-gantt-grid.fd203-gantt-head,
+.fd203-gantt-head .fd203-week-head,
+.fd203-gantt-track,
+.fd203-gantt-bar {
+  overflow: visible !important;
+}
+
+.fd203-gantt-head .fd203-week-head {
+  min-height: 78px !important;
+  padding-top: 10px !important;
+  padding-bottom: 34px !important;
+}
+
+.fd203-gantt-head .fd203-week-head b {
+  display: block !important;
+  line-height: 1.12 !important;
+}
+
+.fd203-gantt-head .fd203-week-head small {
+  display: block !important;
+  margin-top: 2px !important;
+  line-height: 1.15 !important;
+}
+
+.fd20455-gantt-today-chip-fixed,
+.fd203-gantt-track > .fd203-gantt-today-line i,
+.fd203-gantt-track > .fd203-gantt-today-line.subtle i,
+.fd20453-gantt-project-guide i {
+  top: -20px !important;
+  transform: translateX(calc(-50% + 2px)) !important;
+  z-index: 180 !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+}
+
+.fd20455-gantt-today-chip-fixed {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.14) !important;
+}
+
+.fd203-gantt-bar:hover .fd20429-gantt-bar-range,
+.fd203-gantt-bar:focus-within .fd20429-gantt-bar-range,
+.fd203-gantt-bar:hover .fd20428-gantt-bar-range,
+.fd203-gantt-bar:focus-within .fd20428-gantt-bar-range,
+.fd203-gantt-bar:hover .fd20433-gantt-date-label,
+.fd203-gantt-bar:focus-within .fd20433-gantt-date-label {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateX(-50%) translateY(-4px) !important;
+}
+
+.fd203-gantt-bar .fd20426-gantt-hover-tip {
+  z-index: 260 !important;
+  bottom: calc(100% + 20px) !important;
+}
+
+.fd203-gantt-bar:hover .fd20426-gantt-hover-tip,
+.fd203-gantt-bar:focus-within .fd20426-gantt-hover-tip {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+.fd203-gantt-bar .fd20426-gantt-hover-tip::after {
+  bottom: -6px !important;
+}
+
+@media (max-width: 760px) {
+  .fd203-gantt-scroll {
+    padding-top: 18px !important;
+  }
+
+  .fd20455-gantt-today-chip-fixed,
+  .fd203-gantt-track > .fd203-gantt-today-line i,
+  .fd203-gantt-track > .fd203-gantt-today-line.subtle i,
+  .fd20453-gantt-project-guide i {
+    top: -18px !important;
+  }
+}
+/* FLOWDESK_V20_4_65_GANTT_LABEL_TOOLTIP_FIX_END */
