@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.52'
+const FLOWDESK_APP_VERSION = '20.4.53'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -5258,7 +5258,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             event.stopPropagation()
           }}
           onClick={(event) => openGanttProgressEditor(scope, project.id, taskIndex, subtaskIndex, progress, event)}
-          title="拖曳這裡可移動任務；點一下可調整進度"
+          title={scope === 'project' ? undefined : '拖曳這裡可移動任務；點一下可調整進度'}
         >{progress}%</button>
         <i className="gantt-resize-handle end" role="button" tabIndex={0} aria-label={`調整${label}結束日`} onPointerDown={endHandler} />
       </span>
@@ -5284,7 +5284,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const showToday = todayValue >= displayStart && todayValue <= displayEnd
     const todayPoint = showToday ? ganttPoint(todayValue, displayStart, displayEnd) : 0
     const todayLeft = showToday ? `${todayPoint}%` : null
-    const todayHeadLeft = showToday ? `${labelColumnWidth + ((todayPoint / 100) * (safeWeekTicks.length * weekCellWidth))}px` : null
     return (
       <div className={`fd203-gantt-panel fd203-gantt-fit-${fitMode}${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`} data-week-count={weekCount} data-fit-mode={fitMode} style={{ '--fd20426-gantt-grid-width': `${ganttGridWidth}px`, '--fd20426-gantt-label-width': `${labelColumnWidth}px` }}>
         <div className="fd203-gantt-summary">
@@ -5315,11 +5314,6 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <small>{tick.days} 天 · {formatWeekSpanLabel(tick.start, tick.end)}</small>
               </span>
             ))}
-            {showToday ? (
-              <em className="fd20428-gantt-today-chip fd20450-gantt-today-chip fd20451-gantt-today-chip fd20452-gantt-today-chip" style={{ left: todayHeadLeft }}>
-                今天 {formatMonthDay(todayValue)}
-              </em>
-            ) : null}
           </div>
 
           <div className="fd203-gantt-grid fd203-gantt-row fd20435-gantt-project-row" style={{ gridTemplateColumns: gridColumns }}>
@@ -5328,7 +5322,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <small>{project.phase} · {project.progress}%</small>
             </div>
             <div className="fd203-gantt-track" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
-              {showToday ? <span className="fd203-gantt-today-line subtle fd203-gantt-today-guide fd20428-gantt-today-guide" style={{ left: todayLeft }}><i>今天 {formatMonthDay(todayValue)}</i></span> : null}
+              {showToday ? <span className="fd203-gantt-today-line subtle fd203-gantt-today-guide fd20428-gantt-today-guide fd20453-gantt-project-guide" style={{ left: todayLeft }}><i>今天 {formatMonthDay(todayValue)}</i></span> : null}
               {renderGanttBar({ project, scope: 'project', start: project.startDate, end: project.endDate, displayStart, displayEnd, progress: project.progress, label: '專案進度', className: 'project', tone: project.tone || 'blue' })}
               {(project.milestones || []).map((milestone, index) => (
                 <i key={milestone.id || index} className={milestone.done ? 'milestone-dot done' : 'milestone-dot'} style={{ left: `${ganttPoint(milestone.date, displayStart, displayEnd)}%` }} title={`${milestone.name}｜${formatMonthDayWeekday(milestone.date)}`} />

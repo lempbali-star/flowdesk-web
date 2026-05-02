@@ -25891,3 +25891,20 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   z-index: 48 !important;
   pointer-events: none !important;
 }
+
+
+/* FlowDesk v20.4.53 - 今天標籤直接掛在今日虛線上，完全對齊；移除專案總期程進度 hover 提示 */
+.fd20453-gantt-project-guide i {
+  display: inline-flex !important;
+  top: -30px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 22 !important;
+}
+
+.fd20428-gantt-today-chip,
+.fd20450-gantt-today-chip,
+.fd20451-gantt-today-chip,
+.fd20452-gantt-today-chip {
+  display: none !important;
+}
