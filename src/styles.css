@@ -29308,3 +29308,54 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_88_REMINDER_CARD_CLICK_MODAL_FIX_END */
 
+
+/* FLOWDESK_V20_4_89_WORK_VIEW_BUTTON_MOVE_TOPBAR_START */
+/* 工作事項：卡片 / 清單切換移到資料清單上方，跟其他頁面一致 */
+
+.fd20489-work-view-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 8px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .05);
+}
+
+.fd20489-work-view-topbar-left {
+  display: grid;
+  gap: 4px;
+}
+
+.fd20489-work-view-topbar-left strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.fd20489-work-view-topbar-left span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd20489-work-view-switch {
+  margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .fd20489-work-view-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fd20489-work-view-switch {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+/* FLOWDESK_V20_4_89_WORK_VIEW_BUTTON_MOVE_TOPBAR_END */
+

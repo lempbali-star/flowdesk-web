@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.88'
+const FLOWDESK_APP_VERSION = '20.4.89'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1896,17 +1896,6 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
           <h2>工作事項</h2>
         </div>
         <div className="board-toolbar-actions">
-          <div className="collection-view-control purchase-local-view-control board-view-switch fd20485-exact-purchase-view" aria-label="工作事項視圖">
-            <span className="collection-control-label">視圖</span>
-            {[
-              { id: '清單', icon: '☰', name: '清單' },
-              { id: '卡片', icon: '▦', name: '卡片' },
-            ].map((option) => (
-              <button key={option.id} className={normalizedBoardView === option.id ? 'active' : ''} type="button" onClick={() => setView(option.id)}>
-                <span aria-hidden="true">{option.icon}</span>{option.name}
-              </button>
-            ))}
-          </div>
           <button className="primary-btn board-add-btn" type="button" onClick={onAddItem}>新增工作事項</button>
         </div>
       </section>
@@ -1967,6 +1956,24 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
           <button type="button" className="ghost-btn" onClick={clearBoardFilters}>清除篩選</button>
         </section>
       )}
+
+      <section className="fd20489-work-view-topbar">
+        <div className="fd20489-work-view-topbar-left">
+          <strong>工作清單</strong>
+          <span>{normalizedBoardView === '卡片' ? '卡片檢視' : '清單檢視'} · 放在資料列表上方</span>
+        </div>
+        <div className="collection-view-control purchase-local-view-control board-view-switch fd20485-exact-purchase-view fd20489-work-view-switch" aria-label="工作事項視圖">
+          <span className="collection-control-label">視圖</span>
+          {[
+            { id: '清單', icon: '☰', name: '清單' },
+            { id: '卡片', icon: '▦', name: '卡片' },
+          ].map((option) => (
+            <button key={option.id} className={normalizedBoardView === option.id ? 'active' : ''} type="button" onClick={() => setView(option.id)}>
+              <span aria-hidden="true">{option.icon}</span>{option.name}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {normalizedBoardView === '清單' && (
         <WorkItemDailyList
