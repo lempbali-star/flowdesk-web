@@ -26027,3 +26027,84 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   opacity: 0 !important;
   visibility: hidden !important;
 }
+
+/* FlowDesk v20.4.57 - 今日標籤回到表頭且精準貼齊；專案總期程改為純顯示 */
+.fd20457-week-head {
+  position: relative !important;
+  overflow: visible !important;
+  padding-bottom: 28px !important;
+}
+
+.fd20457-gantt-today-chip-head {
+  position: absolute !important;
+  bottom: 6px !important;
+  transform: translateX(-50%) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: max-content !important;
+  padding: 3px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 241, 242, 0.98) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(239, 68, 68, 0.32) !important;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.16) !important;
+  font-style: normal !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  z-index: 120 !important;
+  pointer-events: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.fd20456-gantt-today-chip-fixed,
+.fd20455-gantt-today-chip-fixed,
+.fd20452-gantt-today-chip,
+.fd20451-gantt-today-chip,
+.fd20450-gantt-today-chip,
+.fd20428-gantt-today-chip:not(.fd20457-gantt-today-chip-head) {
+  display: none !important;
+}
+
+.fd20457-project-readonly-bar {
+  pointer-events: none !important;
+  cursor: default !important;
+  touch-action: auto !important;
+}
+
+.fd20457-project-readonly-bar,
+.fd20457-project-readonly-bar *,
+.fd20457-project-progress-text {
+  pointer-events: none !important;
+}
+
+.fd20457-project-progress-text {
+  position: absolute !important;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff !important;
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: none !important;
+}
+
+.fd20457-project-readonly-bar .fd20426-gantt-hover-tip,
+.fd20457-project-readonly-bar:hover .fd20426-gantt-hover-tip,
+.fd20457-project-readonly-bar:focus-within .fd20426-gantt-hover-tip {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
