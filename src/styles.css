@@ -28729,3 +28729,197 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 @media(max-width:760px){.fd20483-pagination{align-items:stretch;flex-direction:column}.fd20483-pagination-controls{width:100%;justify-content:space-between}.fd20483-pagination-controls button{flex:1 1 auto}.fd20483-page-size{justify-content:space-between}.fd20483-page-size select{flex:1}.board-toolbar-actions .segmented,.fd20478-reminder-view-switch,.fd20481-doc-view-switch,.fd20482-insight-tab-switch{width:100%!important;overflow:auto!important}}
 /* FLOWDESK_V20_4_83_PURCHASE_STYLE_CARDS_LISTS_PAGINATION_END */
 
+
+/* FLOWDESK_V20_4_84_PURCHASE_SAME_VIEW_BUTTONS_REMINDER_DELETE_START */
+/* 卡片 / 清單切換按鈕改成採購管理同款：collection-view-control + purchase-local-view-control */
+
+/* 這些不是一般 segmented，是採購管理同款視圖控制 */
+.fd20484-view-control,
+.board-toolbar-actions .fd20484-view-control,
+.reminder-bulk-actions .fd20484-view-control,
+.fd20481-docs-actions .fd20484-view-control {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: 38px !important;
+  padding: 5px !important;
+  border: 1px solid rgba(148, 163, 184, .22) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, .94) !important;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, .06) !important;
+}
+
+.fd20484-view-control .collection-control-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 28px !important;
+  padding: 0 6px 0 8px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+}
+
+.fd20484-view-control button,
+.board-toolbar-actions .fd20484-view-control button,
+.reminder-bulk-actions .fd20484-view-control button,
+.fd20481-docs-actions .fd20484-view-control button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  min-height: 30px !important;
+  padding: 6px 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: #475569 !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  box-shadow: none !important;
+}
+
+.fd20484-view-control button span[aria-hidden="true"] {
+  display: inline-flex !important;
+  width: 16px !important;
+  justify-content: center !important;
+  color: inherit !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+
+.fd20484-view-control button.active,
+.board-toolbar-actions .fd20484-view-control button.active,
+.reminder-bulk-actions .fd20484-view-control button.active,
+.fd20481-docs-actions .fd20484-view-control button.active {
+  border-color: rgba(37, 99, 235, .24) !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 8px 16px rgba(37, 99, 235, .12) !important;
+}
+
+/* 提醒中心刪除按鈕，包含自動提醒，統一為危險色 */
+.reminder-card-actions button.danger,
+.fd20478-reminder-card-view .reminder-card-actions button.danger,
+.fd20478-reminder-list-view .reminder-card-actions button.danger {
+  border-color: rgba(244, 63, 94, .22) !important;
+  background: #fff1f2 !important;
+  color: #be123c !important;
+}
+
+.reminder-card-actions button.danger:hover {
+  background: #ffe4e6 !important;
+  color: #9f1239 !important;
+}
+
+/* 手機版保留採購同款，不攤平成奇怪的大膠囊 */
+@media (max-width: 760px) {
+  .fd20484-view-control,
+  .board-toolbar-actions .fd20484-view-control,
+  .reminder-bulk-actions .fd20484-view-control,
+  .fd20481-docs-actions .fd20484-view-control {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    overflow: auto !important;
+  }
+
+  .fd20484-view-control button {
+    flex: 0 0 auto !important;
+  }
+}
+/* FLOWDESK_V20_4_84_PURCHASE_SAME_VIEW_BUTTONS_REMINDER_DELETE_END */
+
+
+/* FLOWDESK_V20_4_85_EXACT_PURCHASE_VIEW_BUTTONS_START */
+/* v20.4.85：卡片 / 清單切換按鈕完全改回採購管理同款樣式
+   重點：不再把 collection-view-control 改成膠囊 segmented。 */
+
+.fd20485-exact-purchase-view,
+.board-toolbar-actions .fd20485-exact-purchase-view,
+.reminder-bulk-actions .fd20485-exact-purchase-view,
+.fd20481-docs-actions .fd20485-exact-purchase-view {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px !important;
+  border-radius: 18px !important;
+  background: rgba(248, 250, 252, .92) !important;
+  border: 1px solid rgba(148, 163, 184, .22) !important;
+  box-shadow: none !important;
+}
+
+.fd20485-exact-purchase-view .collection-control-label,
+.board-toolbar-actions .fd20485-exact-purchase-view .collection-control-label,
+.reminder-bulk-actions .fd20485-exact-purchase-view .collection-control-label,
+.fd20481-docs-actions .fd20485-exact-purchase-view .collection-control-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: auto !important;
+  padding: 0 6px 0 4px !important;
+  color: #738098 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.fd20485-exact-purchase-view button,
+.board-toolbar-actions .fd20485-exact-purchase-view button,
+.reminder-bulk-actions .fd20485-exact-purchase-view button,
+.fd20481-docs-actions .fd20485-exact-purchase-view button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: auto !important;
+  padding: 8px 11px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  color: #64718a !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  transition: .16s ease !important;
+}
+
+.fd20485-exact-purchase-view button:hover,
+.board-toolbar-actions .fd20485-exact-purchase-view button:hover,
+.reminder-bulk-actions .fd20485-exact-purchase-view button:hover,
+.fd20481-docs-actions .fd20485-exact-purchase-view button:hover {
+  background: #f4f7fd !important;
+  color: #26344d !important;
+  transform: none !important;
+}
+
+.fd20485-exact-purchase-view button.active,
+.board-toolbar-actions .fd20485-exact-purchase-view button.active,
+.reminder-bulk-actions .fd20485-exact-purchase-view button.active,
+.fd20481-docs-actions .fd20485-exact-purchase-view button.active {
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary)) !important;
+  box-shadow: 0 8px 18px var(--theme-shadow) !important;
+  border: 0 !important;
+}
+
+.fd20485-exact-purchase-view button span[aria-hidden="true"] {
+  display: inline-flex !important;
+  width: auto !important;
+  justify-content: center !important;
+  color: inherit !important;
+}
+
+/* 強制蓋掉 v20.4.84 造成不像採購的樣式 */
+.fd20484-view-control:not(.fd20485-exact-purchase-view) {
+  border-radius: 18px !important;
+}
+
+.reminder-card-actions button.danger,
+.fd20478-reminder-card-view .reminder-card-actions button.danger,
+.fd20478-reminder-list-view .reminder-card-actions button.danger {
+  border-color: rgba(244, 63, 94, .22) !important;
+  background: #fff1f2 !important;
+  color: #be123c !important;
+}
+/* FLOWDESK_V20_4_85_EXACT_PURCHASE_VIEW_BUTTONS_END */
+

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.83'
+const FLOWDESK_APP_VERSION = '20.4.85'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -1896,9 +1896,15 @@ function BoardPage({ items, view, setView, selected, setSelected, onAddItem, onU
           <h2>工作事項</h2>
         </div>
         <div className="board-toolbar-actions">
-          <div className="segmented board-view-switch">
-            {['卡片', '清單'].map((name) => (
-              <button key={name} className={normalizedBoardView === name ? 'active' : ''} type="button" onClick={() => setView(name)}>{name}</button>
+          <div className="collection-view-control purchase-local-view-control board-view-switch fd20485-exact-purchase-view" aria-label="工作事項視圖">
+            <span className="collection-control-label">視圖</span>
+            {[
+              { id: '清單', icon: '☰', name: '清單' },
+              { id: '卡片', icon: '▦', name: '卡片' },
+            ].map((option) => (
+              <button key={option.id} className={normalizedBoardView === option.id ? 'active' : ''} type="button" onClick={() => setView(option.id)}>
+                <span aria-hidden="true">{option.icon}</span>{option.name}
+              </button>
             ))}
           </div>
           <button className="primary-btn board-add-btn" type="button" onClick={onAddItem}>新增工作事項</button>
@@ -6634,8 +6640,16 @@ function DocsPage({ docs = [] }) {
           <span>整理 SOP、設定筆記、會議紀錄與常用範本；卡片看摘要，清單看明細。</span>
         </div>
         <div className="record-actions fd20481-docs-actions">
-          <div className="segmented fd20481-doc-view-switch">
-            {['卡片', '清單'].map((viewName) => <button key={viewName} type="button" className={docView === viewName ? 'active' : ''} onClick={() => setDocView(viewName)}>{viewName}</button>)}
+          <div className="collection-view-control purchase-local-view-control fd20481-doc-view-switch fd20485-exact-purchase-view" aria-label="文件備忘視圖">
+            <span className="collection-control-label">視圖</span>
+            {[
+              { id: '清單', icon: '☰', name: '清單' },
+              { id: '卡片', icon: '▦', name: '卡片' },
+            ].map((option) => (
+              <button key={option.id} type="button" className={docView === option.id ? 'active' : ''} onClick={() => setDocView(option.id)}>
+                <span aria-hidden="true">{option.icon}</span>{option.name}
+              </button>
+            ))}
           </div>
           <button className="ghost-btn" type="button" onClick={exportDocs}>匯出</button>
           <button className="primary-btn" type="button" onClick={openNewDoc}>新增文件</button>
@@ -7791,10 +7805,25 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
     }
   }
 
+  function removeAutoReminder(item) {
+    if (!item?.id) return
+    if (!confirmDestructiveAction(item?.title || item?.id || '自動提醒')) return
+    updateAutoReminder(item.id, 'done')
+  }
+
   function removeReminder(id) {
     const target = reminders.find((item) => item.id === id)
     if (!confirmDestructiveAction(target?.title || id || '提醒')) return
     setReminders((current) => current.filter((item) => item.id !== id))
+  }
+
+  function removeReminderRow(item) {
+    if (!item) return
+    if (item.virtual) {
+      removeAutoReminder(item)
+      return
+    }
+    removeReminder(item.id)
   }
 
   function resetDemoReminders() {
@@ -7891,9 +7920,15 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
         <div className="reminder-bulk-actions">
           <button type="button" onClick={() => { setCaseFilter('全部'); setStatusFilter('全部'); setTypeFilter('全部'); setKeyword(''); setFocusFilter('全部') }}>全部提醒</button>
           <button type="button" onClick={completeAllOverdue} disabled={!summary.overdue}>逾期全部完成</button>
-          <div className="segmented fd20478-reminder-view-switch">
-            {['卡片', '清單'].map((name) => (
-              <button key={name} type="button" className={reminderView === name ? 'active' : ''} onClick={() => setReminderView(name)}>{name}</button>
+          <div className="collection-view-control purchase-local-view-control fd20478-reminder-view-switch fd20485-exact-purchase-view" aria-label="提醒中心視圖">
+            <span className="collection-control-label">視圖</span>
+            {[
+              { id: '清單', icon: '☰', name: '清單' },
+              { id: '卡片', icon: '▦', name: '卡片' },
+            ].map((option) => (
+              <button key={option.id} type="button" className={reminderView === option.id ? 'active' : ''} onClick={() => setReminderView(option.id)}>
+                <span aria-hidden="true">{option.icon}</span>{option.name}
+              </button>
             ))}
           </div>
         </div>
@@ -7923,7 +7958,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
                       <button type="button" onClick={() => deferReminder(item.id, 3, item.virtual)}>三天後</button>
                       <button type="button" onClick={() => deferReminder(item.id, 7, item.virtual)}>下週</button>
                       {item.sourceType !== '一般' && <button type="button" onClick={() => onNavigateSource?.(item)}>開啟關聯</button>}
-                      {!item.virtual && <button className="danger" type="button" onClick={() => removeReminder(item.id)}>刪除</button>}
+                      <button className="danger" type="button" onClick={() => removeReminderRow(item)}>{item.virtual ? '刪除' : '刪除'}</button>
                     </div>
                   </article>
                 )
