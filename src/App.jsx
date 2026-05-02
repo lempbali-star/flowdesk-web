@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.64'
+const FLOWDESK_APP_VERSION = '20.4.66'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
@@ -3523,6 +3523,17 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     if (typeof window === 'undefined') return true
     return window.localStorage.getItem('flowdesk-gantt-show-subtasks-v20316') !== 'false'
   })
+  // FLOWDESK_V20_4_66_GANTT_WEEK_START_STATE_START
+  const [ganttWeekStartDay, setGanttWeekStartDay] = useState(() => {
+    if (typeof window === 'undefined') return 1
+    return normalizeGanttWeekStartDay(window.localStorage.getItem(FLOWDESK_GANTT_WEEK_START_STORAGE_KEY))
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(FLOWDESK_GANTT_WEEK_START_STORAGE_KEY, String(ganttWeekStartDay))
+  }, [ganttWeekStartDay])
+  // FLOWDESK_V20_4_66_GANTT_WEEK_START_STATE_END
   const [ganttExpandedTasks, setGanttExpandedTasks] = useState({})
   const projectFilterInitRef = useRef(true)
 
@@ -5295,7 +5306,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const timelineRange = getProjectGanttRange(project)
     const displayStart = frozenRange?.start || timelineRange.start
     const displayEnd = frozenRange?.end || timelineRange.end
-    const weekTicks = buildGanttWeekTicks(displayStart, displayEnd)
+    const weekTicks = buildGanttWeekTicks(displayStart, displayEnd, ganttWeekStartDay)
     const safeWeekTicks = weekTicks.length ? weekTicks : [{ key: `${displayStart}_${displayEnd}`, start: displayStart, end: displayEnd, days: 1 }]
     const weekCount = safeWeekTicks.length
     const fitMode = compact ? 'compact' : weekCount >= 12 ? 'dense' : weekCount >= 9 ? 'fit' : weekCount >= 7 ? 'soft-fit' : 'normal'
@@ -5322,6 +5333,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} />
               </label>
             )}
+            <label className="fd20466-gantt-week-start-control">
+              <span>週起始日</span>
+              <select value={ganttWeekStartDay} onChange={(event) => setGanttWeekStartDay(normalizeGanttWeekStartDay(event.target.value))}>
+                {FLOWDESK_GANTT_WEEK_START_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}起｜{option.span}</option>
+                ))}
+              </select>
+            </label>
             <span className="fd20426-gantt-stability-pill">凍結表頭 / 左欄</span>
             <button type="button" onClick={() => addProjectTask(project.id)}>新增任務</button>
             <button type="button" className={ganttShowSubtasks ? 'fd203-gantt-global-toggle open' : 'fd203-gantt-global-toggle closed'} onClick={toggleAllGanttSubtasks}>{ganttShowSubtasks ? '全部收合子任務' : '全部展開子任務'}</button>
@@ -5334,7 +5353,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             {safeWeekTicks.map((tick) => (
               <span key={tick.key} className="fd203-week-head fd20457-week-head">
                 <b>{formatWeekRange(tick.start, tick.end)}</b>
-                <small>{tick.days} 天 · {formatWeekSpanLabel(tick.start, tick.end)}</small>
+                <small className="fd20466-week-head-meta"><span>{tick.days} 天</span><em>{formatGanttWeekSpanByStart(ganttWeekStartDay)}</em></small>
               </span>
             ))}
           </div>
@@ -6079,10 +6098,10 @@ function getProjectGanttRange(project = {}) {
   return { start: dates[0], end: dates[dates.length - 1] }
 }
 
-function buildGanttWeekTicks(start, end) {
+function buildGanttWeekTicks(start, end, weekStartDay = 1) {
   const ticks = []
-  let cursor = parseDate(start)
-  const finalDate = parseDate(end)
+  let cursor = parseDate(alignDateToGanttWeekStart(start, weekStartDay))
+  const finalDate = parseDate(alignDateToGanttWeekEnd(end, weekStartDay))
   while (cursor <= finalDate) {
     const weekStart = formatLocalDateValue(cursor)
     const weekEndDate = new Date(cursor.getTime() + (6 * 86400000))
@@ -6138,6 +6157,39 @@ function formatMonthDayWeekday(value) {
   const weekdayMap = ['日', '一', '二', '三', '四', '五', '六']
   return `${date.getMonth() + 1}/${String(date.getDate()).padStart(2, '0')}(${weekdayMap[date.getDay()]})`
 }
+
+// FLOWDESK_V20_4_66_GANTT_WEEK_START_HEADER_FIX_START
+const FLOWDESK_GANTT_WEEK_START_STORAGE_KEY = 'flowdesk-gantt-week-start-day-v20466'
+const FLOWDESK_WEEKDAY_SHORT_LABELS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+const FLOWDESK_GANTT_WEEK_START_OPTIONS = FLOWDESK_WEEKDAY_SHORT_LABELS.map((label, value) => ({
+  value,
+  label,
+  span: label + '～' + FLOWDESK_WEEKDAY_SHORT_LABELS[(value + 6) % 7],
+}))
+
+function normalizeGanttWeekStartDay(value) {
+  const numeric = Number(value)
+  return Number.isInteger(numeric) && numeric >= 0 && numeric <= 6 ? numeric : 1
+}
+
+function alignDateToGanttWeekStart(value, weekStartDay = 1) {
+  const date = parseDate(value)
+  const startDay = normalizeGanttWeekStartDay(weekStartDay)
+  const diff = (date.getDay() - startDay + 7) % 7
+  date.setDate(date.getDate() - diff)
+  return date.toISOString().slice(0, 10)
+}
+
+function alignDateToGanttWeekEnd(value, weekStartDay = 1) {
+  return addDaysToDateValue(alignDateToGanttWeekStart(value, weekStartDay), 6)
+}
+
+function formatGanttWeekSpanByStart(weekStartDay = 1) {
+  const startDay = normalizeGanttWeekStartDay(weekStartDay)
+  return FLOWDESK_WEEKDAY_SHORT_LABELS[startDay] + '～' + FLOWDESK_WEEKDAY_SHORT_LABELS[(startDay + 6) % 7]
+}
+// FLOWDESK_V20_4_66_GANTT_WEEK_START_HEADER_FIX_END
+
 
 function DocsPage({ docs }) {
   return (

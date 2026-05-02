@@ -26576,3 +26576,176 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   }
 }
 /* FLOWDESK_V20_4_65_GANTT_LABEL_TOOLTIP_FIX_END */
+
+/* FLOWDESK_V20_4_66_GANTT_WEEK_START_HEADER_FIX_START */
+/* FlowDesk v20.4.66 - 甘特圖週標頭整理與週起始日選擇 */
+.fd203-gantt-scroll {
+  padding-top: 14px !important;
+}
+
+.fd203-gantt-head,
+.fd203-gantt-grid.fd203-gantt-head,
+.fd203-gantt-head .fd203-week-head,
+.fd203-gantt-track,
+.fd203-gantt-bar {
+  overflow: visible !important;
+}
+
+.fd203-gantt-head .fd203-week-head {
+  min-height: 86px !important;
+  padding: 10px 8px 34px !important;
+  gap: 5px !important;
+  text-align: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.fd203-gantt-head .fd203-week-head b {
+  display: block !important;
+  color: #0f172a !important;
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0.01em !important;
+  white-space: nowrap !important;
+}
+
+.fd203-gantt-head .fd203-week-head small,
+.fd20466-week-head-meta {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  margin-top: 2px !important;
+  color: #64748b !important;
+  font-size: 10px !important;
+  line-height: 1.08 !important;
+  white-space: nowrap !important;
+}
+
+.fd20466-week-head-meta span {
+  display: block !important;
+  font-weight: 800 !important;
+}
+
+.fd20466-week-head-meta em {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 68px !important;
+  padding: 2px 6px !important;
+  border-radius: 999px !important;
+  background: rgba(59, 130, 246, 0.08) !important;
+  color: #475569 !important;
+  font-style: normal !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+.fd20466-gantt-week-start-control {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-height: 34px !important;
+  padding: 5px 8px 5px 11px !important;
+  border: 1px solid rgba(147, 197, 253, 0.85) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.92)) !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.08) !important;
+}
+
+.fd20466-gantt-week-start-control > span {
+  color: #1e3a8a !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.fd20466-gantt-week-start-control select {
+  height: 24px !important;
+  min-width: 128px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #0f172a !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  cursor: pointer !important;
+}
+
+.fd20455-gantt-today-chip-fixed,
+.fd203-gantt-track > .fd203-gantt-today-line i,
+.fd203-gantt-track > .fd203-gantt-today-line.subtle i,
+.fd20453-gantt-project-guide i {
+  top: -20px !important;
+  transform: translateX(calc(-50% + 2px)) !important;
+  z-index: 180 !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+}
+
+.fd20455-gantt-today-chip-fixed {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.14) !important;
+}
+
+.fd203-gantt-bar:hover .fd20429-gantt-bar-range,
+.fd203-gantt-bar:focus-within .fd20429-gantt-bar-range,
+.fd203-gantt-bar:hover .fd20428-gantt-bar-range,
+.fd203-gantt-bar:focus-within .fd20428-gantt-bar-range,
+.fd203-gantt-bar:hover .fd20433-gantt-date-label,
+.fd203-gantt-bar:focus-within .fd20433-gantt-date-label {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateX(-50%) translateY(-4px) !important;
+}
+
+.fd203-gantt-bar .fd20426-gantt-hover-tip {
+  z-index: 260 !important;
+  bottom: calc(100% + 20px) !important;
+}
+
+.fd203-gantt-bar:hover .fd20426-gantt-hover-tip,
+.fd203-gantt-bar:focus-within .fd20426-gantt-hover-tip {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+.fd203-gantt-bar .fd20426-gantt-hover-tip::after {
+  bottom: -6px !important;
+}
+
+@media (max-width: 900px) {
+  .fd20466-gantt-week-start-control {
+    width: 100% !important;
+    justify-content: space-between !important;
+    border-radius: 18px !important;
+  }
+
+  .fd20466-gantt-week-start-control select {
+    min-width: 150px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .fd203-gantt-scroll {
+    padding-top: 18px !important;
+  }
+
+  .fd203-gantt-head .fd203-week-head {
+    min-height: 92px !important;
+    padding-inline: 6px !important;
+  }
+
+  .fd20455-gantt-today-chip-fixed,
+  .fd203-gantt-track > .fd203-gantt-today-line i,
+  .fd203-gantt-track > .fd203-gantt-today-line.subtle i,
+  .fd20453-gantt-project-guide i {
+    top: -18px !important;
+  }
+}
+/* FLOWDESK_V20_4_66_GANTT_WEEK_START_HEADER_FIX_END */
