@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.134'
+const FLOWDESK_APP_VERSION = '20.4.135'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7195,13 +7195,51 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     focusRichEditor()
   }
 
-  function applyTextFormat(action) {
+  function applyTextFormat(action, value = '') {
     if (!richEditorRef.current) return
     richEditorRef.current.focus()
     restoreRichEditorSelection()
     const today = todayDate()
 
-    if (action === 'h2') {
+    if (action === 'style') {
+      if (value === 'paragraph') document.execCommand('formatBlock', false, 'p')
+      else if (value === 'h2') document.execCommand('formatBlock', false, 'h2')
+      else if (value === 'h3') document.execCommand('formatBlock', false, 'h3')
+      else if (value === 'quote') document.execCommand('formatBlock', false, 'blockquote')
+      else if (value === 'code') { insertRichHtml('<pre><code>貼上指令、設定或紀錄內容</code></pre><p><br></p>'); return }
+    } else if (action === 'fontName') {
+      document.execCommand('fontName', false, value || 'Microsoft JhengHei')
+    } else if (action === 'fontSize') {
+      const sizeMap = { '12': '2', '14': '3', '16': '3', '18': '4', '20': '4', '24': '5', '28': '6', '32': '7' }
+      document.execCommand('fontSize', false, sizeMap[value] || '3')
+    } else if (action === 'textColor') {
+      document.execCommand('foreColor', false, value || '#0f172a')
+    } else if (action === 'highlightColor') {
+      document.execCommand('backColor', false, value || '#fef3c7')
+    } else if (action === 'lineHeight') {
+      richEditorRef.current.style.lineHeight = value || '1.7'
+    } else if (action === 'align') {
+      if (value === 'left') document.execCommand('justifyLeft', false, null)
+      else if (value === 'center') document.execCommand('justifyCenter', false, null)
+      else if (value === 'right') document.execCommand('justifyRight', false, null)
+      else if (value === 'justify') document.execCommand('justifyFull', false, null)
+    } else if (action === 'listType') {
+      if (value === 'bullet') document.execCommand('insertUnorderedList', false, null)
+      else if (value === 'number') document.execCommand('insertOrderedList', false, null)
+      else if (value === 'todo') { insertRichHtml('<p class="fd204127-todo-line">☐ 待確認項目</p>'); return }
+    } else if (action === 'insert') {
+      if (value === 'quote') document.execCommand('formatBlock', false, 'blockquote')
+      else if (value === 'callout') { insertRichHtml('<blockquote><strong>注意：</strong> 請在這裡補充重點提醒。</blockquote><p><br></p>'); return }
+      else if (value === 'table') { insertRichHtml('<table><tbody><tr><th>項目</th><th>說明</th><th>狀態</th></tr><tr><td>例：設備 / 系統</td><td>補充說明</td><td>待確認</td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>'); return }
+      else if (value === 'code') { insertRichHtml('<pre><code>貼上指令、設定或紀錄內容</code></pre><p><br></p>'); return }
+      else if (value === 'divider') { insertRichHtml('<hr><p><br></p>'); return }
+      else if (value === 'date') { insertRichHtml(`<p><strong>【${today}】</strong> 處理紀錄：</p>`); return }
+    } else if (action === 'template') {
+      if (value === 'sop') { insertRichHtml('<h2>SOP 作業流程</h2><p><strong>目的：</strong></p><p><strong>前置條件：</strong></p><ol><li>步驟一</li><li>步驟二</li><li>步驟三</li></ol><blockquote><strong>異常處理：</strong> 請補充例外狀況處理方式。</blockquote><p><br></p>'); return }
+      else if (value === 'meeting') { insertRichHtml(`<h2>會議紀錄</h2><p><strong>日期：</strong>${today}</p><p><strong>參與人員：</strong></p><h3>討論重點</h3><ul><li>重點一</li><li>重點二</li></ul><h3>待辦事項</h3><p class="fd204127-todo-line">☐ 待辦事項</p><p><br></p>`); return }
+      else if (value === 'mail') { insertRichHtml('<h2>Mail 範本</h2><p>您好，</p><p>這邊想跟您確認以下事項：</p><ul><li>項目一</li><li>項目二</li></ul><p>再麻煩您協助確認，謝謝。</p><p><br></p>'); return }
+      else if (value === 'checklist') { insertRichHtml('<h2>檢查清單</h2><p class="fd204127-todo-line">☐ 檢查項目一</p><p class="fd204127-todo-line">☐ 檢查項目二</p><p class="fd204127-todo-line">☐ 檢查項目三</p><p><br></p>'); return }
+    } else if (action === 'h2') {
       document.execCommand('formatBlock', false, 'h2')
     } else if (action === 'h3') {
       document.execCommand('formatBlock', false, 'h3')
@@ -7416,57 +7454,89 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
             </div>
           </details>
 
-            <div className="fd204130-word-toolbar fd204131-word-toolbar" role="toolbar" aria-label="文件編輯工具列" onMouseDown={(event) => event.preventDefault()}>
-              <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('paragraph')}>本文</button>
-                <button type="button" onClick={() => applyTextFormat('h2')}>H1 標題</button>
-                <button type="button" onClick={() => applyTextFormat('h3')}>H2 小標</button>
+            <div className="fd204130-word-toolbar fd204131-word-toolbar fd204135-word-toolbar" role="toolbar" aria-label="文件編輯工具列">
+              <div className="fd204135-toolbar-row primary">
+                <label>樣式
+                  <select defaultValue="" onChange={(event) => { applyTextFormat('style', event.target.value); event.target.value = '' }}>
+                    <option value="" disabled>段落樣式</option>
+                    <option value="paragraph">本文</option>
+                    <option value="h2">標題 1</option>
+                    <option value="h3">標題 2</option>
+                    <option value="quote">引用</option>
+                    <option value="code">程式碼區塊</option>
+                  </select>
+                </label>
+                <label>字體
+                  <select defaultValue="" onChange={(event) => { applyTextFormat('fontName', event.target.value); event.target.value = '' }}>
+                    <option value="" disabled>選擇字體</option>
+                    <option value="Microsoft JhengHei">微軟正黑體</option>
+                    <option value="Noto Sans TC">Noto Sans TC</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Consolas">Consolas</option>
+                  </select>
+                </label>
+                <label>字級
+                  <select defaultValue="" onChange={(event) => { applyTextFormat('fontSize', event.target.value); event.target.value = '' }}>
+                    <option value="" disabled>大小</option>
+                    <option value="12">12</option><option value="14">14</option><option value="16">16</option><option value="18">18</option>
+                    <option value="20">20</option><option value="24">24</option><option value="28">28</option><option value="32">32</option>
+                  </select>
+                </label>
+                <label>行距
+                  <select defaultValue="" onChange={(event) => { applyTextFormat('lineHeight', event.target.value); event.target.value = '' }}>
+                    <option value="" disabled>行距</option>
+                    <option value="1.15">1.15</option><option value="1.5">1.5</option><option value="1.7">1.7</option><option value="2">2.0</option>
+                  </select>
+                </label>
+                <label>對齊
+                  <select defaultValue="" onChange={(event) => { applyTextFormat('align', event.target.value); event.target.value = '' }}>
+                    <option value="" disabled>對齊</option>
+                    <option value="left">靠左</option><option value="center">置中</option><option value="right">靠右</option><option value="justify">左右對齊</option>
+                  </select>
+                </label>
+                <label>清單
+                  <select defaultValue="" onChange={(event) => { applyTextFormat('listType', event.target.value); event.target.value = '' }}>
+                    <option value="" disabled>清單</option>
+                    <option value="bullet">項目清單</option><option value="number">編號清單</option><option value="todo">待辦清單</option>
+                  </select>
+                </label>
               </div>
-              <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('bold')}>B 粗體</button>
-                <button type="button" onClick={() => applyTextFormat('italic')}>I 斜體</button>
-                <button type="button" onClick={() => applyTextFormat('underline')}>U 底線</button>
-                <button type="button" onClick={() => applyTextFormat('strike')}>S 刪除線</button>
+              <div className="fd204135-toolbar-row secondary" onMouseDown={(event) => event.preventDefault()}>
+                <div className="fd204135-button-group">
+                  <button type="button" onClick={() => applyTextFormat('bold')}>B</button>
+                  <button type="button" onClick={() => applyTextFormat('italic')}>I</button>
+                  <button type="button" onClick={() => applyTextFormat('underline')}>U</button>
+                  <button type="button" onClick={() => applyTextFormat('strike')}>S</button>
+                </div>
+                <div className="fd204135-button-group">
+                  <button type="button" onClick={() => applyTextFormat('textColor', '#0f172a')}>黑字</button>
+                  <button type="button" onClick={() => applyTextFormat('textColor', '#2563eb')}>藍字</button>
+                  <button type="button" onClick={() => applyTextFormat('textColor', '#dc2626')}>紅字</button>
+                  <button type="button" onClick={() => applyTextFormat('highlightColor', '#fef3c7')}>標記</button>
+                  <button type="button" onClick={() => applyTextFormat('clear')}>清除格式</button>
+                </div>
+                <div className="fd204135-button-group">
+                  <button type="button" onClick={() => applyTextFormat('indent')}>縮排</button>
+                  <button type="button" onClick={() => applyTextFormat('outdent')}>外凸</button>
+                  <button type="button" onClick={() => applyTextFormat('undo')}>復原</button>
+                  <button type="button" onClick={() => applyTextFormat('redo')}>重做</button>
+                </div>
               </div>
-              <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('fontSmall')}>小字</button>
-                <button type="button" onClick={() => applyTextFormat('fontNormal')}>中字</button>
-                <button type="button" onClick={() => applyTextFormat('fontLarge')}>大字</button>
-                <button type="button" onClick={() => applyTextFormat('textBlack')}>黑字</button>
-                <button type="button" onClick={() => applyTextFormat('textBlue')}>藍字</button>
-                <button type="button" onClick={() => applyTextFormat('textRed')}>紅字</button>
-                <button type="button" onClick={() => applyTextFormat('highlight')}>標記</button>
-                <button type="button" onClick={() => applyTextFormat('clear')}>清除</button>
-              </div>
-              <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('list')}>• 項目</button>
-                <button type="button" onClick={() => applyTextFormat('ordered')}>1. 編號</button>
-                <button type="button" onClick={() => applyTextFormat('todo')}>☐ 待辦</button>
-                <button type="button" onClick={() => applyTextFormat('indent')}>縮排</button>
-                <button type="button" onClick={() => applyTextFormat('outdent')}>外凸</button>
-              </div>
-              <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('alignLeft')}>靠左</button>
-                <button type="button" onClick={() => applyTextFormat('alignCenter')}>置中</button>
-                <button type="button" onClick={() => applyTextFormat('alignRight')}>靠右</button>
-              </div>
-              <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('quote')}>引用</button>
-                <button type="button" onClick={() => applyTextFormat('callout')}>提醒框</button>
-                <button type="button" onClick={() => applyTextFormat('table')}>表格</button>
-                <button type="button" onClick={() => applyTextFormat('code')}>程式碼</button>
-                <button type="button" onClick={() => applyTextFormat('divider')}>分隔線</button>
-                <button type="button" onClick={() => applyTextFormat('date')}>日期</button>
-              </div>
-              <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('sop')}>SOP</button>
-                <button type="button" onClick={() => applyTextFormat('meeting')}>會議</button>
-                <button type="button" onClick={() => applyTextFormat('mail')}>Mail</button>
-                <button type="button" onClick={() => applyTextFormat('checklistTemplate')}>檢查表</button>
-              </div>
-              <div className="fd204130-toolbar-group fd204130-toolbar-group-last">
-                <button type="button" onClick={() => applyTextFormat('undo')}>復原</button>
-                <button type="button" onClick={() => applyTextFormat('redo')}>重做</button>
+              <div className="fd204135-toolbar-row inserts">
+                <label>插入
+                  <select defaultValue="" onChange={(event) => { applyTextFormat('insert', event.target.value); event.target.value = '' }}>
+                    <option value="" disabled>選擇插入項目</option>
+                    <option value="quote">引用</option><option value="callout">提醒框</option><option value="table">表格</option>
+                    <option value="code">程式碼</option><option value="divider">分隔線</option><option value="date">日期紀錄</option>
+                  </select>
+                </label>
+                <label>FlowDesk 範本
+                  <select defaultValue="" onChange={(event) => { applyTextFormat('template', event.target.value); event.target.value = '' }}>
+                    <option value="" disabled>選擇範本</option>
+                    <option value="sop">SOP 作業流程</option><option value="meeting">會議紀錄</option><option value="mail">Mail 範本</option><option value="checklist">檢查清單</option>
+                  </select>
+                </label>
               </div>
             </div>
 

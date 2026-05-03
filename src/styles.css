@@ -34277,3 +34277,180 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_134_DOC_INFO_PANEL_REPOSITION_END */
 
+
+/* FLOWDESK_V20_4_135_DOC_EDITOR_FULL_TOOLBAR_START */
+/* v20.4.135 文件備忘：全螢幕文書編輯器 + 下拉式工具列 */
+.fd20481-doc-modal-layer {
+  padding: 0 !important;
+}
+
+.fd20481-doc-modal {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-height: 100vh !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+}
+
+.fd20481-doc-modal-head,
+.fd20481-doc-modal-footer {
+  flex: 0 0 auto;
+}
+
+.fd20481-doc-modal-body.fd204130-doc-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: #e5e7eb;
+}
+
+.fd204130-doc-editor-panel {
+  display: flex !important;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.fd204130-doc-editor-head {
+  display: none !important;
+}
+
+.fd204132-doc-title-strip {
+  flex: 0 0 auto;
+  padding: 10px 22px !important;
+  background: #ffffff !important;
+}
+
+.fd204135-word-toolbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  display: flex !important;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  border-top: 1px solid #dbe3ef !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .08) !important;
+}
+
+.fd204135-toolbar-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 22px;
+  border-bottom: 1px solid rgba(226, 232, 240, .92);
+}
+
+.fd204135-toolbar-row:last-child {
+  border-bottom: 0;
+}
+
+.fd204135-toolbar-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.fd204135-toolbar-row select {
+  min-height: 34px;
+  min-width: 118px;
+  padding: 5px 30px 5px 10px;
+  border: 1px solid rgba(203, 213, 225, .98);
+  border-radius: 9px;
+  color: #0f172a;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  font-size: 12px;
+  font-weight: 850;
+  outline: none;
+}
+
+.fd204135-toolbar-row select:hover,
+.fd204135-toolbar-row select:focus {
+  border-color: rgba(59, 130, 246, .55);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .10);
+}
+
+.fd204135-button-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 10px;
+  margin-right: 4px;
+  border-right: 1px solid rgba(203, 213, 225, .9);
+}
+
+.fd204135-button-group:last-child {
+  border-right: 0;
+}
+
+.fd204135-button-group button {
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #334155;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd204135-button-group button:hover {
+  color: #1d4ed8;
+  border-color: rgba(191, 219, 254, .95);
+  background: #eff6ff;
+}
+
+.fd204130-word-stage {
+  flex: 1 1 auto;
+  min-height: calc(100vh - 255px) !important;
+  margin: 0 !important;
+  padding: 34px 26px 56px !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #e5e7eb 0%, #eef2f7 100%) !important;
+}
+
+.fd204130-word-paper {
+  width: min(1120px, calc(100vw - 72px)) !important;
+  min-height: calc(100vh - 330px) !important;
+  padding: 68px 82px !important;
+  border-radius: 2px !important;
+}
+
+.fd204134-doc-info-toggle {
+  flex: 0 0 auto;
+  margin: 0 !important;
+}
+
+.fd204134-doc-info-toggle:not([open]) .fd204130-doc-meta-grid {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .fd204135-toolbar-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 8px 12px;
+  }
+
+  .fd204130-word-stage {
+    padding: 14px 10px 28px !important;
+  }
+
+  .fd204130-word-paper {
+    width: calc(100vw - 24px) !important;
+    min-height: calc(100vh - 340px) !important;
+    padding: 28px 20px !important;
+  }
+}
+/* FLOWDESK_V20_4_135_DOC_EDITOR_FULL_TOOLBAR_END */
+
