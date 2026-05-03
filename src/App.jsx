@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.113'
+const FLOWDESK_APP_VERSION = '20.4.114'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -6119,7 +6119,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <select value={projectPriorityFilter} onChange={(event) => setProjectPriorityFilter(event.target.value)}>{projectPriorityOptions.map((priority) => <option key={priority} value={priority}>{priority === '全部' ? '全部優先' : `優先 ${priority}`}</option>)}</select>
         <select value={projectSortMode} onChange={(event) => setProjectSortMode(event.target.value)} aria-label="排序方式">{PROJECT_SORT_OPTIONS.map((mode) => <option key={mode} value={mode}>排序：{mode}</option>)}</select>
         <select value={projectPageSize} onChange={(event) => setProjectPageSize(Number(event.target.value))} aria-label="每頁筆數">
-          {[10, 20, 30, 40, 50].map((size) => <option key={size} value={size}>每頁 {size} 筆</option>)}
+          {[5, 10, 20, 30, 40, 50].map((size) => <option key={size} value={size}>每頁 {size} 筆</option>)}
         </select>
 
       </section>
@@ -6171,12 +6171,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           )}
 
           {filteredProjects.length > 0 && (
-            <div className="project-pagination-bar fd203-pagination">
+            <div className="purchase-pagination fd204114-project-pagination">
               <div>
                 <strong>{filteredProjects.length}</strong> 筆 · 第 {safeProjectPage} / {projectPageTotal} 頁 · {projectSortMode}
                 <span>{projectPageStart + 1} - {Math.min(projectPageStart + paginatedProjects.length, filteredProjects.length)}</span>
               </div>
-              <div className="project-pagination-actions">
+              <div className="fd204114-project-pagination-actions">
                 <label className="fd203-page-jump"><span>跳至</span><input type="number" min="1" max={projectPageTotal} value={projectPageInput} onChange={(event) => setProjectPageInput(event.target.value)} onBlur={() => commitProjectPageInput()} onKeyDown={(event) => { if (event.key === 'Enter') commitProjectPageInput(event.currentTarget.value) }} aria-label="指定頁碼" /><small>/ {projectPageTotal}</small></label>
                 <button type="button" onClick={() => setProjectPage(1)} disabled={safeProjectPage <= 1}>首頁</button>
                 <button type="button" onClick={() => setProjectPage((page) => Math.max(1, page - 1))} disabled={safeProjectPage <= 1}>上一頁</button>

@@ -31776,10 +31776,10 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* FLOWDESK_V20_4_108_PROJECT_RIGHT_LAYER_REMOVE_END */
 
 
-/* FLOWDESK_V20_4_113_PROJECT_PAGER_CLEAN_RESTORE_START */
-/* v20.4.113 clean
-   專案分頁功能恢復版：
-   不改分頁 JSX、不改 onClick，只修分頁位置。
+/* FLOWDESK_V20_4_114_PROJECT_PURCHASE_STYLE_PAGER_START */
+/* v20.4.114
+   專案分頁照採購分頁樣式重做。
+   保留原本分頁事件，只改外觀與位置。
 */
 
 .project-workspace .fd203-project-list-pane,
@@ -31787,20 +31787,29 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   overflow: visible !important;
 }
 
+.project-workspace .fd203-project-list-pane::before,
+.project-workspace .fd203-project-list-pane::after,
+.project-workspace .fd203-project-card-list::before,
+.project-workspace .fd203-project-card-list::after {
+  display: none !important;
+  content: none !important;
+}
+
 .project-workspace .fd203-project-card-list,
 .project-workspace .fd203-project-card-list.expanded-gantt {
   position: relative !important;
   z-index: 1 !important;
-  margin-bottom: 18px !important;
+  margin-bottom: 12px !important;
   overflow: visible !important;
 }
 
-.project-workspace .project-pagination-bar.fd203-pagination {
+.project-workspace .fd204114-project-pagination {
   position: static !important;
   inset: auto !important;
   transform: none !important;
   translate: none !important;
-  z-index: 1 !important;
+  float: none !important;
+  clear: both !important;
 
   display: flex !important;
   align-items: center !important;
@@ -31812,20 +31821,43 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   max-width: 100% !important;
   min-width: 0 !important;
 
-  margin: 18px 0 0 !important;
+  margin: 16px 0 0 !important;
   padding: 12px 14px !important;
+
+  border: 1px solid rgba(226, 232, 240, .9) !important;
   border-radius: 18px !important;
   background: #ffffff !important;
   box-shadow: 0 10px 24px rgba(15, 23, 42, .06) !important;
 
+  opacity: 1 !important;
+  z-index: 1 !important;
   pointer-events: auto !important;
 }
 
-.project-workspace .project-pagination-actions {
+.project-workspace .fd204114-project-pagination > div:first-child {
+  min-width: 180px !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+
+.project-workspace .fd204114-project-pagination > div:first-child strong {
+  color: #1d4ed8 !important;
+  font-size: 18px !important;
+  font-weight: 950 !important;
+}
+
+.project-workspace .fd204114-project-pagination > div:first-child span {
+  display: block !important;
+  margin-top: 2px !important;
+}
+
+.project-workspace .fd204114-project-pagination-actions {
   position: static !important;
   inset: auto !important;
   transform: none !important;
   translate: none !important;
+  float: none !important;
 
   display: flex !important;
   align-items: center !important;
@@ -31833,33 +31865,62 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   flex-wrap: wrap !important;
   gap: 8px !important;
 
+  min-width: 0 !important;
+  max-width: 100% !important;
   pointer-events: auto !important;
 }
 
-.project-workspace .project-pagination-actions button,
-.project-workspace .project-pagination-bar.fd203-pagination button {
+.project-workspace .fd204114-project-pagination-actions button {
   position: static !important;
   transform: none !important;
   translate: none !important;
+
+  min-height: 34px !important;
+  padding: 7px 12px !important;
+  border-radius: 999px !important;
+  white-space: nowrap !important;
   pointer-events: auto !important;
 }
 
-.project-workspace .project-pagination-bar.fd203-pagination::before,
-.project-workspace .project-pagination-bar.fd203-pagination::after {
+.project-workspace .fd204114-project-pagination-actions .fd203-page-jump {
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+
+  min-height: 34px !important;
+  padding: 5px 10px !important;
+
+  border: 1px solid rgba(226, 232, 240, .9) !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+}
+
+.project-workspace .fd204114-project-pagination-actions .fd203-page-jump input {
+  width: 58px !important;
+  min-height: 28px !important;
+  text-align: center !important;
+  border-radius: 999px !important;
+}
+
+.project-workspace .fd204114-project-pagination::before,
+.project-workspace .fd204114-project-pagination::after,
+.project-workspace .fd204114-project-pagination-actions::before,
+.project-workspace .fd204114-project-pagination-actions::after {
   display: none !important;
   content: none !important;
 }
 
 @media (min-width: 761px) and (max-width: 980px) {
-  .project-workspace .project-pagination-bar.fd203-pagination {
+  .project-workspace .fd204114-project-pagination {
     align-items: stretch !important;
     justify-content: flex-start !important;
   }
 
-  .project-workspace .project-pagination-actions {
+  .project-workspace .fd204114-project-pagination-actions {
     justify-content: flex-start !important;
     width: 100% !important;
   }
 }
-/* FLOWDESK_V20_4_113_PROJECT_PAGER_CLEAN_RESTORE_END */
+/* FLOWDESK_V20_4_114_PROJECT_PURCHASE_STYLE_PAGER_END */
 
