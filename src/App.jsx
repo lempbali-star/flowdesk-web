@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.125'
+const FLOWDESK_APP_VERSION = '20.4.126'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7074,52 +7074,134 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     const selected = current.slice(start, end)
     const before = current.slice(0, start)
     const after = current.slice(end)
-    const lines = selected || ''
+    const selectedLines = (selected || '').split('\n')
+    const today = todayDate()
+
+    const cleanLines = (fallback) => selectedLines.length && selected
+      ? selectedLines.map((line) => line.trim()).filter((line, index, arr) => line || arr.length === 1)
+      : [fallback]
 
     const formatters = {
-      h2: () => `## ${selected || '段落標題'}`,
+      h2: () => `## ${selected || '大標題'}`,
       h3: () => `### ${selected || '小標題'}`,
       bold: () => `**${selected || '重點文字'}**`,
-      list: () => (lines || '清單項目').split('\n').map((line) => line.trim() ? `- ${line.replace(/^[-*]\s*/, '')}` : '- ').join('\n'),
-      ordered: () => (lines || '步驟內容').split('\n').map((line, index) => `${index + 1}. ${line.replace(/^\d+\.\s*/, '') || '步驟內容'}`).join('\n'),
-      todo: () => (lines || '待確認項目').split('\n').map((line) => `- [ ] ${line.replace(/^- \[ \]\s*/, '') || '待確認項目'}`).join('\n'),
-      quote: () => (lines || '補充說明').split('\n').map((line) => `> ${line.replace(/^>\s*/, '')}`).join('\n'),
-      code: () => `\n\`\`\`\n${selected || '指令 / 設定 / 記錄內容'}\n\`\`\`\n`,
-      table: () => '\n| 欄位 | 說明 | 狀態 |\n| --- | --- | --- |\n|  |  |  |\n',
+      list: () => cleanLines('項目內容').map((line) => `- ${line.replace(/^[-*]\s*/, '') || '項目內容'}`).join('\n'),
+      ordered: () => cleanLines('步驟內容').map((line, index) => `${index + 1}. ${line.replace(/^\d+\.\s*/, '') || '步驟內容'}`).join('\n'),
+      todo: () => cleanLines('待確認項目').map((line) => `- [ ] ${line.replace(/^- \[ \]\s*/, '') || '待確認項目'}`).join('\n'),
+      quote: () => cleanLines('補充說明').map((line) => `> ${line.replace(/^>\s*/, '') || '補充說明'}`).join('\n'),
+      code: () => `\n\`\`\`\n${selected || '貼上指令、設定或紀錄內容'}\n\`\`\`\n`,
+      table: () => '\n| 項目 | 說明 | 狀態 |\n| --- | --- | --- |\n| 例：設備 / 系統 | 補充說明 | 待確認 |\n',
       divider: () => '\n---\n',
-      date: () => `\n【${todayDate()}】${selected || '處理紀錄'}\n`,
+      date: () => `\n【${today}】${selected || '處理紀錄：'}\n`,
     }
 
+    const blockActions = ['h2', 'h3', 'list', 'ordered', 'todo', 'quote', 'table', 'divider', 'date', 'code']
     const nextText = typeof formatters[action] === 'function' ? formatters[action]() : selected
-    const spacerBefore = before && !before.endsWith('\n') && ['h2', 'h3', 'list', 'ordered', 'todo', 'quote', 'table', 'divider', 'date'].includes(action) ? '\n' : ''
-    const spacerAfter = after && !String(nextText).endsWith('\n') && ['h2', 'h3', 'list', 'ordered', 'todo', 'quote', 'table', 'divider', 'date'].includes(action) ? '\n' : ''
+    const needsBlockSpacing = blockActions.includes(action)
+    const spacerBefore = needsBlockSpacing && before && !before.endsWith('\n') ? '\n' : ''
+    const spacerAfter = needsBlockSpacing && after && !String(nextText).endsWith('\n') ? '\n' : ''
     const nextContent = `${before}${spacerBefore}${nextText}${spacerAfter}${after}`
-    updateDraft('content', nextContent)
+    const cursor = Math.min((before + spacerBefore + nextText).length, nextContent.length)
+
+    setDraft((currentDraft) => ({ ...currentDraft, content: nextContent }))
+    setEditorMode('分割')
 
     window.setTimeout(() => {
       if (!contentEditorRef.current) return
-      const cursor = Math.min((before + spacerBefore + nextText).length, nextContent.length)
       contentEditorRef.current.focus()
       contentEditorRef.current.setSelectionRange(cursor, cursor)
     }, 0)
   }
 
-  function renderDocContentPreview(text = '') {
-    if (!String(text || '').trim()) return <p className="fd204124-doc-preview-empty">尚未輸入文件內容。</p>
-    return String(text || '').split('\n').map((line, index) => {
-      const key = `${index}-${line}`
-      if (!line.trim()) return <br key={key} />
-      if (line.startsWith('### ')) return <h4 key={key}>{line.replace(/^### /, '')}</h4>
-      if (line.startsWith('## ')) return <h3 key={key}>{line.replace(/^## /, '')}</h3>
-      if (line.startsWith('> ')) return <blockquote key={key}>{line.replace(/^> /, '')}</blockquote>
-      if (line.startsWith('- [ ] ')) return <p key={key} className="fd204124-doc-preview-check">□ {line.replace(/^- \[ \] /, '')}</p>
-      if (line.startsWith('- [x] ') || line.startsWith('- [X] ')) return <p key={key} className="fd204124-doc-preview-check done">☑ {line.replace(/^- \[x\] /i, '')}</p>
-      if (line.startsWith('- ')) return <p key={key} className="fd204124-doc-preview-list">• {line.replace(/^- /, '')}</p>
-      if (/^\d+\.\s/.test(line)) return <p key={key} className="fd204124-doc-preview-list">{line}</p>
-      if (line.startsWith('|')) return <pre key={key} className="fd204124-doc-preview-table">{line}</pre>
-      if (line.trim() === '---') return <hr key={key} />
-      return <p key={key}>{line}</p>
+  function renderInlineDocText(text = '') {
+    const segments = String(text || '').split(/(\*\*[^*]+\*\*)/g)
+    return segments.map((segment, index) => {
+      if (/^\*\*[^*]+\*\*$/.test(segment)) return <strong key={index}>{segment.slice(2, -2)}</strong>
+      return <span key={index}>{segment}</span>
     })
+  }
+
+  function renderDocContentPreview(text = '') {
+    const raw = String(text || '')
+    if (!raw.trim()) return <p className="fd204124-doc-preview-empty">尚未輸入文件內容。</p>
+
+    const rows = raw.split('\n')
+    const output = []
+    let codeBuffer = []
+    let inCode = false
+    let tableBuffer = []
+
+    const flushTable = () => {
+      if (!tableBuffer.length) return
+      const normalized = tableBuffer.filter((line) => line.trim())
+      const rowsData = normalized
+        .filter((line) => !/^\|\s*-+/.test(line))
+        .map((line) => line.split('|').slice(1, -1).map((cell) => cell.trim()))
+      output.push(
+        <table key={`table-${output.length}`} className="fd204126-doc-preview-table-real">
+          <tbody>
+            {rowsData.map((cells, rowIndex) => (
+              <tr key={rowIndex}>{cells.map((cell, cellIndex) => rowIndex === 0 ? <th key={cellIndex}>{renderInlineDocText(cell)}</th> : <td key={cellIndex}>{renderInlineDocText(cell)}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      )
+      tableBuffer = []
+    }
+
+    rows.forEach((line, index) => {
+      const key = `${index}-${line}`
+
+      if (line.trim().startsWith('```')) {
+        flushTable()
+        if (!inCode) {
+          inCode = true
+          codeBuffer = []
+        } else {
+          output.push(<pre key={`code-${index}`} className="fd204126-doc-preview-code"><code>{codeBuffer.join('\n') || ' '}</code></pre>)
+          inCode = false
+          codeBuffer = []
+        }
+        return
+      }
+
+      if (inCode) {
+        codeBuffer.push(line)
+        return
+      }
+
+      if (line.startsWith('|')) {
+        tableBuffer.push(line)
+        return
+      }
+
+      flushTable()
+      if (!line.trim()) {
+        output.push(<br key={key} />)
+      } else if (line.startsWith('### ')) {
+        output.push(<h4 key={key}>{renderInlineDocText(line.replace(/^### /, ''))}</h4>)
+      } else if (line.startsWith('## ')) {
+        output.push(<h3 key={key}>{renderInlineDocText(line.replace(/^## /, ''))}</h3>)
+      } else if (line.startsWith('> ')) {
+        output.push(<blockquote key={key}>{renderInlineDocText(line.replace(/^> /, ''))}</blockquote>)
+      } else if (line.startsWith('- [ ] ')) {
+        output.push(<p key={key} className="fd204124-doc-preview-check">□ {renderInlineDocText(line.replace(/^- \[ \] /, ''))}</p>)
+      } else if (line.startsWith('- [x] ') || line.startsWith('- [X] ')) {
+        output.push(<p key={key} className="fd204124-doc-preview-check done">☑ {renderInlineDocText(line.replace(/^- \[x\] /i, ''))}</p>)
+      } else if (line.startsWith('- ')) {
+        output.push(<p key={key} className="fd204124-doc-preview-list">• {renderInlineDocText(line.replace(/^- /, ''))}</p>)
+      } else if (/^\d+\.\s/.test(line)) {
+        output.push(<p key={key} className="fd204124-doc-preview-list">{renderInlineDocText(line)}</p>)
+      } else if (line.trim() === '---') {
+        output.push(<hr key={key} />)
+      } else {
+        output.push(<p key={key}>{renderInlineDocText(line)}</p>)
+      }
+    })
+
+    flushTable()
+    if (inCode) output.push(<pre key="code-open" className="fd204126-doc-preview-code"><code>{codeBuffer.join('\n') || ' '}</code></pre>)
+    return output
   }
 
   function copyDocText() {
@@ -7162,24 +7244,6 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
             <button type="button" className="primary-btn" onClick={() => onSave?.(draft)}>儲存</button>
           </div>
         </header>
-
-        {/* FLOWDESK_V20_4_125_DOC_EDITOR_TOP_TOOLBAR_START */}
-        <div className="fd204125-doc-editor-topbar">
-          <div>
-            <strong>文字編輯工具列</strong>
-            <small>可選取文字後套用格式，或直接插入到文件內容區。</small>
-          </div>
-          <div className="fd204125-doc-editor-topbar-actions">
-            {[
-              ['h2', '大標'], ['h3', '小標'], ['bold', '粗體'], ['list', '項目'],
-              ['ordered', '步驟'], ['todo', '待辦'], ['quote', '引用'], ['code', '程式碼'],
-              ['table', '表格'], ['divider', '分隔線'], ['date', '日期紀錄'],
-            ].map(([id, label]) => (
-              <button type="button" key={id} onClick={() => { setEditorMode('編輯'); applyTextFormat(id) }}>{label}</button>
-            ))}
-          </div>
-        </div>
-        {/* FLOWDESK_V20_4_125_DOC_EDITOR_TOP_TOOLBAR_END */}
 
         <div className="fd204123-doc-modal-command fd204124-doc-quick-insert">
           {[

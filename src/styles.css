@@ -32828,101 +32828,133 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* FLOWDESK_V20_4_124_DOCS_TEXT_EDITOR_END */
 
 
-/* FLOWDESK_V20_4_125_DOC_EDITOR_VISIBLE_TOOLBAR_START */
-/* v20.4.125 文件備忘文字工具列顯示優化 */
-.fd204125-doc-editor-topbar {
-  display: grid;
-  grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr);
-  gap: 12px;
-  align-items: center;
-  margin: 0;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(226, 232, 240, .9);
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
-  position: sticky;
-  top: 0;
-  z-index: 8;
-}
-
-.fd204125-doc-editor-topbar strong {
-  display: block;
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 950;
-}
-
-.fd204125-doc-editor-topbar small {
-  display: block;
-  margin-top: 3px;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 750;
-  line-height: 1.45;
-}
-
-.fd204125-doc-editor-topbar-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.fd204125-doc-editor-topbar-actions button {
-  min-height: 32px;
-  padding: 6px 10px;
-  border: 1px solid rgba(203, 213, 225, .85);
-  border-radius: 999px;
-  color: #475569;
-  background: #fff;
-  font-size: 12px;
-  font-weight: 900;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, .04);
-}
-
-.fd204125-doc-editor-topbar-actions button:hover {
-  color: #1d4ed8;
-  border-color: rgba(37, 99, 235, .35);
-  background: #eff6ff;
-}
-
+/* FLOWDESK_V20_4_126_DOC_EDITOR_FUNCTION_FIX_START */
+/* v20.4.126 文件備忘文字編輯器修正版
+   工具列只保留在內容編輯區上方，按鈕會插入內容並自動切到分割檢視。
+*/
 .fd20481-doc-modal-body .fd204124-doc-editor-panel {
-  order: -20;
+  order: -30;
   grid-column: 1 / -1;
-  border: 2px solid rgba(37, 99, 235, .14);
-  box-shadow: 0 16px 36px rgba(37, 99, 235, .08);
-}
-
-.fd20481-doc-modal-body .fd204123-doc-preview-panel {
-  order: -10;
-}
-
-.fd204124-doc-editor-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 4;
+  border: 2px solid rgba(37, 99, 235, .16);
+  box-shadow: 0 18px 42px rgba(37, 99, 235, .08);
 }
 
 .fd204124-doc-editor-panel h3::before {
   content: "✍️ ";
 }
 
+.fd204124-doc-editor-head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: 12px 12px 10px;
+  margin: -14px -14px 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, .9);
+  background: rgba(255, 255, 255, .96);
+  backdrop-filter: blur(14px);
+}
+
+.fd204124-doc-editor-toolbar {
+  position: sticky;
+  top: 70px;
+  z-index: 5;
+  margin: -2px 0 12px;
+  padding: 11px;
+  border: 1px solid rgba(203, 213, 225, .92);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .045);
+}
+
+.fd204124-doc-editor-toolbar::before {
+  content: "文字工具列：選取文字後點按鈕套用格式，未選取時會插入可用範本";
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.fd204124-doc-editor-toolbar button {
+  color: #334155;
+  border: 1px solid rgba(148, 163, 184, .5);
+  background: #fff;
+}
+
+.fd204124-doc-editor-toolbar button:hover {
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, .42);
+  background: #eff6ff;
+}
+
+.fd204124-doc-editor-grid {
+  min-height: 520px;
+}
+
+.fd204124-doc-editor-grid textarea,
+.fd204124-doc-content-preview {
+  min-height: 520px;
+}
+
+.fd204124-doc-content-preview strong {
+  color: #0f172a;
+  font-weight: 950;
+}
+
+.fd204126-doc-preview-code {
+  overflow-x: auto;
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  color: #dbeafe;
+  background: #0f172a;
+  font-family: Consolas, "SFMono-Regular", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.fd204126-doc-preview-table-real {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(226, 232, 240, .95);
+}
+
+.fd204126-doc-preview-table-real th,
+.fd204126-doc-preview-table-real td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(226, 232, 240, .95);
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.fd204126-doc-preview-table-real th {
+  color: #1e40af;
+  background: #eff6ff;
+  font-weight: 950;
+}
+
+.fd204126-doc-preview-table-real tr:last-child td {
+  border-bottom: 0;
+}
+
 @media (max-width: 1100px) {
-  .fd204125-doc-editor-topbar { grid-template-columns: 1fr; }
-  .fd204125-doc-editor-topbar-actions { justify-content: flex-start; }
+  .fd204124-doc-editor-toolbar {
+    top: 0;
+    position: relative;
+  }
 }
 
 @media (max-width: 760px) {
-  .fd204125-doc-editor-topbar {
-    position: static;
-    padding: 10px;
+  .fd204124-doc-editor-grid,
+  .fd204124-doc-editor-grid textarea,
+  .fd204124-doc-content-preview {
+    min-height: 360px;
   }
-  .fd204125-doc-editor-topbar-actions {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: 4px;
-  }
-  .fd204125-doc-editor-topbar-actions button { flex: 0 0 auto; }
 }
-/* FLOWDESK_V20_4_125_DOC_EDITOR_VISIBLE_TOOLBAR_END */
+/* FLOWDESK_V20_4_126_DOC_EDITOR_FUNCTION_FIX_END */
 
