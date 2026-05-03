@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.123'
+const FLOWDESK_APP_VERSION = '20.4.124'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7036,9 +7036,12 @@ function DocMemoRow({ doc, onOpen, onPin }) {
 
 function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importanceOptions, confidentialityOptions = ['一般', '內部', '機敏', '帳密相關'], onClose, onSave, onDelete, onDuplicate, onTogglePin }) {
   const [draft, setDraft] = useState(() => doc)
+  const [editorMode, setEditorMode] = useState('編輯')
+  const contentEditorRef = useRef(null)
 
   useEffect(() => {
     setDraft(doc)
+    setEditorMode('編輯')
   }, [doc])
 
   if (!draft) return null
@@ -7057,8 +7060,66 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
       check: '\n\n【檢查清單】\n- [ ] \n- [ ] \n- [ ] \n',
       note: '\n\n【處理紀錄】\n日期：\n處理人：\n處理內容：\n結果：\n',
       risk: '\n\n【注意事項 / 風險】\n風險：\n影響：\n避免方式：\n',
+      table: '\n\n| 欄位 | 說明 | 狀態 |\n| --- | --- | --- |\n|  |  |  |\n',
+      code: '\n\n```\n指令 / 設定 / 記錄內容\n```\n',
     }
     updateDraft('content', `${draft.content || ''}${blocks[type] || ''}`)
+  }
+
+  function applyTextFormat(action) {
+    const editor = contentEditorRef.current
+    const current = draft.content || ''
+    const start = editor?.selectionStart ?? current.length
+    const end = editor?.selectionEnd ?? current.length
+    const selected = current.slice(start, end)
+    const before = current.slice(0, start)
+    const after = current.slice(end)
+    const lines = selected || ''
+
+    const formatters = {
+      h2: () => `## ${selected || '段落標題'}`,
+      h3: () => `### ${selected || '小標題'}`,
+      bold: () => `**${selected || '重點文字'}**`,
+      list: () => (lines || '清單項目').split('\n').map((line) => line.trim() ? `- ${line.replace(/^[-*]\s*/, '')}` : '- ').join('\n'),
+      ordered: () => (lines || '步驟內容').split('\n').map((line, index) => `${index + 1}. ${line.replace(/^\d+\.\s*/, '') || '步驟內容'}`).join('\n'),
+      todo: () => (lines || '待確認項目').split('\n').map((line) => `- [ ] ${line.replace(/^- \[ \]\s*/, '') || '待確認項目'}`).join('\n'),
+      quote: () => (lines || '補充說明').split('\n').map((line) => `> ${line.replace(/^>\s*/, '')}`).join('\n'),
+      code: () => `\n\`\`\`\n${selected || '指令 / 設定 / 記錄內容'}\n\`\`\`\n`,
+      table: () => '\n| 欄位 | 說明 | 狀態 |\n| --- | --- | --- |\n|  |  |  |\n',
+      divider: () => '\n---\n',
+      date: () => `\n【${todayDate()}】${selected || '處理紀錄'}\n`,
+    }
+
+    const nextText = typeof formatters[action] === 'function' ? formatters[action]() : selected
+    const spacerBefore = before && !before.endsWith('\n') && ['h2', 'h3', 'list', 'ordered', 'todo', 'quote', 'table', 'divider', 'date'].includes(action) ? '\n' : ''
+    const spacerAfter = after && !String(nextText).endsWith('\n') && ['h2', 'h3', 'list', 'ordered', 'todo', 'quote', 'table', 'divider', 'date'].includes(action) ? '\n' : ''
+    const nextContent = `${before}${spacerBefore}${nextText}${spacerAfter}${after}`
+    updateDraft('content', nextContent)
+
+    window.setTimeout(() => {
+      if (!contentEditorRef.current) return
+      const cursor = Math.min((before + spacerBefore + nextText).length, nextContent.length)
+      contentEditorRef.current.focus()
+      contentEditorRef.current.setSelectionRange(cursor, cursor)
+    }, 0)
+  }
+
+  function renderDocContentPreview(text = '') {
+    if (!String(text || '').trim()) return <p className="fd204124-doc-preview-empty">尚未輸入文件內容。</p>
+    return String(text || '').split('\n').map((line, index) => {
+      const key = `${index}-${line}`
+      if (!line.trim()) return <br key={key} />
+      if (line.startsWith('### ')) return <h4 key={key}>{line.replace(/^### /, '')}</h4>
+      if (line.startsWith('## ')) return <h3 key={key}>{line.replace(/^## /, '')}</h3>
+      if (line.startsWith('> ')) return <blockquote key={key}>{line.replace(/^> /, '')}</blockquote>
+      if (line.startsWith('- [ ] ')) return <p key={key} className="fd204124-doc-preview-check">□ {line.replace(/^- \[ \] /, '')}</p>
+      if (line.startsWith('- [x] ') || line.startsWith('- [X] ')) return <p key={key} className="fd204124-doc-preview-check done">☑ {line.replace(/^- \[x\] /i, '')}</p>
+      if (line.startsWith('- ')) return <p key={key} className="fd204124-doc-preview-list">• {line.replace(/^- /, '')}</p>
+      if (/^\d+\.\s/.test(line)) return <p key={key} className="fd204124-doc-preview-list">{line}</p>
+      if (line.startsWith('|')) return <pre key={key} className="fd204124-doc-preview-table">{line}</pre>
+      if (line.trim() === '---') return <hr key={key} />
+      return <p key={key}>{line}</p>
+    })
   }
 
   function copyDocText() {
@@ -7074,6 +7135,15 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
   const checklist = Array.isArray(draft.checklist) ? draft.checklist : []
   const tags = Array.isArray(draft.tags) ? draft.tags : []
   const links = Array.isArray(draft.links) ? draft.links : []
+  const contentStats = useMemo(() => {
+    const content = draft?.content || ''
+    const plain = content.replace(/[#>*_`|\[\]()-]/g, ' ').trim()
+    return {
+      chars: content.length,
+      lines: content ? content.split('\n').length : 0,
+      words: plain ? plain.split(/\s+/).filter(Boolean).length : 0,
+    }
+  }, [draft?.content])
 
   return (
     <div className="fd20481-doc-modal-layer fd204123-doc-modal-layer">
@@ -7093,12 +7163,14 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           </div>
         </header>
 
-        <div className="fd204123-doc-modal-command">
+        <div className="fd204123-doc-modal-command fd204124-doc-quick-insert">
           {[
             { id: 'sop', label: '插入 SOP 區塊' },
             { id: 'check', label: '插入檢查清單' },
             { id: 'note', label: '插入處理紀錄' },
             { id: 'risk', label: '插入風險注意' },
+            { id: 'table', label: '插入表格' },
+            { id: 'code', label: '插入程式碼' },
           ].map((item) => (
             <button type="button" key={item.id} onClick={() => appendContentBlock(item.id)}>{item.label}</button>
           ))}
@@ -7136,9 +7208,44 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
             </div>
           </section>
 
-          <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel">
-            <h3>文件內容 / 備忘</h3>
-            <textarea value={draft.content || ''} onChange={(event) => updateDraft('content', event.target.value)} placeholder="可記錄 SOP 步驟、設定內容、注意事項或會議結論。" />
+          <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel fd204124-doc-editor-panel">
+            <div className="fd204124-doc-editor-head">
+              <div>
+                <h3>文件內容 / 文字編輯器</h3>
+                <small>{contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
+              </div>
+              <div className="fd204124-doc-editor-mode">
+                {['編輯', '預覽', '分割'].map((mode) => (
+                  <button type="button" key={mode} className={editorMode === mode ? 'active' : ''} onClick={() => setEditorMode(mode)}>{mode}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="fd204124-doc-editor-toolbar">
+              {[
+                ['h2', '大標'], ['h3', '小標'], ['bold', '粗體'], ['list', '項目'],
+                ['ordered', '步驟'], ['todo', '待辦'], ['quote', '引用'], ['code', '程式碼'],
+                ['table', '表格'], ['divider', '分隔線'], ['date', '日期紀錄'],
+              ].map(([id, label]) => (
+                <button type="button" key={id} onClick={() => applyTextFormat(id)}>{label}</button>
+              ))}
+            </div>
+
+            <div className={`fd204124-doc-editor-grid mode-${editorMode}`}>
+              {editorMode !== '預覽' && (
+                <textarea
+                  ref={contentEditorRef}
+                  value={draft.content || ''}
+                  onChange={(event) => updateDraft('content', event.target.value)}
+                  placeholder="可記錄 SOP 步驟、設定內容、注意事項、會議結論；可使用 Markdown 標題、清單、表格與待辦格式。"
+                />
+              )}
+              {editorMode !== '編輯' && (
+                <article className="fd204124-doc-content-preview">
+                  {renderDocContentPreview(draft.content)}
+                </article>
+              )}
+            </div>
           </section>
 
           <section className="fd204123-doc-preview-panel">
