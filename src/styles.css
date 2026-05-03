@@ -31952,3 +31952,228 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_121_UNIFIED_PAGINATION_POSITION_END */
 
+
+/* FLOWDESK_V20_4_122_LIST_VIEW_TOOLBAR_UNIFIED_START */
+/* v20.4.122
+   全系統列表 / 卡片切換一致化。
+   只整理主畫面列表上方資訊列、切換按鈕、卡片/清單間距；不動彈窗、甘特圖、Supabase。
+*/
+
+/* 共用：列表上方資訊列 */
+.fd20490-list-topbar,
+.fd20489-work-view-topbar,
+.fd20490-project-list-topbar,
+.fd20490-doc-list-topbar,
+.fd20490-reminder-list-topbar,
+.fd20482-insight-list-topbar,
+.purchase-list-headline {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 0 14px !important;
+  padding: 12px 14px !important;
+  border: 1px solid rgba(226, 232, 240, .92) !important;
+  border-radius: 20px !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,251,255,.94)) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .055) !important;
+}
+
+.fd20490-list-topbar-left,
+.fd20489-work-view-topbar-left,
+.purchase-list-headline > div:first-child,
+.fd203-pane-head-stack > div:first-child {
+  min-width: 220px !important;
+  flex: 1 1 260px !important;
+}
+
+.fd20490-list-topbar-left strong,
+.purchase-list-headline h3,
+.fd203-pane-head h3,
+.fd20490-list-topbar strong {
+  display: block !important;
+  margin: 0 !important;
+  color: #0f172a !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+  letter-spacing: -.01em !important;
+}
+
+.fd20490-list-topbar-left span,
+.purchase-list-headline .eyebrow,
+.fd203-pane-actions small,
+.fd20490-list-topbar span {
+  display: block !important;
+  margin-top: 4px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  line-height: 1.45 !important;
+}
+
+/* 共用：清單 / 卡片切換按鈕 */
+.collection-view-control,
+.purchase-local-view-control,
+.fd20490-list-view-control,
+.project-view-toggle,
+.board-view-switch,
+.fd20481-doc-view-switch,
+.fd20478-reminder-view-switch,
+.fd20482-insight-tab-switch {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  padding: 5px !important;
+  border: 1px solid rgba(226, 232, 240, .95) !important;
+  border-radius: 999px !important;
+  background: #f8fafc !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.92) !important;
+}
+
+.collection-control-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 32px !important;
+  padding: 0 8px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+}
+
+.collection-view-control button,
+.purchase-local-view-control button,
+.fd20490-list-view-control button,
+.project-view-toggle button,
+.board-view-switch button,
+.fd20481-doc-view-switch button,
+.fd20478-reminder-view-switch button,
+.fd20482-insight-tab-switch button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  min-height: 32px !important;
+  padding: 6px 12px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+
+.collection-view-control button.active,
+.purchase-local-view-control button.active,
+.fd20490-list-view-control button.active,
+.project-view-toggle button.active,
+.board-view-switch button.active,
+.fd20481-doc-view-switch button.active,
+.fd20478-reminder-view-switch button.active,
+.fd20482-insight-tab-switch button.active {
+  color: #1d4ed8 !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .12) !important;
+}
+
+/* 共用：資料區與分頁銜接 */
+.card-wall,
+.card-wall.board-card-view,
+.purchase-card-list,
+.fd203-project-card-list,
+.fd20481-doc-grid,
+.fd20481-doc-list,
+.reminder-card-list,
+.fd20478-reminder-card-view,
+.fd20478-reminder-list-view,
+.fd61-work-list,
+.work-grid,
+.fd203-project-table {
+  margin-bottom: 14px !important;
+}
+
+/* 主畫面的資料容器不要偷偷橫向爆版 */
+.board-page,
+.project-workspace,
+.fd20481-doc-canvas,
+.reminder-page,
+.purchase-list-panel,
+.fd203-project-list-pane {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+/* 小筆電：資訊列與切換按鈕自動換行，不擠壓卡片 */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .fd20490-list-topbar,
+  .fd20489-work-view-topbar,
+  .fd20490-project-list-topbar,
+  .fd20490-doc-list-topbar,
+  .fd20490-reminder-list-topbar,
+  .fd20482-insight-list-topbar,
+  .purchase-list-headline {
+    align-items: stretch !important;
+  }
+
+  .collection-view-control,
+  .purchase-local-view-control,
+  .fd20490-list-view-control,
+  .project-view-toggle,
+  .board-view-switch,
+  .fd20481-doc-view-switch,
+  .fd20478-reminder-view-switch,
+  .fd20482-insight-tab-switch {
+    justify-content: flex-start !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .fd20490-list-topbar,
+  .fd20489-work-view-topbar,
+  .fd20490-project-list-topbar,
+  .fd20490-doc-list-topbar,
+  .fd20490-reminder-list-topbar,
+  .fd20482-insight-list-topbar,
+  .purchase-list-headline {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    padding: 10px !important;
+    border-radius: 18px !important;
+  }
+
+  .collection-view-control,
+  .purchase-local-view-control,
+  .fd20490-list-view-control,
+  .project-view-toggle,
+  .board-view-switch,
+  .fd20481-doc-view-switch,
+  .fd20478-reminder-view-switch,
+  .fd20482-insight-tab-switch {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+  }
+
+  .collection-view-control button,
+  .purchase-local-view-control button,
+  .fd20490-list-view-control button,
+  .project-view-toggle button,
+  .board-view-switch button,
+  .fd20481-doc-view-switch button,
+  .fd20478-reminder-view-switch button,
+  .fd20482-insight-tab-switch button {
+    flex: 0 0 auto !important;
+  }
+}
+/* FLOWDESK_V20_4_122_LIST_VIEW_TOOLBAR_UNIFIED_END */
+
