@@ -35298,3 +35298,85 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_144_DOC_DROPDOWN_FINAL_FIX_END */
 \n
+
+/* FLOWDESK_V20_4_145_PROJECT_LIST_NO_INNER_SCROLL_START */
+/* v20.4.145 專案管理清單內層捲軸移除
+   只處理「專案列表」區塊，不動文件備忘、採購、工作事項、甘特圖彈窗與資料結構。
+   目的：專案卡片 / 清單檢視不要自己再產生右側內層 scrollbar，統一交給整頁捲動。
+*/
+
+.fd203-main-layout.modal-mode {
+  display: block !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+}
+
+.fd203-main-layout.modal-mode .fd203-project-list-pane.full,
+.fd203-project-list-pane.full {
+  width: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  padding-right: 16px !important;
+  box-sizing: border-box !important;
+}
+
+.fd203-project-list-pane.full .fd203-project-card-list,
+.fd203-project-card-list {
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+  scrollbar-gutter: auto !important;
+  padding-right: 0 !important;
+}
+
+.fd203-project-list-pane.full .fd203-project-table,
+.fd203-project-table {
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+  scrollbar-gutter: auto !important;
+  padding-right: 0 !important;
+}
+
+.fd203-project-list-pane.full .fd20490-project-list-topbar,
+.fd203-project-list-pane.full .fd203-project-card-list,
+.fd203-project-list-pane.full .fd203-project-table,
+.fd203-project-list-pane.full .fd20483-pagination,
+.fd203-project-list-pane.full .fd203-pagination {
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+.fd203-project-list-pane.full .fd203-project-table-head,
+.fd203-project-list-pane.full .fd203-project-row {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.fd203-project-list-pane.full .fd20483-pagination,
+.fd203-project-list-pane.full .fd203-pagination {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  margin-top: 14px !important;
+  clear: both !important;
+}
+
+@media (max-width: 920px) {
+  .fd203-project-list-pane.full .fd203-project-table {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+
+  .fd203-project-list-pane.full .fd203-project-table-head,
+  .fd203-project-list-pane.full .fd203-project-row {
+    min-width: 780px !important;
+  }
+}
+/* FLOWDESK_V20_4_145_PROJECT_LIST_NO_INNER_SCROLL_END */
+
