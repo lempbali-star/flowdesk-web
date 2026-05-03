@@ -31881,3 +31881,32 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_119_PROJECT_MAIN_PURCHASE_ALIGN_CLEAN_END */
 
+
+/* FLOWDESK_V20_4_120_PROJECT_CARD_LIST_HEIGHT_FIX_START */
+/* v20.4.120：專案管理卡片列表高度修正。
+   問題點：舊樣式讓 .fd203-project-card-list 保留 max-height，卡片溢出後分頁列會插到第二排中間。
+   修正：卡片模式列表取消 max-height，讓 5 張卡片完整撐開後，分頁列自然排在下方。
+*/
+.project-workspace .fd203-project-card-list,
+.project-workspace .fd203-project-card-list.expanded-gantt {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  align-items: start !important;
+  margin-bottom: 16px !important;
+}
+
+.project-workspace .fd203-project-card-list + .fd20483-pagination,
+.project-workspace .fd203-project-table + .fd20483-pagination {
+  position: relative !important;
+  clear: both !important;
+  width: 100% !important;
+  margin-top: 16px !important;
+  z-index: 1 !important;
+}
+
+.project-workspace .fd20483-pagination {
+  flex-shrink: 0 !important;
+}
+/* FLOWDESK_V20_4_120_PROJECT_CARD_LIST_HEIGHT_FIX_END */
+
