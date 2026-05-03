@@ -31776,159 +31776,16 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* FLOWDESK_V20_4_108_PROJECT_RIGHT_LAYER_REMOVE_END */
 
 
-/* FLOWDESK_V20_4_109_PROJECT_PAGINATION_NO_OVERLAY_START */
-/* v20.4.109
-   專案管理分頁列修正：
-   分頁列回到卡片列表下方，不再浮在卡片上。
-   只處理專案管理，不動其他模組、不動彈窗、不動甘特圖。
+/* FLOWDESK_V20_4_112_PROJECT_PAGER_INLINE_START */
+/* v20.4.112
+   專案管理分頁列獨立化：
+   分頁列改用 fd204112 class，避開舊浮層樣式，不再蓋住卡片。
 */
 
-.project-workspace .fd203-project-list-pane,
-.project-workspace .fd203-project-list-pane.full {
-  position: relative !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: visible !important;
-}
-
-.project-workspace .fd203-project-card-list,
-.project-workspace .fd203-project-card-list.expanded-gantt {
-  order: 10 !important;
-  position: relative !important;
-  z-index: 1 !important;
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-.project-workspace .fd203-pagination,
-.project-workspace .project-pagination-bar,
-.project-workspace .fd20483-pagination {
-  order: 20 !important;
+.project-workspace .fd204112-project-pager-inline,
+.flowdesk-module-shell .fd204112-project-pager-inline {
   position: static !important;
-  inset: auto !important;
-  left: auto !important;
-  right: auto !important;
-  top: auto !important;
-  bottom: auto !important;
-  transform: none !important;
-  translate: none !important;
-  z-index: 2 !important;
-
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-
-  margin: 14px 0 0 !important;
-  padding: 10px 12px !important;
-  border-radius: 18px !important;
-  background: rgba(255, 255, 255, .94) !important;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, .06) !important;
-}
-
-.project-workspace .fd203-pagination *,
-.project-workspace .project-pagination-bar *,
-.project-workspace .fd20483-pagination * {
-  min-width: 0 !important;
-}
-
-/* 分頁內按鈕正常排列，不要漂浮到卡片中央 */
-.project-workspace .fd203-pagination button,
-.project-workspace .project-pagination-bar button,
-.project-workspace .fd20483-pagination button {
-  position: static !important;
-  transform: none !important;
-  min-height: 34px !important;
-  padding: 7px 12px !important;
-  border-radius: 999px !important;
-  white-space: nowrap !important;
-}
-
-/* 若舊樣式把分頁控制列設成絕對定位，一併拉回來 */
-.project-workspace .fd203-pagination-controls,
-.project-workspace .project-pagination-controls,
-.project-workspace .fd20483-pagination-controls {
-  position: static !important;
-  inset: auto !important;
-  transform: none !important;
-  display: flex !important;
-  justify-content: flex-end !important;
-  align-items: center !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  width: 100% !important;
-}
-
-/* 避免右下回頂端按鈕和分頁重疊 */
-.project-workspace .scroll-top-button,
-.project-workspace .back-to-top,
-.project-workspace .floating-action-button,
-.project-workspace .fd-scroll-top {
-  bottom: 92px !important;
-}
-
-/* 小筆電時分頁靠下正常換行 */
-@media (min-width: 761px) and (max-width: 1360px) {
-  .project-workspace .fd203-pagination,
-  .project-workspace .project-pagination-bar,
-  .project-workspace .fd20483-pagination {
-    margin-top: 12px !important;
-  }
-
-  .project-workspace .fd203-pagination-controls,
-  .project-workspace .project-pagination-controls,
-  .project-workspace .fd20483-pagination-controls {
-    justify-content: flex-end !important;
-  }
-}
-
-@media (min-width: 761px) and (max-width: 980px) {
-  .project-workspace .fd203-pagination,
-  .project-workspace .project-pagination-bar,
-  .project-workspace .fd20483-pagination {
-    align-items: stretch !important;
-  }
-
-  .project-workspace .fd203-pagination-controls,
-  .project-workspace .project-pagination-controls,
-  .project-workspace .fd20483-pagination-controls {
-    justify-content: flex-start !important;
-  }
-}
-/* FLOWDESK_V20_4_109_PROJECT_PAGINATION_NO_OVERLAY_END */
-
-
-/* FLOWDESK_V20_4_110_PROJECT_PAGINATION_EXIT_FLOAT_START */
-/* v20.4.110
-   專案管理分頁列退出浮層：
-   修正分頁列蓋在第二排專案卡片上的問題。
-   只處理專案管理，不動彈窗、不動甘特圖、不動其他模組。
-*/
-
-/* 專案列表容器回到一般文件流，不讓分頁用 sticky / fixed 蓋卡片 */
-html body #root .project-workspace .fd203-project-list-pane,
-html body #root .project-workspace .fd203-project-list-pane.full {
-  position: relative !important;
-  display: block !important;
-  overflow: visible !important;
-  padding-bottom: 16px !important;
-}
-
-/* 卡片列表先完整排完，再接分頁 */
-html body #root .project-workspace .fd203-project-card-list,
-html body #root .project-workspace .fd203-project-card-list.expanded-gantt {
-  position: relative !important;
-  z-index: 1 !important;
-  display: grid !important;
-  margin-bottom: 18px !important;
-  padding-bottom: 0 !important;
-  overflow: visible !important;
-}
-
-/* 分頁列強制回到卡片下方 */
-html body #root .project-workspace .project-pagination-bar,
-html body #root .project-workspace .fd203-pagination,
-html body #root .project-workspace .fd20483-pagination {
-  position: relative !important;
+  float: none !important;
   inset: auto !important;
   top: auto !important;
   right: auto !important;
@@ -31941,232 +31798,124 @@ html body #root .project-workspace .fd20483-pagination {
   align-items: center !important;
   justify-content: space-between !important;
   flex-wrap: wrap !important;
-  gap: 10px !important;
+  gap: 12px !important;
 
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
 
+  clear: both !important;
   margin: 18px 0 0 !important;
   padding: 12px 14px !important;
 
+  border: 1px solid rgba(226, 232, 240, .9) !important;
   border-radius: 18px !important;
   background: #ffffff !important;
-  opacity: 1 !important;
   box-shadow: 0 12px 28px rgba(15, 23, 42, .06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 
+  opacity: 1 !important;
   z-index: 1 !important;
   pointer-events: auto !important;
 }
 
-/* 右側頁碼按鈕列也取消任何浮動定位 */
-html body #root .project-workspace .project-pagination-bar > *,
-html body #root .project-workspace .fd203-pagination > *,
-html body #root .project-workspace .fd20483-pagination > *,
-html body #root .project-workspace .project-pagination-controls,
-html body #root .project-workspace .fd203-pagination-controls,
-html body #root .project-workspace .fd20483-pagination-controls {
-  position: static !important;
-  inset: auto !important;
-  transform: none !important;
-  translate: none !important;
-  min-width: 0 !important;
-  z-index: auto !important;
+.project-workspace .fd204112-project-pager-inline > div:first-child,
+.flowdesk-module-shell .fd204112-project-pager-inline > div:first-child {
+  min-width: 180px !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
 }
 
-/* 分頁按鈕正常排，不要浮到卡片中央 */
-html body #root .project-workspace .project-pagination-bar button,
-html body #root .project-workspace .fd203-pagination button,
-html body #root .project-workspace .fd20483-pagination button {
-  position: static !important;
-  transform: none !important;
-  min-height: 34px !important;
-  padding: 7px 12px !important;
-  border-radius: 999px !important;
-  white-space: nowrap !important;
+.project-workspace .fd204112-project-pager-inline > div:first-child strong,
+.flowdesk-module-shell .fd204112-project-pager-inline > div:first-child strong {
+  display: block !important;
+  color: #1d4ed8 !important;
+  font-size: 18px !important;
+  font-weight: 950 !important;
 }
 
-/* 若舊版使用半透明遮罩效果，強制移除 */
-html body #root .project-workspace .project-pagination-bar::before,
-html body #root .project-workspace .project-pagination-bar::after,
-html body #root .project-workspace .fd203-pagination::before,
-html body #root .project-workspace .fd203-pagination::after,
-html body #root .project-workspace .fd20483-pagination::before,
-html body #root .project-workspace .fd20483-pagination::after {
-  display: none !important;
-  content: none !important;
+.project-workspace .fd204112-project-pager-inline > div:first-child span,
+.flowdesk-module-shell .fd204112-project-pager-inline > div:first-child span {
+  display: block !important;
+  margin-top: 2px !important;
 }
 
-/* 小筆電分頁正常換行，不蓋內容 */
-@media (min-width: 761px) and (max-width: 1360px) {
-  html body #root .project-workspace .project-pagination-bar,
-  html body #root .project-workspace .fd203-pagination,
-  html body #root .project-workspace .fd20483-pagination {
-    align-items: center !important;
-    justify-content: space-between !important;
-  }
-}
-
-@media (min-width: 761px) and (max-width: 980px) {
-  html body #root .project-workspace .project-pagination-bar,
-  html body #root .project-workspace .fd203-pagination,
-  html body #root .project-workspace .fd20483-pagination {
-    align-items: stretch !important;
-    justify-content: flex-start !important;
-  }
-}
-/* FLOWDESK_V20_4_110_PROJECT_PAGINATION_EXIT_FLOAT_END */
-
-
-/* FLOWDESK_V20_4_111_PROJECT_PAGINATION_FORCE_BELOW_START */
-/* v20.4.111
-   專案管理分頁列強制下移：
-   修正分頁列浮在卡片中間、蓋住第二排卡片。
-*/
-
-/* 先讓專案列表容器變成正常 block flow */
-html body #root .project-workspace .fd203-project-list-pane,
-html body #root .project-workspace .fd203-project-list-pane.full,
-html body #root .project-workspace [class*="project-list-pane"],
-html body #root .project-workspace [class*="project-list"] {
-  overflow: visible !important;
-}
-
-/* 卡片列表下方預留空間，避免分頁列視覺壓住下一排 */
-html body #root .project-workspace .fd203-project-card-list,
-html body #root .project-workspace .fd203-project-card-list.expanded-gantt,
-html body #root .project-workspace [class*="project-card-list"],
-html body #root .project-workspace [class*="card-list"] {
-  position: relative !important;
-  z-index: 1 !important;
-  margin-bottom: 26px !important;
-  padding-bottom: 0 !important;
-  overflow: visible !important;
-}
-
-/* 這次不只打 project 專用 class，也打所有在專案頁裡的 pagination class */
-html body #root .project-workspace .fd20483-pagination,
-html body #root .project-workspace .fd20483-pagination-controls,
-html body #root .project-workspace .fd203-pagination,
-html body #root .project-workspace .fd203-pagination-controls,
-html body #root .project-workspace .project-pagination-bar,
-html body #root .project-workspace .project-pagination-controls,
-html body #root .project-workspace [class*="pagination"] {
+.project-workspace .fd204112-project-pager-actions,
+.flowdesk-module-shell .fd204112-project-pager-actions {
   position: static !important;
   float: none !important;
   inset: auto !important;
-  top: auto !important;
-  right: auto !important;
-  bottom: auto !important;
-  left: auto !important;
   transform: none !important;
   translate: none !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  z-index: 1 !important;
-}
 
-/* 分頁外框：強制獨立成一整列，放在列表後面 */
-html body #root .project-workspace .fd20483-pagination,
-html body #root .project-workspace .fd203-pagination,
-html body #root .project-workspace .project-pagination-bar {
-  clear: both !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  flex-wrap: wrap !important;
-  gap: 10px !important;
-
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-
-  margin-top: 20px !important;
-  margin-bottom: 0 !important;
-  padding: 12px 14px !important;
-
-  border-radius: 18px !important;
-  background: #ffffff !important;
-  opacity: 1 !important;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, .06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  pointer-events: auto !important;
-}
-
-/* 內部控制列不要自己靠右浮上去 */
-html body #root .project-workspace .fd20483-pagination-controls,
-html body #root .project-workspace .fd203-pagination-controls,
-html body #root .project-workspace .project-pagination-controls {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
-  width: auto !important;
+
+  min-width: 0 !important;
   max-width: 100% !important;
 }
 
-/* 所有分頁按鈕取消浮動 */
-html body #root .project-workspace .fd20483-pagination button,
-html body #root .project-workspace .fd203-pagination button,
-html body #root .project-workspace .project-pagination-bar button,
-html body #root .project-workspace [class*="pagination"] button {
+.project-workspace .fd204112-project-pager-actions button,
+.flowdesk-module-shell .fd204112-project-pager-actions button {
   position: static !important;
   float: none !important;
   transform: none !important;
   translate: none !important;
+
   min-height: 34px !important;
   padding: 7px 12px !important;
   border-radius: 999px !important;
   white-space: nowrap !important;
 }
 
-/* 把可能造成白色半透明浮層的 pseudo element 關掉 */
-html body #root .project-workspace .fd20483-pagination::before,
-html body #root .project-workspace .fd20483-pagination::after,
-html body #root .project-workspace .fd203-pagination::before,
-html body #root .project-workspace .fd203-pagination::after,
-html body #root .project-workspace .project-pagination-bar::before,
-html body #root .project-workspace .project-pagination-bar::after,
-html body #root .project-workspace [class*="pagination"]::before,
-html body #root .project-workspace [class*="pagination"]::after {
+.project-workspace .fd204112-project-pager-actions .fd203-page-jump,
+.flowdesk-module-shell .fd204112-project-pager-actions .fd203-page-jump {
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: 34px !important;
+  padding: 5px 10px !important;
+  border: 1px solid rgba(226, 232, 240, .9) !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+}
+
+.project-workspace .fd204112-project-pager-actions .fd203-page-jump input,
+.flowdesk-module-shell .fd204112-project-pager-actions .fd203-page-jump input {
+  width: 58px !important;
+  min-height: 28px !important;
+  text-align: center !important;
+  border-radius: 999px !important;
+}
+
+.project-workspace .fd204112-project-pager-inline::before,
+.project-workspace .fd204112-project-pager-inline::after,
+.project-workspace .fd204112-project-pager-actions::before,
+.project-workspace .fd204112-project-pager-actions::after,
+.flowdesk-module-shell .fd204112-project-pager-inline::before,
+.flowdesk-module-shell .fd204112-project-pager-inline::after,
+.flowdesk-module-shell .fd204112-project-pager-actions::before,
+.flowdesk-module-shell .fd204112-project-pager-actions::after {
   display: none !important;
   content: none !important;
 }
 
-/* 如果分頁列剛好被渲染在卡片列表之前，至少不要蓋卡片 */
-html body #root .project-workspace .fd20483-pagination + .fd203-project-card-list,
-html body #root .project-workspace .fd203-pagination + .fd203-project-card-list,
-html body #root .project-workspace .project-pagination-bar + .fd203-project-card-list {
-  margin-top: 18px !important;
-}
-
-/* 小筆電與平板：正常換行，不漂浮 */
-@media (min-width: 761px) and (max-width: 1360px) {
-  html body #root .project-workspace .fd20483-pagination,
-  html body #root .project-workspace .fd203-pagination,
-  html body #root .project-workspace .project-pagination-bar {
-    justify-content: space-between !important;
-  }
-}
-
 @media (min-width: 761px) and (max-width: 980px) {
-  html body #root .project-workspace .fd20483-pagination,
-  html body #root .project-workspace .fd203-pagination,
-  html body #root .project-workspace .project-pagination-bar {
+  .project-workspace .fd204112-project-pager-inline,
+  .flowdesk-module-shell .fd204112-project-pager-inline {
     align-items: stretch !important;
     justify-content: flex-start !important;
   }
 
-  html body #root .project-workspace .fd20483-pagination-controls,
-  html body #root .project-workspace .fd203-pagination-controls,
-  html body #root .project-workspace .project-pagination-controls {
+  .project-workspace .fd204112-project-pager-actions,
+  .flowdesk-module-shell .fd204112-project-pager-actions {
     justify-content: flex-start !important;
     width: 100% !important;
   }
 }
-/* FLOWDESK_V20_4_111_PROJECT_PAGINATION_FORCE_BELOW_END */
+/* FLOWDESK_V20_4_112_PROJECT_PAGER_INLINE_END */
 
