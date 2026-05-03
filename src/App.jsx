@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.116'
+const FLOWDESK_APP_VERSION = '20.4.119'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -6183,19 +6183,20 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           )}
 
           {filteredProjects.length > 0 && (
-            <div className="purchase-pagination fd204114-project-pagination">
-              <div>
-                <strong>{filteredProjects.length}</strong> 筆 · 第 {safeProjectPage} / {projectPageTotal} 頁 · {projectSortMode}
-                <span>{projectPageStart + 1} - {Math.min(projectPageStart + paginatedProjects.length, filteredProjects.length)}</span>
-              </div>
-              <div className="fd204114-project-pagination-actions">
-                <label className="fd203-page-jump"><span>跳至</span><input type="number" min="1" max={projectPageTotal} value={projectPageInput} onChange={(event) => setProjectPageInput(event.target.value)} onBlur={() => commitProjectPageInput()} onKeyDown={(event) => { if (event.key === 'Enter') commitProjectPageInput(event.currentTarget.value) }} aria-label="指定頁碼" /><small>/ {projectPageTotal}</small></label>
-                <button type="button" onClick={() => setProjectPage(1)} disabled={safeProjectPage <= 1}>首頁</button>
-                <button type="button" onClick={() => setProjectPage((page) => Math.max(1, page - 1))} disabled={safeProjectPage <= 1}>上一頁</button>
-                <button type="button" onClick={() => setProjectPage((page) => Math.min(projectPageTotal, page + 1))} disabled={safeProjectPage >= projectPageTotal}>下一頁</button>
-                <button type="button" onClick={() => setProjectPage(projectPageTotal)} disabled={safeProjectPage >= projectPageTotal}>末頁</button>
-              </div>
-            </div>
+            <FlowdeskPaginationV83
+              label="專案管理"
+              page={safeProjectPage}
+              pageCount={projectPageTotal}
+              pageSize={projectPageSize}
+              pageSizeOptions={[5, 10, 20, 30, 40, 50]}
+              total={filteredProjects.length}
+              currentCount={paginatedProjects.length}
+              onPageChange={setProjectPage}
+              onPageSizeChange={(size) => {
+                setProjectPageSize(size)
+                setProjectPage(1)
+              }}
+            />
           )}
         </aside>
       </section>
