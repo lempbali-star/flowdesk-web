@@ -33060,3 +33060,156 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_127_DOC_WORD_LIKE_EDITOR_END */
 
+
+/* FLOWDESK_V20_4_128_DOC_WORD_EDITOR_ENHANCED_START */
+/* v20.4.128 文件備忘 Word 編輯器加強版
+   移除預覽切換，改成單一所見即所得文件紙張。
+*/
+
+.fd204128-doc-editor-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fd204128-doc-editor-status span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd204128-doc-editor-status button {
+  min-height: 32px;
+  padding: 6px 11px;
+  border: 1px solid rgba(203, 213, 225, .9);
+  border-radius: 999px;
+  color: #475569;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd204128-word-editor-ribbon {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, auto));
+  gap: 8px;
+  align-items: stretch;
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid rgba(203, 213, 225, .9);
+  border-radius: 18px;
+  background: rgba(255,255,255,.97);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .06);
+}
+
+.fd204128-ribbon-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid rgba(226, 232, 240, .92);
+  border-radius: 15px;
+  background: #f8fafc;
+}
+
+.fd204128-ribbon-group > span {
+  width: 100%;
+  margin-bottom: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.fd204128-ribbon-group button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgba(203, 213, 225, .9);
+  border-radius: 999px;
+  color: #334155;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd204128-ribbon-group button:hover {
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, .35);
+  background: #eff6ff;
+}
+
+.fd204128-word-editor-layout {
+  display: block;
+  margin-top: 12px;
+}
+
+.fd204128-word-paper {
+  width: min(920px, 100%);
+  min-height: 720px;
+  margin: 0 auto;
+  padding: 48px 58px;
+}
+
+.fd204128-word-paper [style*="background-color"] {
+  border-radius: 4px;
+  padding: 0 3px;
+}
+
+.fd204128-word-paper:empty::before {
+  content: "直接在這裡輸入文件內容...";
+  color: #94a3b8;
+}
+
+.fd204123-doc-preview-panel,
+.fd204127-word-preview,
+.fd204124-doc-content-preview {
+  display: none !important;
+}
+
+.fd204124-doc-editor-mode,
+.fd204127-word-editor-toolbar,
+.fd204127-word-editor-layout.mode-分割 .fd204127-word-preview {
+  display: none !important;
+}
+
+@media (max-width: 1180px) {
+  .fd204128-word-editor-ribbon {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fd204128-word-paper {
+    padding: 38px 36px;
+  }
+}
+
+@media (max-width: 760px) {
+  .fd204128-word-editor-ribbon {
+    display: flex;
+    overflow-x: auto;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+  }
+
+  .fd204128-ribbon-group {
+    flex: 0 0 170px;
+  }
+
+  .fd204128-word-paper {
+    min-height: 560px;
+    padding: 28px 20px;
+  }
+}
+/* FLOWDESK_V20_4_128_DOC_WORD_EDITOR_ENHANCED_END */
+

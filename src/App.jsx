@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.127'
+const FLOWDESK_APP_VERSION = '20.4.128'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7185,6 +7185,8 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
       document.execCommand('formatBlock', false, 'h2')
     } else if (action === 'h3') {
       document.execCommand('formatBlock', false, 'h3')
+    } else if (action === 'paragraph') {
+      document.execCommand('formatBlock', false, 'p')
     } else if (action === 'bold') {
       document.execCommand('bold', false, null)
     } else if (action === 'list') {
@@ -7193,14 +7195,29 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
       document.execCommand('insertOrderedList', false, null)
     } else if (action === 'quote') {
       document.execCommand('formatBlock', false, 'blockquote')
+    } else if (action === 'alignLeft') {
+      document.execCommand('justifyLeft', false, null)
+    } else if (action === 'alignCenter') {
+      document.execCommand('justifyCenter', false, null)
+    } else if (action === 'alignRight') {
+      document.execCommand('justifyRight', false, null)
+    } else if (action === 'highlight') {
+      document.execCommand('backColor', false, '#fef3c7')
+    } else if (action === 'clear') {
+      document.execCommand('removeFormat', false, null)
+      document.execCommand('formatBlock', false, 'p')
+    } else if (action === 'undo') {
+      document.execCommand('undo', false, null)
+    } else if (action === 'redo') {
+      document.execCommand('redo', false, null)
     } else if (action === 'todo') {
       insertRichHtml('<p class="fd204127-todo-line">☐ 待確認項目</p>')
       return
     } else if (action === 'code') {
-      insertRichHtml('<pre><code>貼上指令、設定或紀錄內容</code></pre>')
+      insertRichHtml('<pre><code>貼上指令、設定或紀錄內容</code></pre><p><br></p>')
       return
     } else if (action === 'table') {
-      insertRichHtml('<table><tbody><tr><th>項目</th><th>說明</th><th>狀態</th></tr><tr><td>例：設備 / 系統</td><td>補充說明</td><td>待確認</td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table>')
+      insertRichHtml('<table><tbody><tr><th>項目</th><th>說明</th><th>狀態</th></tr><tr><td>例：設備 / 系統</td><td>補充說明</td><td>待確認</td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>')
       return
     } else if (action === 'divider') {
       insertRichHtml('<hr><p><br></p>')
@@ -7208,12 +7225,21 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     } else if (action === 'date') {
       insertRichHtml(`<p><strong>【${today}】</strong> 處理紀錄：</p>`)
       return
-    } else if (action === 'paragraph') {
-      document.execCommand('formatBlock', false, 'p')
+    } else if (action === 'callout') {
+      insertRichHtml('<blockquote><strong>注意：</strong> 請在這裡補充重點提醒。</blockquote><p><br></p>')
+      return
+    } else if (action === 'sop') {
+      insertRichHtml('<h2>SOP 作業流程</h2><p><strong>目的：</strong></p><p><strong>前置條件：</strong></p><ol><li>步驟一</li><li>步驟二</li><li>步驟三</li></ol><blockquote><strong>異常處理：</strong> 請補充例外狀況處理方式。</blockquote><p><br></p>')
+      return
+    } else if (action === 'meeting') {
+      insertRichHtml(`<h2>會議紀錄</h2><p><strong>日期：</strong>${today}</p><p><strong>參與人員：</strong></p><h3>討論重點</h3><ul><li>重點一</li><li>重點二</li></ul><h3>待辦事項</h3><p class="fd204127-todo-line">☐ 待辦事項</p><p><br></p>`)
+      return
+    } else if (action === 'mail') {
+      insertRichHtml('<h2>Mail 範本</h2><p>您好，</p><p>這邊想跟您確認以下事項：</p><ul><li>項目一</li><li>項目二</li></ul><p>再麻煩您協助確認，謝謝。</p><p><br></p>')
+      return
     }
 
     syncRichEditorContent()
-    setEditorMode('分割')
     focusRichEditor()
   }
 
@@ -7317,61 +7343,73 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
                 <h3>文件內容 / Word 風格編輯器</h3>
                 <small>{contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
               </div>
-              <div className="fd204124-doc-editor-mode">
-                {['編輯', '預覽', '分割'].map((mode) => (
-                  <button type="button" key={mode} className={editorMode === mode ? 'active' : ''} onClick={() => setEditorMode(mode)}>{mode}</button>
-                ))}
+              <div className="fd204128-doc-editor-status">
+                <span>Word 風格即時編輯</span>
+                <button type="button" onClick={copyDocText}>複製文字</button>
               </div>
             </div>
 
-            <div className="fd204127-word-editor-toolbar">
-              <button type="button" onClick={() => applyTextFormat('paragraph')}>本文</button>
-              {[
-                ['h2', '大標'], ['h3', '小標'], ['bold', '粗體'], ['list', '項目'],
-                ['ordered', '編號'], ['todo', '待辦'], ['quote', '引用'], ['code', '程式碼'],
-                ['table', '表格'], ['divider', '分隔線'], ['date', '日期紀錄'],
-              ].map(([id, label]) => (
-                <button type="button" key={id} onClick={() => applyTextFormat(id)}>{label}</button>
-              ))}
-            </div>
-
-            <div className={`fd204127-word-editor-layout mode-${editorMode}`}>
-              {editorMode !== '預覽' && (
-                <article
-                  ref={richEditorRef}
-                  className="fd204127-word-paper"
-                  contentEditable
-                  suppressContentEditableWarning
-                  spellCheck={false}
-                  onInput={syncRichEditorContent}
-                  onBlur={syncRichEditorContent}
-                  dangerouslySetInnerHTML={{ __html: normalizeDocEditorHtml(draft.content) }}
-                />
-              )}
-              {editorMode !== '編輯' && (
-                <article className="fd204127-word-preview">
-                  {renderDocContentPreview(draft.content)}
-                </article>
-              )}
-            </div>
-          </section>
-
-          <section className="fd204123-doc-preview-panel">
-            <h3>閱讀預覽</h3>
-            <article>
-              <span>{draft.icon || '📄'}</span>
-              <strong>{draft.title || '未命名文件'}</strong>
-              <small>{draft.folder || '其他'} · {draft.type || '備忘'} · {draft.updated || todayDate()}</small>
-              <p>{draft.summary || '尚未填寫摘要。'}</p>
-              <div className="tag-list">
-                {tags.length ? tags.slice(0, 6).map((tag) => <span key={tag}>{tag}</span>) : <span>未設定標籤</span>}
+            <div className="fd204128-word-editor-ribbon">
+              <div className="fd204128-ribbon-group">
+                <span>段落</span>
+                <button type="button" onClick={() => applyTextFormat('paragraph')}>本文</button>
+                <button type="button" onClick={() => applyTextFormat('h2')}>大標</button>
+                <button type="button" onClick={() => applyTextFormat('h3')}>小標</button>
               </div>
-            </article>
-            <div className="fd204123-doc-check-preview">
-              <strong>檢查清單</strong>
-              {checklist.length ? checklist.slice(0, 8).map((item) => <span key={item}>□ {item}</span>) : <span>尚未建立檢查清單</span>}
+              <div className="fd204128-ribbon-group">
+                <span>文字</span>
+                <button type="button" onClick={() => applyTextFormat('bold')}>粗體</button>
+                <button type="button" onClick={() => applyTextFormat('highlight')}>螢光</button>
+                <button type="button" onClick={() => applyTextFormat('clear')}>清除格式</button>
+              </div>
+              <div className="fd204128-ribbon-group">
+                <span>清單</span>
+                <button type="button" onClick={() => applyTextFormat('list')}>項目</button>
+                <button type="button" onClick={() => applyTextFormat('ordered')}>編號</button>
+                <button type="button" onClick={() => applyTextFormat('todo')}>待辦</button>
+              </div>
+              <div className="fd204128-ribbon-group">
+                <span>插入</span>
+                <button type="button" onClick={() => applyTextFormat('quote')}>引用</button>
+                <button type="button" onClick={() => applyTextFormat('callout')}>提醒框</button>
+                <button type="button" onClick={() => applyTextFormat('code')}>程式碼</button>
+                <button type="button" onClick={() => applyTextFormat('table')}>表格</button>
+                <button type="button" onClick={() => applyTextFormat('divider')}>分隔線</button>
+                <button type="button" onClick={() => applyTextFormat('date')}>日期紀錄</button>
+              </div>
+              <div className="fd204128-ribbon-group">
+                <span>版面</span>
+                <button type="button" onClick={() => applyTextFormat('alignLeft')}>置左</button>
+                <button type="button" onClick={() => applyTextFormat('alignCenter')}>置中</button>
+                <button type="button" onClick={() => applyTextFormat('alignRight')}>置右</button>
+              </div>
+              <div className="fd204128-ribbon-group">
+                <span>範本</span>
+                <button type="button" onClick={() => applyTextFormat('sop')}>SOP</button>
+                <button type="button" onClick={() => applyTextFormat('meeting')}>會議</button>
+                <button type="button" onClick={() => applyTextFormat('mail')}>Mail</button>
+              </div>
+              <div className="fd204128-ribbon-group compact">
+                <span>操作</span>
+                <button type="button" onClick={() => applyTextFormat('undo')}>復原</button>
+                <button type="button" onClick={() => applyTextFormat('redo')}>重做</button>
+              </div>
+            </div>
+
+            <div className="fd204128-word-editor-layout">
+              <article
+                ref={richEditorRef}
+                className="fd204127-word-paper fd204128-word-paper"
+                contentEditable
+                suppressContentEditableWarning
+                spellCheck={false}
+                onInput={syncRichEditorContent}
+                onBlur={syncRichEditorContent}
+                dangerouslySetInnerHTML={{ __html: normalizeDocEditorHtml(draft.content) }}
+              />
             </div>
           </section>
+
         </div>
 
         <footer className="fd20481-doc-modal-footer">
