@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.124'
+const FLOWDESK_APP_VERSION = '20.4.125'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7163,6 +7163,24 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           </div>
         </header>
 
+        {/* FLOWDESK_V20_4_125_DOC_EDITOR_TOP_TOOLBAR_START */}
+        <div className="fd204125-doc-editor-topbar">
+          <div>
+            <strong>文字編輯工具列</strong>
+            <small>可選取文字後套用格式，或直接插入到文件內容區。</small>
+          </div>
+          <div className="fd204125-doc-editor-topbar-actions">
+            {[
+              ['h2', '大標'], ['h3', '小標'], ['bold', '粗體'], ['list', '項目'],
+              ['ordered', '步驟'], ['todo', '待辦'], ['quote', '引用'], ['code', '程式碼'],
+              ['table', '表格'], ['divider', '分隔線'], ['date', '日期紀錄'],
+            ].map(([id, label]) => (
+              <button type="button" key={id} onClick={() => { setEditorMode('編輯'); applyTextFormat(id) }}>{label}</button>
+            ))}
+          </div>
+        </div>
+        {/* FLOWDESK_V20_4_125_DOC_EDITOR_TOP_TOOLBAR_END */}
+
         <div className="fd204123-doc-modal-command fd204124-doc-quick-insert">
           {[
             { id: 'sop', label: '插入 SOP 區塊' },
@@ -7211,7 +7229,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel fd204124-doc-editor-panel">
             <div className="fd204124-doc-editor-head">
               <div>
-                <h3>文件內容 / 文字編輯器</h3>
+                <h3>文件內容 / 文字編輯器（完整編輯區）</h3>
                 <small>{contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
               </div>
               <div className="fd204124-doc-editor-mode">

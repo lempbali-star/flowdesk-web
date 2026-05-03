@@ -32827,3 +32827,102 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_124_DOCS_TEXT_EDITOR_END */
 
+
+/* FLOWDESK_V20_4_125_DOC_EDITOR_VISIBLE_TOOLBAR_START */
+/* v20.4.125 文件備忘文字工具列顯示優化 */
+.fd204125-doc-editor-topbar {
+  display: grid;
+  grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr);
+  gap: 12px;
+  align-items: center;
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, .9);
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  position: sticky;
+  top: 0;
+  z-index: 8;
+}
+
+.fd204125-doc-editor-topbar strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.fd204125-doc-editor-topbar small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.fd204125-doc-editor-topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.fd204125-doc-editor-topbar-actions button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgba(203, 213, 225, .85);
+  border-radius: 999px;
+  color: #475569;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .04);
+}
+
+.fd204125-doc-editor-topbar-actions button:hover {
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, .35);
+  background: #eff6ff;
+}
+
+.fd20481-doc-modal-body .fd204124-doc-editor-panel {
+  order: -20;
+  grid-column: 1 / -1;
+  border: 2px solid rgba(37, 99, 235, .14);
+  box-shadow: 0 16px 36px rgba(37, 99, 235, .08);
+}
+
+.fd20481-doc-modal-body .fd204123-doc-preview-panel {
+  order: -10;
+}
+
+.fd204124-doc-editor-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+.fd204124-doc-editor-panel h3::before {
+  content: "✍️ ";
+}
+
+@media (max-width: 1100px) {
+  .fd204125-doc-editor-topbar { grid-template-columns: 1fr; }
+  .fd204125-doc-editor-topbar-actions { justify-content: flex-start; }
+}
+
+@media (max-width: 760px) {
+  .fd204125-doc-editor-topbar {
+    position: static;
+    padding: 10px;
+  }
+  .fd204125-doc-editor-topbar-actions {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+  .fd204125-doc-editor-topbar-actions button { flex: 0 0 auto; }
+}
+/* FLOWDESK_V20_4_125_DOC_EDITOR_VISIBLE_TOOLBAR_END */
+
