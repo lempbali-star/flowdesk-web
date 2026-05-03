@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.129'
+const FLOWDESK_APP_VERSION = '20.4.130'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7305,101 +7305,62 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           ))}
         </div>
 
-        <div className="fd20481-doc-modal-body fd204123-doc-modal-body">
-          <section className="fd20481-doc-panel fd20481-doc-panel-main fd204123-doc-panel">
-            <h3>基本資料</h3>
-            <div className="fd20481-doc-form-grid fd204123-doc-form-grid">
-              <label className="wide">文件標題<input value={draft.title || ''} onChange={(event) => updateDraft('title', event.target.value)} placeholder="輸入文件名稱" /></label>
-              <label>分類<select value={draft.folder || '其他'} onChange={(event) => updateDraft('folder', event.target.value)}>{folderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label>類型<select value={draft.type || '備忘'} onChange={(event) => updateDraft('type', event.target.value)}>{typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label>狀態<select value={draft.status || '使用中'} onChange={(event) => updateDraft('status', event.target.value)}>{statusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label>重要性<select value={draft.importance || '中'} onChange={(event) => updateDraft('importance', event.target.value)}>{importanceOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label>保密層級<select value={draft.confidentiality || '一般'} onChange={(event) => updateDraft('confidentiality', event.target.value)}>{confidentialityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label>負責人<input value={draft.owner || ''} onChange={(event) => updateDraft('owner', event.target.value)} placeholder="負責維護者" /></label>
-              <label>下次檢視日<input type="date" value={draft.reviewDate || ''} onChange={(event) => updateDraft('reviewDate', event.target.value)} /></label>
-              <label>來源 / 系統<input value={draft.source || ''} onChange={(event) => updateDraft('source', event.target.value)} placeholder="例如 FortiGate / Veeam / 中華電信" /></label>
-              <label>圖示<input value={draft.icon || ''} onChange={(event) => updateDraft('icon', event.target.value)} placeholder="例如 📄 / 🌐 / 🛡️" /></label>
-              <label className="wide">外部連結<input value={draft.link || ''} onChange={(event) => updateDraft('link', event.target.value)} placeholder="可貼 Google Drive、Notion、Wiki 或其他連結" /></label>
-              <label className="wide">摘要<textarea value={draft.summary || ''} onChange={(event) => updateDraft('summary', event.target.value)} placeholder="用 1～3 句說明這份文件用途" /></label>
-            </div>
-          </section>
-
-          <section className="fd20481-doc-panel fd204123-doc-panel">
-            <h3>標籤、關聯與檢查清單</h3>
-            <label>標籤<input value={tags.join('、')} onChange={(event) => updateListField('tags', event.target.value)} placeholder="用頓號或逗號分隔" /></label>
-            <label>關聯項目<input value={links.join('、')} onChange={(event) => updateListField('links', event.target.value)} placeholder="例如 採購管理、備份、FortiGate" /></label>
-            <label>檢查清單<textarea value={checklist.join('\n')} onChange={(event) => updateListField('checklist', event.target.value)} placeholder="一行一個檢查項目" /></label>
-            <div className="fd20481-doc-summary-box fd204123-doc-summary-box">
-              <article><span>狀態</span><strong>{draft.status || '使用中'}</strong></article>
-              <article><span>重要性</span><strong>{draft.importance || '中'}</strong></article>
-              <article><span>分類</span><strong>{draft.folder || '其他'}</strong></article>
-              <article><span>檢查項目</span><strong>{checklist.length}</strong></article>
-            </div>
-          </section>
-
-          <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel fd204124-doc-editor-panel">
-            <div className="fd204124-doc-editor-head">
+        <div className="fd20481-doc-modal-body fd204123-doc-modal-body fd204130-doc-modal-body">
+          <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel fd204124-doc-editor-panel fd204130-doc-editor-panel">
+            <div className="fd204124-doc-editor-head fd204130-doc-editor-head">
               <div>
-                <h3>文件內容 / 文件編輯器</h3>
-                <small>{contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
+                <h3>文件內容</h3>
+                <small>Word 風格編輯 · {contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
               </div>
-              <div className="fd204128-doc-editor-status">
-                <span>Word 風格即時編輯</span>
-                <button type="button" onClick={copyDocText}>複製文字</button>
+              <div className="fd204128-doc-editor-status fd204130-doc-editor-status">
+                <span>即時編輯</span>
+                <button type="button" onClick={copyDocText}>複製全文</button>
               </div>
             </div>
 
-            <div className="fd204128-word-editor-ribbon">
-              <div className="fd204128-ribbon-group">
-                <span>段落</span>
+            <div className="fd204130-word-toolbar" role="toolbar" aria-label="文件編輯工具列">
+              <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('paragraph')}>本文</button>
-                <button type="button" onClick={() => applyTextFormat('h2')}>大標</button>
-                <button type="button" onClick={() => applyTextFormat('h3')}>小標</button>
+                <button type="button" onClick={() => applyTextFormat('h2')}>標題 1</button>
+                <button type="button" onClick={() => applyTextFormat('h3')}>標題 2</button>
               </div>
-              <div className="fd204128-ribbon-group">
-                <span>文字</span>
+              <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('bold')}>粗體</button>
                 <button type="button" onClick={() => applyTextFormat('highlight')}>螢光</button>
                 <button type="button" onClick={() => applyTextFormat('clear')}>清除格式</button>
               </div>
-              <div className="fd204128-ribbon-group">
-                <span>清單</span>
+              <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('list')}>項目</button>
                 <button type="button" onClick={() => applyTextFormat('ordered')}>編號</button>
                 <button type="button" onClick={() => applyTextFormat('todo')}>待辦</button>
               </div>
-              <div className="fd204128-ribbon-group">
-                <span>插入</span>
+              <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('quote')}>引用</button>
-                <button type="button" onClick={() => applyTextFormat('callout')}>提醒框</button>
-                <button type="button" onClick={() => applyTextFormat('code')}>程式碼</button>
                 <button type="button" onClick={() => applyTextFormat('table')}>表格</button>
+                <button type="button" onClick={() => applyTextFormat('code')}>程式碼</button>
                 <button type="button" onClick={() => applyTextFormat('divider')}>分隔線</button>
-                <button type="button" onClick={() => applyTextFormat('date')}>日期紀錄</button>
+                <button type="button" onClick={() => applyTextFormat('date')}>日期</button>
               </div>
-              <div className="fd204128-ribbon-group">
-                <span>版面</span>
-                <button type="button" onClick={() => applyTextFormat('alignLeft')}>置左</button>
+              <div className="fd204130-toolbar-group">
+                <button type="button" onClick={() => applyTextFormat('alignLeft')}>靠左</button>
                 <button type="button" onClick={() => applyTextFormat('alignCenter')}>置中</button>
-                <button type="button" onClick={() => applyTextFormat('alignRight')}>置右</button>
+                <button type="button" onClick={() => applyTextFormat('alignRight')}>靠右</button>
               </div>
-              <div className="fd204128-ribbon-group">
-                <span>範本</span>
+              <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('sop')}>SOP</button>
                 <button type="button" onClick={() => applyTextFormat('meeting')}>會議</button>
                 <button type="button" onClick={() => applyTextFormat('mail')}>Mail</button>
               </div>
-              <div className="fd204128-ribbon-group compact">
-                <span>操作</span>
+              <div className="fd204130-toolbar-group fd204130-toolbar-group-last">
                 <button type="button" onClick={() => applyTextFormat('undo')}>復原</button>
                 <button type="button" onClick={() => applyTextFormat('redo')}>重做</button>
               </div>
             </div>
 
-            <div className="fd204128-word-editor-layout">
+            <div className="fd204130-word-stage">
               <article
                 ref={richEditorRef}
-                className="fd204127-word-paper fd204128-word-paper"
+                className="fd204127-word-paper fd204128-word-paper fd204130-word-paper"
                 contentEditable
                 suppressContentEditableWarning
                 spellCheck={false}
@@ -7410,6 +7371,41 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
             </div>
           </section>
 
+          <details className="fd204130-doc-fold" open>
+            <summary>文件資訊與設定</summary>
+            <div className="fd204130-doc-meta-grid">
+              <section className="fd20481-doc-panel fd20481-doc-panel-main fd204123-doc-panel fd204130-doc-meta-panel">
+                <h3>基本資料</h3>
+                <div className="fd20481-doc-form-grid fd204123-doc-form-grid">
+                  <label className="wide">文件標題<input value={draft.title || ''} onChange={(event) => updateDraft('title', event.target.value)} placeholder="輸入文件名稱" /></label>
+                  <label>分類<select value={draft.folder || '其他'} onChange={(event) => updateDraft('folder', event.target.value)}>{folderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  <label>類型<select value={draft.type || '備忘'} onChange={(event) => updateDraft('type', event.target.value)}>{typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  <label>狀態<select value={draft.status || '使用中'} onChange={(event) => updateDraft('status', event.target.value)}>{statusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  <label>重要性<select value={draft.importance || '中'} onChange={(event) => updateDraft('importance', event.target.value)}>{importanceOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  <label>保密層級<select value={draft.confidentiality || '一般'} onChange={(event) => updateDraft('confidentiality', event.target.value)}>{confidentialityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  <label>負責人<input value={draft.owner || ''} onChange={(event) => updateDraft('owner', event.target.value)} placeholder="負責維護者" /></label>
+                  <label>下次檢視日<input type="date" value={draft.reviewDate || ''} onChange={(event) => updateDraft('reviewDate', event.target.value)} /></label>
+                  <label>來源 / 系統<input value={draft.source || ''} onChange={(event) => updateDraft('source', event.target.value)} placeholder="例如 FortiGate / Veeam / 中華電信" /></label>
+                  <label>圖示<input value={draft.icon || ''} onChange={(event) => updateDraft('icon', event.target.value)} placeholder="例如 📄 / 🌐 / 🛡️" /></label>
+                  <label className="wide">外部連結<input value={draft.link || ''} onChange={(event) => updateDraft('link', event.target.value)} placeholder="可貼 Google Drive、Notion、Wiki 或其他連結" /></label>
+                  <label className="wide">摘要<textarea value={draft.summary || ''} onChange={(event) => updateDraft('summary', event.target.value)} placeholder="用 1～3 句說明這份文件用途" /></label>
+                </div>
+              </section>
+
+              <section className="fd20481-doc-panel fd204123-doc-panel fd204130-doc-meta-panel">
+                <h3>標籤、關聯與檢查清單</h3>
+                <label>標籤<input value={tags.join('、')} onChange={(event) => updateListField('tags', event.target.value)} placeholder="用頓號或逗號分隔" /></label>
+                <label>關聯項目<input value={links.join('、')} onChange={(event) => updateListField('links', event.target.value)} placeholder="例如 採購管理、備份、FortiGate" /></label>
+                <label>檢查清單<textarea value={checklist.join('\n')} onChange={(event) => updateListField('checklist', event.target.value)} placeholder="一行一個檢查項目" /></label>
+                <div className="fd20481-doc-summary-box fd204123-doc-summary-box">
+                  <article><span>狀態</span><strong>{draft.status || '使用中'}</strong></article>
+                  <article><span>重要性</span><strong>{draft.importance || '中'}</strong></article>
+                  <article><span>分類</span><strong>{draft.folder || '其他'}</strong></article>
+                  <article><span>檢查項目</span><strong>{checklist.length}</strong></article>
+                </div>
+              </section>
+            </div>
+          </details>
         </div>
 
         <footer className="fd20481-doc-modal-footer">
