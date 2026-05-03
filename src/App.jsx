@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.126'
+const FLOWDESK_APP_VERSION = '20.4.127'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7038,11 +7038,18 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
   const [draft, setDraft] = useState(() => doc)
   const [editorMode, setEditorMode] = useState('編輯')
   const contentEditorRef = useRef(null)
+  const richEditorRef = useRef(null)
 
   useEffect(() => {
     setDraft(doc)
     setEditorMode('編輯')
   }, [doc])
+
+  useEffect(() => {
+    if (!richEditorRef.current) return
+    richEditorRef.current.innerHTML = normalizeDocEditorHtml(doc?.content || '')
+  }, [doc?.id])
+
 
   if (!draft) return null
 
@@ -7066,153 +7073,167 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     updateDraft('content', `${draft.content || ''}${blocks[type] || ''}`)
   }
 
-  function applyTextFormat(action) {
-    const editor = contentEditorRef.current
-    const current = draft.content || ''
-    const start = editor?.selectionStart ?? current.length
-    const end = editor?.selectionEnd ?? current.length
-    const selected = current.slice(start, end)
-    const before = current.slice(0, start)
-    const after = current.slice(end)
-    const selectedLines = (selected || '').split('\n')
-    const today = todayDate()
-
-    const cleanLines = (fallback) => selectedLines.length && selected
-      ? selectedLines.map((line) => line.trim()).filter((line, index, arr) => line || arr.length === 1)
-      : [fallback]
-
-    const formatters = {
-      h2: () => `## ${selected || '大標題'}`,
-      h3: () => `### ${selected || '小標題'}`,
-      bold: () => `**${selected || '重點文字'}**`,
-      list: () => cleanLines('項目內容').map((line) => `- ${line.replace(/^[-*]\s*/, '') || '項目內容'}`).join('\n'),
-      ordered: () => cleanLines('步驟內容').map((line, index) => `${index + 1}. ${line.replace(/^\d+\.\s*/, '') || '步驟內容'}`).join('\n'),
-      todo: () => cleanLines('待確認項目').map((line) => `- [ ] ${line.replace(/^- \[ \]\s*/, '') || '待確認項目'}`).join('\n'),
-      quote: () => cleanLines('補充說明').map((line) => `> ${line.replace(/^>\s*/, '') || '補充說明'}`).join('\n'),
-      code: () => `\n\`\`\`\n${selected || '貼上指令、設定或紀錄內容'}\n\`\`\`\n`,
-      table: () => '\n| 項目 | 說明 | 狀態 |\n| --- | --- | --- |\n| 例：設備 / 系統 | 補充說明 | 待確認 |\n',
-      divider: () => '\n---\n',
-      date: () => `\n【${today}】${selected || '處理紀錄：'}\n`,
-    }
-
-    const blockActions = ['h2', 'h3', 'list', 'ordered', 'todo', 'quote', 'table', 'divider', 'date', 'code']
-    const nextText = typeof formatters[action] === 'function' ? formatters[action]() : selected
-    const needsBlockSpacing = blockActions.includes(action)
-    const spacerBefore = needsBlockSpacing && before && !before.endsWith('\n') ? '\n' : ''
-    const spacerAfter = needsBlockSpacing && after && !String(nextText).endsWith('\n') ? '\n' : ''
-    const nextContent = `${before}${spacerBefore}${nextText}${spacerAfter}${after}`
-    const cursor = Math.min((before + spacerBefore + nextText).length, nextContent.length)
-
-    setDraft((currentDraft) => ({ ...currentDraft, content: nextContent }))
-    setEditorMode('分割')
-
-    window.setTimeout(() => {
-      if (!contentEditorRef.current) return
-      contentEditorRef.current.focus()
-      contentEditorRef.current.setSelectionRange(cursor, cursor)
-    }, 0)
+  function escapeDocHtml(value = '') {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
   }
 
-  function renderInlineDocText(text = '') {
-    const segments = String(text || '').split(/(\*\*[^*]+\*\*)/g)
-    return segments.map((segment, index) => {
-      if (/^\*\*[^*]+\*\*$/.test(segment)) return <strong key={index}>{segment.slice(2, -2)}</strong>
-      return <span key={index}>{segment}</span>
-    })
+  function looksLikeHtmlContent(value = '') {
+    return /<\/?(p|div|h[1-6]|ul|ol|li|table|blockquote|pre|hr|strong|b|em|span|br)\b/i.test(String(value || ''))
   }
 
-  function renderDocContentPreview(text = '') {
-    const raw = String(text || '')
-    if (!raw.trim()) return <p className="fd204124-doc-preview-empty">尚未輸入文件內容。</p>
+  function normalizeMarkdownLineToHtml(line = '') {
+    const text = String(line || '')
+    if (text.trim() === '---') return '<hr>'
+    if (text.startsWith('## ')) return `<h2>${escapeDocHtml(text.replace(/^## /, ''))}</h2>`
+    if (text.startsWith('### ')) return `<h3>${escapeDocHtml(text.replace(/^### /, ''))}</h3>`
+    if (text.startsWith('> ')) return `<blockquote>${escapeDocHtml(text.replace(/^> /, ''))}</blockquote>`
+    if (text.startsWith('- [ ] ')) return `<p class="fd204127-todo-line">☐ ${escapeDocHtml(text.replace(/^- \[ \] /, ''))}</p>`
+    if (text.startsWith('- [x] ') || text.startsWith('- [X] ')) return `<p class="fd204127-todo-line done">☑ ${escapeDocHtml(text.replace(/^- \[x\] /i, ''))}</p>`
+    if (text.startsWith('- ')) return `<ul><li>${escapeDocHtml(text.replace(/^- /, ''))}</li></ul>`
+    if (/^\d+\.\s/.test(text)) return `<ol><li>${escapeDocHtml(text.replace(/^\d+\.\s*/, ''))}</li></ol>`
+    const withBold = escapeDocHtml(text).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    return withBold.trim() ? `<p>${withBold}</p>` : '<p><br></p>'
+  }
 
-    const rows = raw.split('\n')
-    const output = []
+  function normalizeDocEditorHtml(value = '') {
+    const raw = String(value || '')
+    if (!raw.trim()) return '<p><br></p>'
+    if (looksLikeHtmlContent(raw)) return raw
+
+    const lines = raw.split('\n')
+    const html = []
     let codeBuffer = []
     let inCode = false
     let tableBuffer = []
 
     const flushTable = () => {
       if (!tableBuffer.length) return
-      const normalized = tableBuffer.filter((line) => line.trim())
-      const rowsData = normalized
+      const rows = tableBuffer
+        .filter((line) => line.trim())
         .filter((line) => !/^\|\s*-+/.test(line))
-        .map((line) => line.split('|').slice(1, -1).map((cell) => cell.trim()))
-      output.push(
-        <table key={`table-${output.length}`} className="fd204126-doc-preview-table-real">
-          <tbody>
-            {rowsData.map((cells, rowIndex) => (
-              <tr key={rowIndex}>{cells.map((cell, cellIndex) => rowIndex === 0 ? <th key={cellIndex}>{renderInlineDocText(cell)}</th> : <td key={cellIndex}>{renderInlineDocText(cell)}</td>)}</tr>
-            ))}
-          </tbody>
-        </table>
-      )
+        .map((line) => line.split('|').slice(1, -1).map((cell) => escapeDocHtml(cell.trim())))
+      if (rows.length) {
+        html.push(`<table><tbody>${rows.map((cells, rowIndex) => `<tr>${cells.map((cell) => rowIndex === 0 ? `<th>${cell}</th>` : `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table>`)
+      }
       tableBuffer = []
     }
 
-    rows.forEach((line, index) => {
-      const key = `${index}-${line}`
-
+    lines.forEach((line) => {
       if (line.trim().startsWith('```')) {
         flushTable()
         if (!inCode) {
           inCode = true
           codeBuffer = []
         } else {
-          output.push(<pre key={`code-${index}`} className="fd204126-doc-preview-code"><code>{codeBuffer.join('\n') || ' '}</code></pre>)
+          html.push(`<pre><code>${escapeDocHtml(codeBuffer.join('\n'))}</code></pre>`)
           inCode = false
           codeBuffer = []
         }
         return
       }
-
       if (inCode) {
         codeBuffer.push(line)
         return
       }
-
       if (line.startsWith('|')) {
         tableBuffer.push(line)
         return
       }
-
       flushTable()
-      if (!line.trim()) {
-        output.push(<br key={key} />)
-      } else if (line.startsWith('### ')) {
-        output.push(<h4 key={key}>{renderInlineDocText(line.replace(/^### /, ''))}</h4>)
-      } else if (line.startsWith('## ')) {
-        output.push(<h3 key={key}>{renderInlineDocText(line.replace(/^## /, ''))}</h3>)
-      } else if (line.startsWith('> ')) {
-        output.push(<blockquote key={key}>{renderInlineDocText(line.replace(/^> /, ''))}</blockquote>)
-      } else if (line.startsWith('- [ ] ')) {
-        output.push(<p key={key} className="fd204124-doc-preview-check">□ {renderInlineDocText(line.replace(/^- \[ \] /, ''))}</p>)
-      } else if (line.startsWith('- [x] ') || line.startsWith('- [X] ')) {
-        output.push(<p key={key} className="fd204124-doc-preview-check done">☑ {renderInlineDocText(line.replace(/^- \[x\] /i, ''))}</p>)
-      } else if (line.startsWith('- ')) {
-        output.push(<p key={key} className="fd204124-doc-preview-list">• {renderInlineDocText(line.replace(/^- /, ''))}</p>)
-      } else if (/^\d+\.\s/.test(line)) {
-        output.push(<p key={key} className="fd204124-doc-preview-list">{renderInlineDocText(line)}</p>)
-      } else if (line.trim() === '---') {
-        output.push(<hr key={key} />)
-      } else {
-        output.push(<p key={key}>{renderInlineDocText(line)}</p>)
-      }
+      html.push(normalizeMarkdownLineToHtml(line))
     })
-
     flushTable()
-    if (inCode) output.push(<pre key="code-open" className="fd204126-doc-preview-code"><code>{codeBuffer.join('\n') || ' '}</code></pre>)
-    return output
+    if (inCode) html.push(`<pre><code>${escapeDocHtml(codeBuffer.join('\n'))}</code></pre>`)
+    return html.join('')
+  }
+
+  function getRichEditorHtml() {
+    return richEditorRef.current?.innerHTML || normalizeDocEditorHtml(draft.content || '')
+  }
+
+  function syncRichEditorContent() {
+    const html = getRichEditorHtml()
+    setDraft((currentDraft) => ({ ...currentDraft, content: html }))
+    return html
+  }
+
+  function focusRichEditor() {
+    window.setTimeout(() => {
+      if (!richEditorRef.current) return
+      richEditorRef.current.focus()
+    }, 0)
+  }
+
+  function insertRichHtml(html) {
+    if (!richEditorRef.current) return
+    richEditorRef.current.focus()
+    document.execCommand('insertHTML', false, html)
+    syncRichEditorContent()
+    setEditorMode('分割')
+    focusRichEditor()
+  }
+
+  function applyTextFormat(action) {
+    if (!richEditorRef.current) return
+    richEditorRef.current.focus()
+    const today = todayDate()
+
+    if (action === 'h2') {
+      document.execCommand('formatBlock', false, 'h2')
+    } else if (action === 'h3') {
+      document.execCommand('formatBlock', false, 'h3')
+    } else if (action === 'bold') {
+      document.execCommand('bold', false, null)
+    } else if (action === 'list') {
+      document.execCommand('insertUnorderedList', false, null)
+    } else if (action === 'ordered') {
+      document.execCommand('insertOrderedList', false, null)
+    } else if (action === 'quote') {
+      document.execCommand('formatBlock', false, 'blockquote')
+    } else if (action === 'todo') {
+      insertRichHtml('<p class="fd204127-todo-line">☐ 待確認項目</p>')
+      return
+    } else if (action === 'code') {
+      insertRichHtml('<pre><code>貼上指令、設定或紀錄內容</code></pre>')
+      return
+    } else if (action === 'table') {
+      insertRichHtml('<table><tbody><tr><th>項目</th><th>說明</th><th>狀態</th></tr><tr><td>例：設備 / 系統</td><td>補充說明</td><td>待確認</td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table>')
+      return
+    } else if (action === 'divider') {
+      insertRichHtml('<hr><p><br></p>')
+      return
+    } else if (action === 'date') {
+      insertRichHtml(`<p><strong>【${today}】</strong> 處理紀錄：</p>`)
+      return
+    } else if (action === 'paragraph') {
+      document.execCommand('formatBlock', false, 'p')
+    }
+
+    syncRichEditorContent()
+    setEditorMode('分割')
+    focusRichEditor()
+  }
+
+  function renderDocContentPreview(text = '') {
+    return <div className="fd204127-doc-html-preview" dangerouslySetInnerHTML={{ __html: normalizeDocEditorHtml(text) }} />
   }
 
   function copyDocText() {
+    const temp = typeof document !== 'undefined' ? document.createElement('div') : null
+    if (temp) temp.innerHTML = normalizeDocEditorHtml(draft.content || '')
+    const bodyText = temp ? (temp.innerText || temp.textContent || '') : String(draft.content || '')
     const text = [
       draft.title || '未命名文件',
       draft.summary ? `摘要：${draft.summary}` : '',
-      draft.content || '',
+      bodyText,
       Array.isArray(draft.checklist) && draft.checklist.length ? `檢查清單：\n${draft.checklist.map((item) => `- ${item}`).join('\n')}` : '',
     ].filter(Boolean).join('\n\n')
     if (typeof navigator !== 'undefined' && navigator.clipboard) navigator.clipboard.writeText(text)
   }
+
 
   const checklist = Array.isArray(draft.checklist) ? draft.checklist : []
   const tags = Array.isArray(draft.tags) ? draft.tags : []
@@ -7293,7 +7314,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel fd204124-doc-editor-panel">
             <div className="fd204124-doc-editor-head">
               <div>
-                <h3>文件內容 / 文字編輯器（完整編輯區）</h3>
+                <h3>文件內容 / Word 風格編輯器</h3>
                 <small>{contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
               </div>
               <div className="fd204124-doc-editor-mode">
@@ -7303,27 +7324,32 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
               </div>
             </div>
 
-            <div className="fd204124-doc-editor-toolbar">
+            <div className="fd204127-word-editor-toolbar">
+              <button type="button" onClick={() => applyTextFormat('paragraph')}>本文</button>
               {[
                 ['h2', '大標'], ['h3', '小標'], ['bold', '粗體'], ['list', '項目'],
-                ['ordered', '步驟'], ['todo', '待辦'], ['quote', '引用'], ['code', '程式碼'],
+                ['ordered', '編號'], ['todo', '待辦'], ['quote', '引用'], ['code', '程式碼'],
                 ['table', '表格'], ['divider', '分隔線'], ['date', '日期紀錄'],
               ].map(([id, label]) => (
                 <button type="button" key={id} onClick={() => applyTextFormat(id)}>{label}</button>
               ))}
             </div>
 
-            <div className={`fd204124-doc-editor-grid mode-${editorMode}`}>
+            <div className={`fd204127-word-editor-layout mode-${editorMode}`}>
               {editorMode !== '預覽' && (
-                <textarea
-                  ref={contentEditorRef}
-                  value={draft.content || ''}
-                  onChange={(event) => updateDraft('content', event.target.value)}
-                  placeholder="可記錄 SOP 步驟、設定內容、注意事項、會議結論；可使用 Markdown 標題、清單、表格與待辦格式。"
+                <article
+                  ref={richEditorRef}
+                  className="fd204127-word-paper"
+                  contentEditable
+                  suppressContentEditableWarning
+                  spellCheck={false}
+                  onInput={syncRichEditorContent}
+                  onBlur={syncRichEditorContent}
+                  dangerouslySetInnerHTML={{ __html: normalizeDocEditorHtml(draft.content) }}
                 />
               )}
               {editorMode !== '編輯' && (
-                <article className="fd204124-doc-content-preview">
+                <article className="fd204127-word-preview">
                   {renderDocContentPreview(draft.content)}
                 </article>
               )}

@@ -32828,133 +32828,235 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* FLOWDESK_V20_4_124_DOCS_TEXT_EDITOR_END */
 
 
-/* FLOWDESK_V20_4_126_DOC_EDITOR_FUNCTION_FIX_START */
-/* v20.4.126 文件備忘文字編輯器修正版
-   工具列只保留在內容編輯區上方，按鈕會插入內容並自動切到分割檢視。
+/* FLOWDESK_V20_4_127_DOC_WORD_LIKE_EDITOR_START */
+/* v20.4.127 文件備忘 Word 風格編輯器
+   直接在白色文件紙張上編輯，工具列套用可視效果。
 */
-.fd20481-doc-modal-body .fd204124-doc-editor-panel {
-  order: -30;
-  grid-column: 1 / -1;
-  border: 2px solid rgba(37, 99, 235, .16);
-  box-shadow: 0 18px 42px rgba(37, 99, 235, .08);
-}
 
-.fd204124-doc-editor-panel h3::before {
-  content: "✍️ ";
+.fd204124-doc-editor-panel {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(203, 213, 225, .85);
+  background: linear-gradient(180deg, #f8fbff, #eef4ff);
 }
 
 .fd204124-doc-editor-head {
+  align-items: center;
+}
+
+.fd204127-word-editor-toolbar {
   position: sticky;
   top: 0;
   z-index: 6;
-  padding: 12px 12px 10px;
-  margin: -14px -14px 12px;
-  border-bottom: 1px solid rgba(226, 232, 240, .9);
-  background: rgba(255, 255, 255, .96);
-  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid rgba(203, 213, 225, .85);
+  border-radius: 16px;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
 }
 
-.fd204124-doc-editor-toolbar {
-  position: sticky;
-  top: 70px;
-  z-index: 5;
-  margin: -2px 0 12px;
-  padding: 11px;
-  border: 1px solid rgba(203, 213, 225, .92);
-  border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, .045);
-}
-
-.fd204124-doc-editor-toolbar::before {
-  content: "文字工具列：選取文字後點按鈕套用格式，未選取時會插入可用範本";
-  display: block;
-  width: 100%;
-  margin: 0 0 8px;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.fd204124-doc-editor-toolbar button {
+.fd204127-word-editor-toolbar button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgba(203, 213, 225, .9);
+  border-radius: 999px;
   color: #334155;
-  border: 1px solid rgba(148, 163, 184, .5);
-  background: #fff;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
 }
 
-.fd204124-doc-editor-toolbar button:hover {
+.fd204127-word-editor-toolbar button:hover {
   color: #1d4ed8;
-  border-color: rgba(37, 99, 235, .42);
+  border-color: rgba(37, 99, 235, .36);
   background: #eff6ff;
 }
 
-.fd204124-doc-editor-grid {
-  min-height: 520px;
+.fd204127-word-editor-layout {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
 }
 
-.fd204124-doc-editor-grid textarea,
-.fd204124-doc-content-preview {
-  min-height: 520px;
+.fd204127-word-editor-layout.mode-分割 {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-.fd204124-doc-content-preview strong {
+.fd204127-word-paper,
+.fd204127-word-preview {
+  min-height: 520px;
+  max-height: min(68vh, 760px);
+  overflow: auto;
+  padding: 34px 42px;
+  border: 1px solid rgba(203, 213, 225, .95);
+  border-radius: 18px;
+  background: #ffffff;
   color: #0f172a;
-  font-weight: 950;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, .08);
+  line-height: 1.72;
+  outline: none;
 }
 
+.fd204127-word-paper:focus {
+  border-color: rgba(37, 99, 235, .45);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .08), 0 18px 40px rgba(15, 23, 42, .08);
+}
+
+.fd204127-word-preview {
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+}
+
+.fd204127-word-paper h2,
+.fd204127-word-preview h2,
+.fd204127-doc-html-preview h2 {
+  margin: 18px 0 10px;
+  font-size: 26px;
+  line-height: 1.25;
+  letter-spacing: -.03em;
+  color: #0f172a;
+}
+
+.fd204127-word-paper h3,
+.fd204127-word-preview h3,
+.fd204127-doc-html-preview h3 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+  line-height: 1.3;
+  color: #1e293b;
+}
+
+.fd204127-word-paper p,
+.fd204127-word-preview p,
+.fd204127-doc-html-preview p {
+  margin: 8px 0;
+}
+
+.fd204127-word-paper ul,
+.fd204127-word-paper ol,
+.fd204127-word-preview ul,
+.fd204127-word-preview ol,
+.fd204127-doc-html-preview ul,
+.fd204127-doc-html-preview ol {
+  margin: 10px 0 10px 22px;
+  padding-left: 18px;
+}
+
+.fd204127-word-paper blockquote,
+.fd204127-word-preview blockquote,
+.fd204127-doc-html-preview blockquote {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 4px solid #3b82f6;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.fd204127-word-paper pre,
+.fd204127-word-preview pre,
+.fd204127-doc-html-preview pre,
 .fd204126-doc-preview-code {
-  overflow-x: auto;
-  margin: 10px 0;
-  padding: 12px 14px;
+  margin: 12px 0;
+  padding: 14px;
   border-radius: 14px;
-  color: #dbeafe;
+  color: #e2e8f0;
   background: #0f172a;
-  font-family: Consolas, "SFMono-Regular", ui-monospace, monospace;
-  font-size: 12px;
-  line-height: 1.6;
+  overflow: auto;
+  line-height: 1.55;
 }
 
+.fd204127-word-paper table,
+.fd204127-word-preview table,
+.fd204127-doc-html-preview table,
 .fd204126-doc-preview-table-real {
   width: 100%;
   border-collapse: collapse;
-  margin: 10px 0;
-  overflow: hidden;
+  margin: 14px 0;
   border-radius: 14px;
-  box-shadow: 0 0 0 1px rgba(226, 232, 240, .95);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(203, 213, 225, .9);
 }
 
+.fd204127-word-paper th,
+.fd204127-word-paper td,
+.fd204127-word-preview th,
+.fd204127-word-preview td,
+.fd204127-doc-html-preview th,
+.fd204127-doc-html-preview td,
 .fd204126-doc-preview-table-real th,
 .fd204126-doc-preview-table-real td {
-  padding: 9px 10px;
-  border-bottom: 1px solid rgba(226, 232, 240, .95);
+  padding: 10px 12px;
+  border: 1px solid rgba(203, 213, 225, .9);
   text-align: left;
   vertical-align: top;
-  font-size: 13px;
 }
 
+.fd204127-word-paper th,
+.fd204127-word-preview th,
+.fd204127-doc-html-preview th,
 .fd204126-doc-preview-table-real th {
-  color: #1e40af;
-  background: #eff6ff;
+  background: #f1f5f9;
+  color: #334155;
   font-weight: 950;
 }
 
-.fd204126-doc-preview-table-real tr:last-child td {
-  border-bottom: 0;
+.fd204127-word-paper hr,
+.fd204127-word-preview hr,
+.fd204127-doc-html-preview hr {
+  margin: 18px 0;
+  border: 0;
+  border-top: 2px dashed rgba(148, 163, 184, .8);
 }
 
-@media (max-width: 1100px) {
-  .fd204124-doc-editor-toolbar {
-    top: 0;
-    position: relative;
+.fd204127-todo-line {
+  display: block;
+  padding: 8px 10px;
+  border: 1px solid rgba(203, 213, 225, .8);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.fd204127-todo-line.done {
+  color: #64748b;
+  text-decoration: line-through;
+}
+
+.fd204124-doc-content-preview .fd204127-doc-html-preview {
+  padding: 0;
+}
+
+.fd204124-doc-editor-grid,
+.fd204124-doc-editor-toolbar,
+.fd204125-doc-editor-topbar {
+  display: none !important;
+}
+
+@media (max-width: 1180px) {
+  .fd204127-word-editor-layout.mode-分割 {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
-  .fd204124-doc-editor-grid,
-  .fd204124-doc-editor-grid textarea,
-  .fd204124-doc-content-preview {
-    min-height: 360px;
+  .fd204127-word-editor-toolbar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+  }
+
+  .fd204127-word-editor-toolbar button {
+    flex: 0 0 auto;
+  }
+
+  .fd204127-word-paper,
+  .fd204127-word-preview {
+    min-height: 420px;
+    padding: 22px 18px;
   }
 }
-/* FLOWDESK_V20_4_126_DOC_EDITOR_FUNCTION_FIX_END */
+/* FLOWDESK_V20_4_127_DOC_WORD_LIKE_EDITOR_END */
 
