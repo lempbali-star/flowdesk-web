@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.122'
+const FLOWDESK_APP_VERSION = '20.4.123'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -6454,10 +6454,12 @@ function formatGanttWeekSpanByStart(weekStartDay = 1) {
 
 
 function DocsPage({ docs = [] }) {
-  const docCategoryOptions = ['全部', '釘選文件', '網路', '資安', '網站', '備份', '會議紀錄', '範本', '設備', '帳號', '其他']
-  const docTypeOptions = ['SOP', '設定筆記', '會議紀錄', '操作手冊', '範本', '連結', '備忘']
-  const docStatusOptions = ['使用中', '待整理', '需更新', '封存']
+  const docCategoryOptions = ['全部', '釘選文件', '網路', '資安', '網站', '備份', '會議紀錄', '範本', '設備', '帳號', '授權', '維護', '合約', '電話', '其他']
+  const docTypeOptions = ['SOP', '設定筆記', '會議紀錄', '操作手冊', '範本', 'Mail 範本', '檢查表', '資產紀錄', '維護紀錄', '連結', '備忘']
+  const docStatusOptions = ['使用中', '待整理', '需更新', '草稿', '封存']
   const docImportanceOptions = ['高', '中', '低']
+  const docConfidentialityOptions = ['一般', '內部', '機敏', '帳密相關']
+  const docSortOptions = ['最近更新', '重要性', '狀態', '分類', '標題']
 
   function makeDocId(current = docItems) {
     const maxNumber = current.reduce((max, item) => {
@@ -6471,6 +6473,7 @@ function DocsPage({ docs = [] }) {
     const updated = item.updated || item.updatedAt || todayDate()
     const safeLinks = Array.isArray(item.links) ? item.links : String(item.links || '').split(/[,，、\n]/).map((link) => link.trim()).filter(Boolean)
     const safeTags = Array.isArray(item.tags) ? item.tags : String(item.tags || '').split(/[,，、\n]/).map((tag) => tag.trim()).filter(Boolean)
+    const safeChecklist = Array.isArray(item.checklist) ? item.checklist : String(item.checklist || '').split(/\n|[,，、]/).map((task) => task.trim()).filter(Boolean)
     return {
       id: item.id || `DOC-${String(Date.now()).slice(-5)}`,
       title: item.title || '未命名文件',
@@ -6478,14 +6481,18 @@ function DocsPage({ docs = [] }) {
       type: item.type || '備忘',
       status: item.status || '使用中',
       importance: item.importance || '中',
+      confidentiality: item.confidentiality || '一般',
       owner: item.owner || 'Kyle',
       updated,
+      reviewDate: item.reviewDate || item.nextReview || '',
+      source: item.source || item.system || item.sourceSystem || '',
       summary: item.summary || item.description || '',
       content: item.content || item.note || '',
       link: item.link || '',
       icon: item.icon || '📄',
       links: safeLinks,
       tags: safeTags,
+      checklist: safeChecklist,
       pinned: Boolean(item.pinned || item.folder === '釘選文件'),
     }
   }
@@ -6498,10 +6505,14 @@ function DocsPage({ docs = [] }) {
       type: '設定筆記',
       status: '使用中',
       importance: '高',
+      confidentiality: '內部',
       icon: '🌐',
       updated: todayDate(),
+      reviewDate: todayDate(),
+      source: 'FortiGate / AD',
       summary: '整理 VPN、遠端連線、使用者無法連線時的檢查步驟。',
       content: '1. 確認帳號狀態。\n2. 確認 VPN 群組與權限。\n3. 檢查使用者端網路與 DNS。\n4. 必要時留存錯誤畫面與時間點。',
+      checklist: ['確認帳號狀態', '確認群組權限', '截圖錯誤訊息', '記錄發生時間'],
       tags: ['VPN', '遠端', '網路'],
       links: ['FortiGate', '使用者支援'],
       pinned: true,
@@ -6510,13 +6521,15 @@ function DocsPage({ docs = [] }) {
       id: 'DOC-002',
       title: '採購詢價信範本',
       folder: '範本',
-      type: '範本',
+      type: 'Mail 範本',
       status: '使用中',
       importance: '中',
+      confidentiality: '一般',
       icon: '🧾',
       updated: todayDate(),
       summary: '常用採購詢價、報價與確認需求文字。',
       content: '您好，\n再麻煩協助依下列需求提供報價，謝謝。\n\n品項：\n數量：\n規格：\n交期：',
+      checklist: ['確認品項', '確認數量', '確認交期', '確認報價有效期限'],
       tags: ['採購', '報價', '範本'],
       links: ['採購管理'],
     }),
@@ -6527,13 +6540,62 @@ function DocsPage({ docs = [] }) {
       type: 'SOP',
       status: '待整理',
       importance: '高',
+      confidentiality: '內部',
       icon: '💾',
       updated: todayDate(),
       summary: '備份週期、備份耗時、備份路徑與還原測試紀錄欄位。',
       content: '建議欄位：系統名稱、備份軟體、完整/增量、備份週期、備份耗時、本機路徑、異地路徑、還原測試結果。',
+      checklist: ['確認備份週期', '確認備份路徑', '記錄備份耗時', '補上還原測試結果'],
       tags: ['備份', '還原', 'SOP'],
       links: ['BESR', 'ABB'],
     }),
+  ], [])
+
+  const docTemplatePresets = useMemo(() => [
+    {
+      id: 'sop',
+      icon: '📋',
+      title: 'SOP 作業流程',
+      folder: '範本',
+      type: 'SOP',
+      summary: '建立標準作業流程，包含目的、適用範圍、步驟與異常處理。',
+      content: '一、目的\n\n二、適用範圍\n\n三、前置確認\n1. \n2. \n\n四、操作步驟\n1. \n2. \n3. \n\n五、異常處理\n\n六、相關附件 / 連結\n',
+      checklist: ['確認目的', '補上操作步驟', '補上異常處理', '補上負責人'],
+      tags: ['SOP', '流程'],
+    },
+    {
+      id: 'meeting',
+      icon: '📝',
+      title: '會議紀錄',
+      folder: '會議紀錄',
+      type: '會議紀錄',
+      summary: '快速建立會議紀錄，整理結論、待辦與追蹤事項。',
+      content: '會議日期：\n參與人員：\n\n一、討論事項\n1. \n\n二、會議結論\n1. \n\n三、待辦事項\n- [ ] 負責人 / 事項 / 期限\n\n四、下次追蹤\n',
+      checklist: ['補上參與人員', '補上會議結論', '補上待辦負責人', '補上下次追蹤日'],
+      tags: ['會議', '紀錄'],
+    },
+    {
+      id: 'mail',
+      icon: '✉️',
+      title: 'Mail 範本',
+      folder: '範本',
+      type: 'Mail 範本',
+      summary: '建立可重複使用的 Email 文字範本。',
+      content: '您好，\n\n\n再麻煩您協助確認，謝謝。\n\nBest regards,\nKyle',
+      checklist: ['確認收件對象', '確認需求內容', '確認附件', '確認回覆期限'],
+      tags: ['Mail', '範本'],
+    },
+    {
+      id: 'checklist',
+      icon: '✅',
+      title: '檢查表',
+      folder: '維護',
+      type: '檢查表',
+      summary: '建立設備、系統、異動或維護作業的檢查清單。',
+      content: '檢查對象：\n檢查日期：\n\n檢查項目：\n- [ ] \n- [ ] \n- [ ] \n\n結果：\n後續處理：',
+      checklist: ['確認檢查對象', '補上檢查項目', '填寫結果', '記錄後續處理'],
+      tags: ['檢查表', '維護'],
+    },
   ], [])
 
   const [docItems, setDocItems] = useState(() => {
@@ -6555,6 +6617,7 @@ function DocsPage({ docs = [] }) {
   const [typeFilter, setTypeFilter] = useState('全部')
   const [statusFilter, setStatusFilter] = useState('全部')
   const [keyword, setKeyword] = useState('')
+  const [docSortMode, setDocSortMode] = useState('最近更新')
   const [docPage, setDocPage] = useState(1)
   const [docPageSize, setDocPageSize] = useState(12)
   const [editingDoc, setEditingDoc] = useState(null)
@@ -6580,6 +6643,8 @@ function DocsPage({ docs = [] }) {
 
   const filteredDocs = useMemo(() => {
     const q = keyword.trim().toLowerCase()
+    const importanceRank = { 高: 3, 中: 2, 低: 1 }
+    const statusRank = { 需更新: 5, 待整理: 4, 草稿: 3, 使用中: 2, 封存: 1 }
     return docItems
       .filter((item) => {
         if (folderFilter === '全部') return true
@@ -6596,20 +6661,33 @@ function DocsPage({ docs = [] }) {
           item.folder,
           item.type,
           item.status,
+          item.importance,
+          item.confidentiality,
           item.owner,
+          item.source,
+          item.reviewDate,
           item.summary,
           item.content,
           item.link,
           ...(Array.isArray(item.tags) ? item.tags : []),
           ...(Array.isArray(item.links) ? item.links : []),
+          ...(Array.isArray(item.checklist) ? item.checklist : []),
         ].join(' ').toLowerCase().includes(q)
       })
-      .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || String(b.updated || '').localeCompare(String(a.updated || '')))
-  }, [docItems, folderFilter, typeFilter, statusFilter, keyword])
+      .sort((a, b) => {
+        const pinnedSort = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
+        if (pinnedSort) return pinnedSort
+        if (docSortMode === '重要性') return (importanceRank[b.importance] || 0) - (importanceRank[a.importance] || 0) || String(b.updated || '').localeCompare(String(a.updated || ''))
+        if (docSortMode === '狀態') return (statusRank[b.status] || 0) - (statusRank[a.status] || 0) || String(b.updated || '').localeCompare(String(a.updated || ''))
+        if (docSortMode === '分類') return String(a.folder || '').localeCompare(String(b.folder || '')) || String(a.title || '').localeCompare(String(b.title || ''))
+        if (docSortMode === '標題') return String(a.title || '').localeCompare(String(b.title || ''))
+        return String(b.updated || '').localeCompare(String(a.updated || ''))
+      })
+  }, [docItems, folderFilter, typeFilter, statusFilter, keyword, docSortMode])
 
   useEffect(() => {
     setDocPage(1)
-  }, [folderFilter, typeFilter, statusFilter, keyword, docView, docPageSize])
+  }, [folderFilter, typeFilter, statusFilter, keyword, docSortMode, docView, docPageSize])
 
   const docPageCount = Math.max(1, Math.ceil(filteredDocs.length / docPageSize))
   const safeDocPage = Math.min(docPage, docPageCount)
@@ -6619,13 +6697,28 @@ function DocsPage({ docs = [] }) {
     if (docPage !== safeDocPage) setDocPage(safeDocPage)
   }, [docPage, safeDocPage])
 
-  const docSummary = useMemo(() => ({
-    total: docItems.length,
-    pinned: docItems.filter((item) => item.pinned).length,
-    needUpdate: docItems.filter((item) => item.status === '需更新').length,
-    templates: docItems.filter((item) => item.type === '範本').length,
-    high: docItems.filter((item) => item.importance === '高').length,
-  }), [docItems])
+  const docSummary = useMemo(() => {
+    const needUpdate = docItems.filter((item) => item.status === '需更新').length
+    const checklistTotal = docItems.reduce((total, item) => total + (Array.isArray(item.checklist) ? item.checklist.length : 0), 0)
+    const linked = docItems.filter((item) => item.link || (Array.isArray(item.links) && item.links.length)).length
+    return {
+      total: docItems.length,
+      pinned: docItems.filter((item) => item.pinned).length,
+      needUpdate,
+      templates: docItems.filter((item) => item.type === '範本' || item.type === 'Mail 範本').length,
+      high: docItems.filter((item) => item.importance === '高').length,
+      checklistTotal,
+      linked,
+      health: docItems.length ? Math.max(0, Math.min(100, Math.round(((docItems.length - needUpdate) / docItems.length) * 100))) : 100,
+    }
+  }, [docItems])
+
+  const docsNeedAttention = useMemo(() => {
+    return docItems
+      .filter((item) => item.status === '需更新' || item.status === '待整理' || item.importance === '高')
+      .sort((a, b) => String(b.updated || '').localeCompare(String(a.updated || '')))
+      .slice(0, 4)
+  }, [docItems])
 
   function openNewDoc() {
     setEditingDoc(normalizeDocItem({
@@ -6635,15 +6728,35 @@ function DocsPage({ docs = [] }) {
       type: '備忘',
       status: '使用中',
       importance: '中',
+      confidentiality: '一般',
       owner: 'Kyle',
       updated: todayDate(),
+      reviewDate: '',
+      source: '',
       icon: '📄',
       tags: [],
       links: [],
+      checklist: [],
       content: '',
       summary: '',
       pinned: folderFilter === '釘選文件',
     }))
+  }
+
+  function createDocFromTemplate(template) {
+    const next = normalizeDocItem({
+      ...template,
+      id: makeDocId(docItems),
+      status: '草稿',
+      importance: template.importance || '中',
+      confidentiality: '一般',
+      owner: 'Kyle',
+      updated: todayDate(),
+      reviewDate: '',
+      source: '',
+      pinned: false,
+    })
+    setEditingDoc(next)
   }
 
   function saveDoc(nextDoc) {
@@ -6687,7 +6800,7 @@ function DocsPage({ docs = [] }) {
   }
 
   function exportDocs() {
-    const headers = ['編號', '標題', '分類', '類型', '狀態', '重要性', '負責人', '更新日', '摘要', '連結', '標籤']
+    const headers = ['編號', '標題', '分類', '類型', '狀態', '重要性', '保密', '負責人', '更新日', '檢視日', '來源', '摘要', '連結', '標籤', '檢查清單']
     const rows = filteredDocs.map((item) => [
       item.id,
       item.title,
@@ -6695,11 +6808,15 @@ function DocsPage({ docs = [] }) {
       item.type,
       item.status,
       item.importance,
+      item.confidentiality,
       item.owner,
       item.updated,
+      item.reviewDate,
+      item.source,
       item.summary,
       item.link,
       (Array.isArray(item.tags) ? item.tags : []).join(' / '),
+      (Array.isArray(item.checklist) ? item.checklist : []).join(' / '),
     ])
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
     downloadFlowdeskText(`FlowDesk文件備忘_${todayDate()}.csv`, `\ufeff${csv}`, 'text/csv;charset=utf-8;')
@@ -6710,33 +6827,67 @@ function DocsPage({ docs = [] }) {
     setTypeFilter('全部')
     setStatusFilter('全部')
     setKeyword('')
+    setDocSortMode('最近更新')
   }
 
   return (
-    <div className="docs-layout fd20481-docs-layout">
-      <section className="surface-toolbar fd20481-docs-toolbar">
+    <div className="docs-layout fd20481-docs-layout fd204123-docs-pro">
+      <section className="surface-toolbar fd20481-docs-toolbar fd204123-doc-hero">
         <div>
           <p className="eyebrow">文件備忘</p>
-          <h2>知識庫與常用文件</h2>
-          <span>整理 SOP、設定筆記、會議紀錄與常用範本；卡片看摘要，清單看明細。</span>
+          <h2>知識庫、SOP 與常用範本</h2>
+          <span>整理 SOP、設定筆記、會議紀錄、Mail 範本與檢查表；支援釘選、分類、狀態追蹤、檢查清單與快速套版。</span>
         </div>
         <div className="record-actions fd20481-docs-actions">
-
-          <button className="ghost-btn" type="button" onClick={exportDocs}>匯出</button>
+          <button className="ghost-btn" type="button" onClick={exportDocs}>匯出 CSV</button>
           <button className="primary-btn" type="button" onClick={openNewDoc}>新增文件</button>
         </div>
       </section>
 
-      <section className="metric-strip fd20481-docs-metrics">
+      <section className="metric-strip fd20481-docs-metrics fd204123-doc-metrics">
         <Metric label="文件總數" value={docSummary.total} tone="blue" />
-        <Metric label="釘選文件" value={docSummary.pinned} tone="amber" />
+        <Metric label="知識健康" value={`${docSummary.health}%`} tone="green" />
         <Metric label="需更新" value={docSummary.needUpdate} tone="red" />
-        <Metric label="範本" value={docSummary.templates} tone="green" />
-        <Metric label="高重要" value={docSummary.high} tone="violet" />
+        <Metric label="範本" value={docSummary.templates} tone="amber" />
+        <Metric label="檢查項目" value={docSummary.checklistTotal} tone="violet" />
       </section>
 
-      <div className="fd20481-docs-body">
-        <aside className="doc-tree fd20481-doc-tree">
+      <section className="fd204123-doc-command-grid">
+        <article className="fd204123-doc-command-card">
+          <span>📌</span>
+          <div>
+            <strong>待整理工作台</strong>
+            <small>{docsNeedAttention.length ? `目前有 ${docsNeedAttention.length} 筆需要注意` : '目前沒有高風險文件'}</small>
+          </div>
+          <div className="fd204123-doc-attention-list">
+            {docsNeedAttention.length ? docsNeedAttention.map((item) => (
+              <button type="button" key={item.id} onClick={() => setEditingDoc(item)}>
+                <b>{item.title || '未命名文件'}</b>
+                <small>{item.status} · {item.folder} · {item.updated}</small>
+              </button>
+            )) : <p>已整理完成，文件庫目前很乾淨。</p>}
+          </div>
+        </article>
+        <article className="fd204123-doc-command-card fd204123-template-card">
+          <span>⚡</span>
+          <div>
+            <strong>快速建立</strong>
+            <small>用範本快速產生 SOP、會議紀錄、Mail 範本或檢查表。</small>
+          </div>
+          <div className="fd204123-doc-template-grid">
+            {docTemplatePresets.map((template) => (
+              <button type="button" key={template.id} onClick={() => createDocFromTemplate(template)}>
+                <span>{template.icon}</span>
+                <b>{template.title}</b>
+                <small>{template.type}</small>
+              </button>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <div className="fd20481-docs-body fd204123-docs-body">
+        <aside className="doc-tree fd20481-doc-tree fd204123-doc-tree">
           <PanelTitle eyebrow="文件分類" title="分類快速切換" />
           {docCategoryOptions.map((folder) => (
             <button key={folder} className={folderFilter === folder ? 'active' : ''} type="button" onClick={() => setFolderFilter(folder)}>
@@ -6747,15 +6898,16 @@ function DocsPage({ docs = [] }) {
           <button className="fd20481-doc-reset" type="button" onClick={resetDocDemo}>重置範例資料</button>
         </aside>
 
-        <section className="doc-canvas fd20481-doc-canvas">
-          <div className="fd20481-doc-filter-bar">
-            <label className="fd20481-doc-search">搜尋<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜尋標題、分類、內容、標籤..." /></label>
+        <section className="doc-canvas fd20481-doc-canvas fd204123-doc-canvas">
+          <div className="fd20481-doc-filter-bar fd204123-doc-filter-bar">
+            <label className="fd20481-doc-search">搜尋<input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜尋標題、分類、內容、標籤、來源、檢查清單..." /></label>
             <label>類型<select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="全部">全部</option>{docTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
             <label>狀態<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="全部">全部</option>{docStatusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label>排序<select value={docSortMode} onChange={(event) => setDocSortMode(event.target.value)}>{docSortOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
             <button type="button" className="ghost-btn" onClick={clearDocFilters}>清除篩選</button>
           </div>
 
-          <section className="fd20490-list-topbar fd20490-doc-list-topbar">
+          <section className="fd20490-list-topbar fd20490-doc-list-topbar fd204123-doc-list-topbar">
             <div className="fd20490-list-topbar-left">
               <strong>文件列表</strong>
               <span>{docView === '卡片' ? '卡片檢視' : '清單檢視'} · 目前 {pagedDocs.length} / 篩選後 {filteredDocs.length} 筆｜全部 {docItems.length} 筆</span>
@@ -6775,11 +6927,11 @@ function DocsPage({ docs = [] }) {
 
           {filteredDocs.length ? (
             docView === '卡片' ? (
-              <div className="doc-grid fd20481-doc-grid">
+              <div className="doc-grid fd20481-doc-grid fd204123-doc-grid">
                 {pagedDocs.map((doc) => <DocMemoCard key={doc.id} doc={doc} onOpen={() => setEditingDoc(doc)} onPin={() => togglePinDoc(doc)} />)}
               </div>
             ) : (
-              <div className="fd20481-doc-list">
+              <div className="fd20481-doc-list fd204123-doc-list">
                 <div className="fd20481-doc-list-head"><span>文件</span><span>分類 / 類型</span><span>狀態</span><span>更新 / 負責</span><span>操作</span></div>
                 {pagedDocs.map((doc) => <DocMemoRow key={doc.id} doc={doc} onOpen={() => setEditingDoc(doc)} onPin={() => togglePinDoc(doc)} />)}
               </div>
@@ -6812,6 +6964,7 @@ function DocsPage({ docs = [] }) {
           typeOptions={docTypeOptions}
           statusOptions={docStatusOptions}
           importanceOptions={docImportanceOptions}
+          confidentialityOptions={docConfidentialityOptions}
           onClose={() => setEditingDoc(null)}
           onSave={saveDoc}
           onDelete={deleteDoc}
@@ -6826,11 +6979,12 @@ function DocsPage({ docs = [] }) {
 function DocMemoCard({ doc, onOpen, onPin }) {
   const tags = Array.isArray(doc.tags) ? doc.tags : []
   const links = Array.isArray(doc.links) ? doc.links : []
+  const checklistCount = Array.isArray(doc.checklist) ? doc.checklist.length : 0
   return (
-    <article className={`doc-card fd20481-doc-card ${doc.pinned ? 'pinned' : ''}`}>
-      <button className="fd20481-doc-pin" type="button" onClick={(event) => { event.stopPropagation(); onPin?.() }}>{doc.pinned ? '已釘選' : '釘選'}</button>
-      <button className="fd20481-doc-card-main" type="button" onClick={onOpen}>
-        <div className="fd20481-doc-card-top">
+    <article className={`doc-card fd20481-doc-card fd204123-doc-card ${doc.pinned ? 'pinned' : ''}`}>
+      <button className="fd20481-doc-pin fd204123-doc-pin" type="button" onClick={(event) => { event.stopPropagation(); onPin?.() }}>{doc.pinned ? '已釘選' : '釘選'}</button>
+      <button className="fd20481-doc-card-main fd204123-doc-card-main" type="button" onClick={onOpen}>
+        <div className="fd20481-doc-card-top fd204123-doc-card-top">
           <span className="doc-icon">{doc.icon || '📄'}</span>
           <div>
             <strong>{doc.title || '未命名文件'}</strong>
@@ -6838,13 +6992,19 @@ function DocMemoCard({ doc, onOpen, onPin }) {
           </div>
         </div>
         <p>{doc.summary || doc.content || '尚未填寫摘要。'}</p>
-        <div className="fd20481-doc-card-meta">
-          <span>{doc.status || '使用中'}</span>
-          <span>{doc.importance || '中'}重要</span>
-          <span>{doc.owner || '未指定'}</span>
+        <div className="fd204123-doc-card-status">
+          <Badge value={doc.status || '使用中'} />
+          <Badge value={`${doc.importance || '中'}重要`} />
+          <Badge value={doc.confidentiality || '一般'} />
         </div>
-        <div className="tag-list fd20481-doc-tags">
-          {tags.length ? tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>) : <span>未設定標籤</span>}
+        <div className="fd204123-doc-card-facts">
+          <span>負責：{doc.owner || '未指定'}</span>
+          <span>來源：{doc.source || '未設定'}</span>
+          <span>檢查：{checklistCount} 項</span>
+          <span>複查：{doc.reviewDate || '未設定'}</span>
+        </div>
+        <div className="tag-list fd20481-doc-tags fd204123-doc-tags">
+          {tags.length ? tags.slice(0, 4).map((tag) => <span key={tag}>{tag}</span>) : <span>未設定標籤</span>}
           {links.slice(0, 2).map((link) => <span key={link}>{link}</span>)}
         </div>
       </button>
@@ -6853,18 +7013,19 @@ function DocMemoCard({ doc, onOpen, onPin }) {
 }
 
 function DocMemoRow({ doc, onOpen, onPin }) {
+  const checklistCount = Array.isArray(doc.checklist) ? doc.checklist.length : 0
   return (
-    <article className={`fd20481-doc-row ${doc.pinned ? 'pinned' : ''}`}>
-      <button type="button" className="fd20481-doc-row-main" onClick={onOpen}>
+    <article className={`fd20481-doc-row fd204123-doc-row ${doc.pinned ? 'pinned' : ''}`}>
+      <button type="button" className="fd20481-doc-row-main fd204123-doc-row-main" onClick={onOpen}>
         <span className="doc-icon">{doc.icon || '📄'}</span>
         <div>
           <strong>{doc.title || '未命名文件'}</strong>
           <small>{doc.summary || doc.content || '尚未填寫摘要。'}</small>
         </div>
       </button>
-      <div><Badge value={doc.folder || '其他'} /><small>{doc.type || '備忘'}</small></div>
-      <div><Badge value={doc.status || '使用中'} /><small>{doc.importance || '中'}重要</small></div>
-      <div><strong>{doc.updated || '未更新'}</strong><small>{doc.owner || '未指定'}</small></div>
+      <div><Badge value={doc.folder || '其他'} /><small>{doc.type || '備忘'} · {doc.confidentiality || '一般'}</small></div>
+      <div><Badge value={doc.status || '使用中'} /><small>{doc.importance || '中'}重要 · 檢查 {checklistCount} 項</small></div>
+      <div><strong>{doc.updated || '未更新'}</strong><small>{doc.owner || '未指定'} · {doc.reviewDate || '未設定複查'}</small></div>
       <div className="fd20481-doc-row-actions">
         <button type="button" onClick={onPin}>{doc.pinned ? '取消釘選' : '釘選'}</button>
         <button type="button" className="primary-btn" onClick={onOpen}>開啟</button>
@@ -6873,7 +7034,7 @@ function DocMemoRow({ doc, onOpen, onPin }) {
   )
 }
 
-function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importanceOptions, onClose, onSave, onDelete, onDuplicate, onTogglePin }) {
+function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importanceOptions, confidentialityOptions = ['一般', '內部', '機敏', '帳密相關'], onClose, onSave, onDelete, onDuplicate, onTogglePin }) {
   const [draft, setDraft] = useState(() => doc)
 
   useEffect(() => {
@@ -6890,54 +7051,111 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     updateDraft(key, String(value || '').split(/[,，、\n]/).map((item) => item.trim()).filter(Boolean))
   }
 
+  function appendContentBlock(type) {
+    const blocks = {
+      sop: '\n\n【SOP 區塊】\n目的：\n前置條件：\n操作步驟：\n1. \n2. \n異常處理：\n',
+      check: '\n\n【檢查清單】\n- [ ] \n- [ ] \n- [ ] \n',
+      note: '\n\n【處理紀錄】\n日期：\n處理人：\n處理內容：\n結果：\n',
+      risk: '\n\n【注意事項 / 風險】\n風險：\n影響：\n避免方式：\n',
+    }
+    updateDraft('content', `${draft.content || ''}${blocks[type] || ''}`)
+  }
+
+  function copyDocText() {
+    const text = [
+      draft.title || '未命名文件',
+      draft.summary ? `摘要：${draft.summary}` : '',
+      draft.content || '',
+      Array.isArray(draft.checklist) && draft.checklist.length ? `檢查清單：\n${draft.checklist.map((item) => `- ${item}`).join('\n')}` : '',
+    ].filter(Boolean).join('\n\n')
+    if (typeof navigator !== 'undefined' && navigator.clipboard) navigator.clipboard.writeText(text)
+  }
+
+  const checklist = Array.isArray(draft.checklist) ? draft.checklist : []
+  const tags = Array.isArray(draft.tags) ? draft.tags : []
+  const links = Array.isArray(draft.links) ? draft.links : []
+
   return (
-    <div className="fd20481-doc-modal-layer">
+    <div className="fd20481-doc-modal-layer fd204123-doc-modal-layer">
       <button type="button" className="fd20481-doc-modal-backdrop" onClick={onClose} aria-label="關閉文件彈窗" />
-      <section className="fd20481-doc-modal" role="dialog" aria-modal="true" aria-label="文件備忘詳情">
-        <header className="fd20481-doc-modal-head">
+      <section className="fd20481-doc-modal fd204123-doc-modal" role="dialog" aria-modal="true" aria-label="文件備忘詳情">
+        <header className="fd20481-doc-modal-head fd204123-doc-modal-head">
           <div>
             <p className="eyebrow">文件備忘</p>
             <h2>{draft.title || '未命名文件'}</h2>
-            <span>{draft.id} · {draft.folder || '其他'} · {draft.type || '備忘'}</span>
+            <span>{draft.id} · {draft.folder || '其他'} · {draft.type || '備忘'} · {draft.confidentiality || '一般'}</span>
           </div>
           <div className="fd20481-doc-modal-actions">
+            <button type="button" className="ghost-btn" onClick={copyDocText}>複製內容</button>
             <button type="button" className="ghost-btn" onClick={() => onTogglePin?.(draft)}>{draft.pinned ? '取消釘選' : '釘選'}</button>
             <button type="button" className="ghost-btn" onClick={onClose}>關閉</button>
             <button type="button" className="primary-btn" onClick={() => onSave?.(draft)}>儲存</button>
           </div>
         </header>
 
-        <div className="fd20481-doc-modal-body">
-          <section className="fd20481-doc-panel fd20481-doc-panel-main">
+        <div className="fd204123-doc-modal-command">
+          {[
+            { id: 'sop', label: '插入 SOP 區塊' },
+            { id: 'check', label: '插入檢查清單' },
+            { id: 'note', label: '插入處理紀錄' },
+            { id: 'risk', label: '插入風險注意' },
+          ].map((item) => (
+            <button type="button" key={item.id} onClick={() => appendContentBlock(item.id)}>{item.label}</button>
+          ))}
+        </div>
+
+        <div className="fd20481-doc-modal-body fd204123-doc-modal-body">
+          <section className="fd20481-doc-panel fd20481-doc-panel-main fd204123-doc-panel">
             <h3>基本資料</h3>
-            <div className="fd20481-doc-form-grid">
+            <div className="fd20481-doc-form-grid fd204123-doc-form-grid">
               <label className="wide">文件標題<input value={draft.title || ''} onChange={(event) => updateDraft('title', event.target.value)} placeholder="輸入文件名稱" /></label>
               <label>分類<select value={draft.folder || '其他'} onChange={(event) => updateDraft('folder', event.target.value)}>{folderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
               <label>類型<select value={draft.type || '備忘'} onChange={(event) => updateDraft('type', event.target.value)}>{typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
               <label>狀態<select value={draft.status || '使用中'} onChange={(event) => updateDraft('status', event.target.value)}>{statusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
               <label>重要性<select value={draft.importance || '中'} onChange={(event) => updateDraft('importance', event.target.value)}>{importanceOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+              <label>保密層級<select value={draft.confidentiality || '一般'} onChange={(event) => updateDraft('confidentiality', event.target.value)}>{confidentialityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
               <label>負責人<input value={draft.owner || ''} onChange={(event) => updateDraft('owner', event.target.value)} placeholder="負責維護者" /></label>
+              <label>下次檢視日<input type="date" value={draft.reviewDate || ''} onChange={(event) => updateDraft('reviewDate', event.target.value)} /></label>
+              <label>來源 / 系統<input value={draft.source || ''} onChange={(event) => updateDraft('source', event.target.value)} placeholder="例如 FortiGate / Veeam / 中華電信" /></label>
               <label>圖示<input value={draft.icon || ''} onChange={(event) => updateDraft('icon', event.target.value)} placeholder="例如 📄 / 🌐 / 🛡️" /></label>
               <label className="wide">外部連結<input value={draft.link || ''} onChange={(event) => updateDraft('link', event.target.value)} placeholder="可貼 Google Drive、Notion、Wiki 或其他連結" /></label>
               <label className="wide">摘要<textarea value={draft.summary || ''} onChange={(event) => updateDraft('summary', event.target.value)} placeholder="用 1～3 句說明這份文件用途" /></label>
             </div>
           </section>
 
-          <section className="fd20481-doc-panel">
-            <h3>標籤與關聯</h3>
-            <label>標籤<input value={(Array.isArray(draft.tags) ? draft.tags : []).join('、')} onChange={(event) => updateListField('tags', event.target.value)} placeholder="用頓號或逗號分隔" /></label>
-            <label>關聯項目<input value={(Array.isArray(draft.links) ? draft.links : []).join('、')} onChange={(event) => updateListField('links', event.target.value)} placeholder="例如 採購管理、備份、FortiGate" /></label>
-            <div className="fd20481-doc-summary-box">
+          <section className="fd20481-doc-panel fd204123-doc-panel">
+            <h3>標籤、關聯與檢查清單</h3>
+            <label>標籤<input value={tags.join('、')} onChange={(event) => updateListField('tags', event.target.value)} placeholder="用頓號或逗號分隔" /></label>
+            <label>關聯項目<input value={links.join('、')} onChange={(event) => updateListField('links', event.target.value)} placeholder="例如 採購管理、備份、FortiGate" /></label>
+            <label>檢查清單<textarea value={checklist.join('\n')} onChange={(event) => updateListField('checklist', event.target.value)} placeholder="一行一個檢查項目" /></label>
+            <div className="fd20481-doc-summary-box fd204123-doc-summary-box">
               <article><span>狀態</span><strong>{draft.status || '使用中'}</strong></article>
               <article><span>重要性</span><strong>{draft.importance || '中'}</strong></article>
               <article><span>分類</span><strong>{draft.folder || '其他'}</strong></article>
-              <article><span>更新日</span><strong>{draft.updated || todayDate()}</strong></article>
+              <article><span>檢查項目</span><strong>{checklist.length}</strong></article>
             </div>
           </section>
 
-          <section className="fd20481-doc-panel fd20481-doc-content-panel">
+          <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel">
             <h3>文件內容 / 備忘</h3>
             <textarea value={draft.content || ''} onChange={(event) => updateDraft('content', event.target.value)} placeholder="可記錄 SOP 步驟、設定內容、注意事項或會議結論。" />
+          </section>
+
+          <section className="fd204123-doc-preview-panel">
+            <h3>閱讀預覽</h3>
+            <article>
+              <span>{draft.icon || '📄'}</span>
+              <strong>{draft.title || '未命名文件'}</strong>
+              <small>{draft.folder || '其他'} · {draft.type || '備忘'} · {draft.updated || todayDate()}</small>
+              <p>{draft.summary || '尚未填寫摘要。'}</p>
+              <div className="tag-list">
+                {tags.length ? tags.slice(0, 6).map((tag) => <span key={tag}>{tag}</span>) : <span>未設定標籤</span>}
+              </div>
+            </article>
+            <div className="fd204123-doc-check-preview">
+              <strong>檢查清單</strong>
+              {checklist.length ? checklist.slice(0, 8).map((item) => <span key={item}>□ {item}</span>) : <span>尚未建立檢查清單</span>}
+            </div>
           </section>
         </div>
 
@@ -6953,8 +7171,6 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     </div>
   )
 }
-
-
 
 function FlowPage({ rules }) {
   return (
