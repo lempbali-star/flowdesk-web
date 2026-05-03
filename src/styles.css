@@ -35136,3 +35136,33 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_139_DOC_HOVER_DROPDOWN_END */
 
+
+/* FLOWDESK_V20_4_140_DOC_HOVER_DROPDOWN_CLICK_FIX_START */
+/* v20.4.140：修正文件備忘自訂下拉選單無法點選 */
+.fd204139-hover-select,
+.fd204139-hover-select-menu,
+.fd204139-hover-select-menu button {
+  pointer-events: auto !important;
+}
+
+.fd204139-hover-select-menu {
+  z-index: 9999 !important;
+}
+
+.fd204139-hover-select.open {
+  z-index: 9998 !important;
+}
+
+.fd204138-word-ribbon,
+.fd204130-word-toolbar,
+.fd204135-toolbar-row,
+.fd204139-toolbar-row-menu {
+  overflow: visible !important;
+}
+
+.fd204139-hover-select-menu button {
+  cursor: pointer !important;
+  user-select: none !important;
+}
+/* FLOWDESK_V20_4_140_DOC_HOVER_DROPDOWN_CLICK_FIX_END */
+

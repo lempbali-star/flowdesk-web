@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.139'
+const FLOWDESK_APP_VERSION = '20.4.140'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7440,8 +7440,12 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
         <button
           type="button"
           className="fd204139-hover-select-button"
-          onMouseDown={(event) => { event.preventDefault(); saveRichEditorSelection() }}
-          onClick={() => setOpenHoverMenu((current) => current === action ? null : action)}
+          onMouseDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            saveRichEditorSelection()
+            setOpenHoverMenu((current) => current === action ? null : action)
+          }}
           onFocus={() => setOpenHoverMenu(action)}
         >
           {hoverMenuPlaceholder[action]}
@@ -7451,13 +7455,20 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
             <button
               type="button"
               key={`${action}-${option.value}`}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => {
-                if (allowHoverPreview && option.hover !== false) applyTextFormat(action, option.value)
-              }}
-              onClick={() => {
+              onMouseDown={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
                 applyTextFormat(action, option.value)
                 setOpenHoverMenu(null)
+              }}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                applyTextFormat(action, option.value)
+                setOpenHoverMenu(null)
+              }}
+              onMouseEnter={() => {
+                if (allowHoverPreview && option.hover !== false) applyTextFormat(action, option.value)
               }}
             >
               {option.label}
