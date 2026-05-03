@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.142'
+const FLOWDESK_APP_VERSION = '20.4.144'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7053,6 +7053,36 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
   }, [doc?.id])
 
   useEffect(() => {
+    function closeDocumentDropdownFinal(event) {
+      const target = event.target
+      if (target?.closest?.('.fd204144-dropdown')) return
+      setOpenHoverMenu(null)
+    }
+
+    function closeDocumentDropdownByEscape(event) {
+      if (event.key === 'Escape') setOpenHoverMenu(null)
+    }
+
+    function closeDocumentDropdownOnScroll(event) {
+      const target = event.target
+      if (target?.closest?.('.fd204144-dropdown-menu')) return
+      setOpenHoverMenu(null)
+    }
+
+    document.addEventListener('pointerdown', closeDocumentDropdownFinal, true)
+    document.addEventListener('mousedown', closeDocumentDropdownFinal, true)
+    document.addEventListener('keydown', closeDocumentDropdownByEscape)
+    document.addEventListener('scroll', closeDocumentDropdownOnScroll, true)
+
+    return () => {
+      document.removeEventListener('pointerdown', closeDocumentDropdownFinal, true)
+      document.removeEventListener('mousedown', closeDocumentDropdownFinal, true)
+      document.removeEventListener('keydown', closeDocumentDropdownByEscape)
+      document.removeEventListener('scroll', closeDocumentDropdownOnScroll, true)
+    }
+  }, [])
+
+  useEffect(() => {
     function closeHoverMenuFromOutside(event) {
       const target = event.target
       if (target?.closest?.('.fd204139-hover-select')) return
@@ -7352,6 +7382,18 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     return <div className="fd204127-doc-html-preview" dangerouslySetInnerHTML={{ __html: normalizeDocEditorHtml(text) }} />
   }
 
+  function handleSaveDocMemo() {
+    const latestContent = getRichEditorHtml()
+    const nextDraft = {
+      ...draft,
+      content: latestContent,
+      updated: todayDate(),
+    }
+    setDraft(nextDraft)
+    setOpenHoverMenu(null)
+    onSave?.(nextDraft)
+  }
+
   function copyDocText() {
     const temp = typeof document !== 'undefined' ? document.createElement('div') : null
     if (temp) temp.innerHTML = normalizeDocEditorHtml(draft.content || '')
@@ -7451,51 +7493,70 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
   }
 
   function renderHoverMenu(action, options = hoverMenuOptions[action], allowHoverPreview = true) {
+    const isOpen = openHoverMenu === action
+
+    function toggleMenu(event) {
+      event.preventDefault()
+      event.stopPropagation()
+      saveRichEditorSelection()
+      setOpenHoverMenu((current) => current === action ? null : action)
+    }
+
+    function chooseOption(event, option) {
+      event.preventDefault()
+      event.stopPropagation()
+      restoreRichEditorSelection()
+      applyTextFormat(action, option.value)
+      saveRichEditorSelection()
+      setOpenHoverMenu(null)
+    }
+
+    function previewOption(option) {
+      if (!isOpen || !allowHoverPreview || option.hover === false) return
+      restoreRichEditorSelection()
+      applyTextFormat(action, option.value)
+      saveRichEditorSelection()
+    }
+
     return (
-      <div
-        className={`fd204139-hover-select ${openHoverMenu === action ? 'open' : ''}`}
-      >
+      <div className={`fd204139-hover-select fd204144-dropdown ${isOpen ? 'open' : ''}`} data-menu-id={action}>
         <span>{hoverMenuLabel[action]}</span>
         <button
           type="button"
-          className="fd204139-hover-select-button"
-          onMouseDown={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            saveRichEditorSelection()
-            setOpenHoverMenu((current) => current === action ? null : action)
-          }}
-          onFocus={() => setOpenHoverMenu(action)}
+          className="fd204139-hover-select-button fd204143-hover-trigger fd204144-dropdown-trigger"
+          aria-expanded={isOpen}
+          onMouseDown={toggleMenu}
         >
           {hoverMenuPlaceholder[action]}
         </button>
-        <div className="fd204139-hover-select-menu">
-          {options.map((option) => (
-            <button
-              type="button"
-              key={`${action}-${option.value}`}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                applyTextFormat(action, option.value)
-                setOpenHoverMenu(null)
-              }}
-              onMouseEnter={() => {
-                if (allowHoverPreview && option.hover !== false) applyTextFormat(action, option.value)
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+
+        {isOpen ? (
+          <div
+            className="fd204139-hover-select-menu fd204144-dropdown-menu"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            {options.map((option) => (
+              <button
+                type="button"
+                className="fd204143-hover-option fd204144-dropdown-option"
+                key={`${action}-${option.value}`}
+                onMouseEnter={() => previewOption(option)}
+                onMouseDown={(event) => chooseOption(event, option)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     )
   }
 
+
   return (
     <div className="fd20481-doc-modal-layer fd204123-doc-modal-layer">
       <button type="button" className="fd20481-doc-modal-backdrop" onClick={onClose} aria-label="關閉文件彈窗" />
-      <section className="fd20481-doc-modal fd204123-doc-modal" role="dialog" aria-modal="true" aria-label="文件備忘詳情">
+      <section className="fd20481-doc-modal fd204123-doc-modal fd204143-doc-modal-stable" role="dialog" aria-modal="true" aria-label="文件備忘詳情">
         <header className="fd20481-doc-modal-head fd204123-doc-modal-head">
           <div>
             <p className="eyebrow">文件備忘</p>
@@ -7506,7 +7567,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
             <button type="button" className="ghost-btn" onClick={copyDocText}>複製內容</button>
             <button type="button" className="ghost-btn" onClick={() => onTogglePin?.(draft)}>{draft.pinned ? '取消釘選' : '釘選'}</button>
             <button type="button" className="ghost-btn" onClick={onClose}>關閉</button>
-            <button type="button" className="primary-btn" onClick={() => onSave?.(draft)}>儲存</button>
+            <button type="button" className="primary-btn" onClick={handleSaveDocMemo}>儲存</button>
           </div>
         </header>
 
@@ -7650,7 +7711,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           <div>
             <button type="button" onClick={() => onDuplicate?.(draft)}>複製</button>
             {draft.link ? <button type="button" onClick={() => window.open(draft.link, '_blank', 'noopener,noreferrer')}>開啟連結</button> : null}
-            <button type="button" className="primary-btn" onClick={() => onSave?.(draft)}>儲存並關閉</button>
+            <button type="button" className="primary-btn" onClick={handleSaveDocMemo}>儲存並關閉</button>
           </div>
         </footer>
       </section>
