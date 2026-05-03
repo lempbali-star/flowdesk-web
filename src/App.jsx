@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.130'
+const FLOWDESK_APP_VERSION = '20.4.131'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7039,6 +7039,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
   const [editorMode, setEditorMode] = useState('編輯')
   const contentEditorRef = useRef(null)
   const richEditorRef = useRef(null)
+  const savedRichSelectionRef = useRef(null)
 
   useEffect(() => {
     setDraft(doc)
@@ -7167,18 +7168,37 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     }, 0)
   }
 
+  function saveRichEditorSelection() {
+    if (typeof window === 'undefined' || !richEditorRef.current) return
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+    const range = selection.getRangeAt(0)
+    if (!richEditorRef.current.contains(range.commonAncestorContainer)) return
+    savedRichSelectionRef.current = range.cloneRange()
+  }
+
+  function restoreRichEditorSelection() {
+    if (typeof window === 'undefined' || !richEditorRef.current || !savedRichSelectionRef.current) return
+    const selection = window.getSelection()
+    if (!selection) return
+    selection.removeAllRanges()
+    selection.addRange(savedRichSelectionRef.current)
+  }
+
   function insertRichHtml(html) {
     if (!richEditorRef.current) return
     richEditorRef.current.focus()
+    restoreRichEditorSelection()
     document.execCommand('insertHTML', false, html)
     syncRichEditorContent()
-    setEditorMode('分割')
+    saveRichEditorSelection()
     focusRichEditor()
   }
 
   function applyTextFormat(action) {
     if (!richEditorRef.current) return
     richEditorRef.current.focus()
+    restoreRichEditorSelection()
     const today = todayDate()
 
     if (action === 'h2') {
@@ -7189,6 +7209,12 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
       document.execCommand('formatBlock', false, 'p')
     } else if (action === 'bold') {
       document.execCommand('bold', false, null)
+    } else if (action === 'italic') {
+      document.execCommand('italic', false, null)
+    } else if (action === 'underline') {
+      document.execCommand('underline', false, null)
+    } else if (action === 'strike') {
+      document.execCommand('strikeThrough', false, null)
     } else if (action === 'list') {
       document.execCommand('insertUnorderedList', false, null)
     } else if (action === 'ordered') {
@@ -7203,6 +7229,22 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
       document.execCommand('justifyRight', false, null)
     } else if (action === 'highlight') {
       document.execCommand('backColor', false, '#fef3c7')
+    } else if (action === 'textBlack') {
+      document.execCommand('foreColor', false, '#0f172a')
+    } else if (action === 'textBlue') {
+      document.execCommand('foreColor', false, '#2563eb')
+    } else if (action === 'textRed') {
+      document.execCommand('foreColor', false, '#dc2626')
+    } else if (action === 'fontSmall') {
+      document.execCommand('fontSize', false, '2')
+    } else if (action === 'fontNormal') {
+      document.execCommand('fontSize', false, '3')
+    } else if (action === 'fontLarge') {
+      document.execCommand('fontSize', false, '5')
+    } else if (action === 'indent') {
+      document.execCommand('indent', false, null)
+    } else if (action === 'outdent') {
+      document.execCommand('outdent', false, null)
     } else if (action === 'clear') {
       document.execCommand('removeFormat', false, null)
       document.execCommand('formatBlock', false, 'p')
@@ -7237,9 +7279,13 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     } else if (action === 'mail') {
       insertRichHtml('<h2>Mail 範本</h2><p>您好，</p><p>這邊想跟您確認以下事項：</p><ul><li>項目一</li><li>項目二</li></ul><p>再麻煩您協助確認，謝謝。</p><p><br></p>')
       return
+    } else if (action === 'checklistTemplate') {
+      insertRichHtml('<h2>檢查清單</h2><p class="fd204127-todo-line">☐ 檢查項目一</p><p class="fd204127-todo-line">☐ 檢查項目二</p><p class="fd204127-todo-line">☐ 檢查項目三</p><p><br></p>')
+      return
     }
 
     syncRichEditorContent()
+    saveRichEditorSelection()
     focusRichEditor()
   }
 
@@ -7318,7 +7364,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
               </div>
             </div>
 
-            <div className="fd204130-word-toolbar" role="toolbar" aria-label="文件編輯工具列">
+            <div className="fd204130-word-toolbar fd204131-word-toolbar" role="toolbar" aria-label="文件編輯工具列" onMouseDown={(event) => event.preventDefault()}>
               <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('paragraph')}>本文</button>
                 <button type="button" onClick={() => applyTextFormat('h2')}>標題 1</button>
@@ -7326,20 +7372,26 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
               </div>
               <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('bold')}>粗體</button>
+                <button type="button" onClick={() => applyTextFormat('italic')}>斜體</button>
+                <button type="button" onClick={() => applyTextFormat('underline')}>底線</button>
+                <button type="button" onClick={() => applyTextFormat('strike')}>刪除線</button>
+              </div>
+              <div className="fd204130-toolbar-group">
+                <button type="button" onClick={() => applyTextFormat('fontSmall')}>小字</button>
+                <button type="button" onClick={() => applyTextFormat('fontNormal')}>中字</button>
+                <button type="button" onClick={() => applyTextFormat('fontLarge')}>大字</button>
+                <button type="button" onClick={() => applyTextFormat('textBlack')}>黑字</button>
+                <button type="button" onClick={() => applyTextFormat('textBlue')}>藍字</button>
+                <button type="button" onClick={() => applyTextFormat('textRed')}>紅字</button>
                 <button type="button" onClick={() => applyTextFormat('highlight')}>螢光</button>
-                <button type="button" onClick={() => applyTextFormat('clear')}>清除格式</button>
+                <button type="button" onClick={() => applyTextFormat('clear')}>清除</button>
               </div>
               <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('list')}>項目</button>
                 <button type="button" onClick={() => applyTextFormat('ordered')}>編號</button>
                 <button type="button" onClick={() => applyTextFormat('todo')}>待辦</button>
-              </div>
-              <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('quote')}>引用</button>
-                <button type="button" onClick={() => applyTextFormat('table')}>表格</button>
-                <button type="button" onClick={() => applyTextFormat('code')}>程式碼</button>
-                <button type="button" onClick={() => applyTextFormat('divider')}>分隔線</button>
-                <button type="button" onClick={() => applyTextFormat('date')}>日期</button>
+                <button type="button" onClick={() => applyTextFormat('indent')}>縮排</button>
+                <button type="button" onClick={() => applyTextFormat('outdent')}>外凸</button>
               </div>
               <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('alignLeft')}>靠左</button>
@@ -7347,9 +7399,18 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
                 <button type="button" onClick={() => applyTextFormat('alignRight')}>靠右</button>
               </div>
               <div className="fd204130-toolbar-group">
+                <button type="button" onClick={() => applyTextFormat('quote')}>引用</button>
+                <button type="button" onClick={() => applyTextFormat('callout')}>提醒框</button>
+                <button type="button" onClick={() => applyTextFormat('table')}>表格</button>
+                <button type="button" onClick={() => applyTextFormat('code')}>程式碼</button>
+                <button type="button" onClick={() => applyTextFormat('divider')}>分隔線</button>
+                <button type="button" onClick={() => applyTextFormat('date')}>日期</button>
+              </div>
+              <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('sop')}>SOP</button>
                 <button type="button" onClick={() => applyTextFormat('meeting')}>會議</button>
                 <button type="button" onClick={() => applyTextFormat('mail')}>Mail</button>
+                <button type="button" onClick={() => applyTextFormat('checklistTemplate')}>檢查清單</button>
               </div>
               <div className="fd204130-toolbar-group fd204130-toolbar-group-last">
                 <button type="button" onClick={() => applyTextFormat('undo')}>復原</button>
@@ -7364,9 +7425,11 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
                 contentEditable
                 suppressContentEditableWarning
                 spellCheck={false}
-                onInput={syncRichEditorContent}
-                onBlur={syncRichEditorContent}
-                dangerouslySetInnerHTML={{ __html: normalizeDocEditorHtml(draft.content) }}
+                onInput={() => { syncRichEditorContent(); saveRichEditorSelection() }}
+                onBlur={() => { syncRichEditorContent(); saveRichEditorSelection() }}
+                onMouseUp={saveRichEditorSelection}
+                onKeyUp={saveRichEditorSelection}
+                onFocus={saveRichEditorSelection}
               />
             </div>
           </section>

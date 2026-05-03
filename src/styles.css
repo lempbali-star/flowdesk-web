@@ -33668,3 +33668,54 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   }
 }
 /* FLOWDESK_V20_4_130_DOC_WORD_MODAL_REBUILD_END */
+
+
+/* FLOWDESK_V20_4_131_DOC_EDITOR_FUNCTIONS_AND_CURSOR_FIX_START */
+/* v20.4.131 文件備忘功能加強 + 游標位置修正
+   重點：工具列點擊不搶焦點，避免游標回到左上角。
+*/
+.fd204131-word-toolbar {
+  gap: 0;
+}
+
+.fd204131-word-toolbar button {
+  white-space: nowrap;
+}
+
+.fd204131-word-toolbar .fd204130-toolbar-group {
+  row-gap: 6px;
+}
+
+.fd204130-word-paper font[size="2"] {
+  font-size: 13px;
+}
+
+.fd204130-word-paper font[size="3"] {
+  font-size: 15px;
+}
+
+.fd204130-word-paper font[size="5"] {
+  font-size: 22px;
+  line-height: 1.45;
+}
+
+.fd204130-word-paper [style*="color: rgb(220, 38, 38)"],
+.fd204130-word-paper [style*="color:#dc2626"],
+.fd204130-word-paper [style*="color: #dc2626"] {
+  color: #dc2626 !important;
+}
+
+.fd204130-word-paper [style*="color: rgb(37, 99, 235)"],
+.fd204130-word-paper [style*="color:#2563eb"],
+.fd204130-word-paper [style*="color: #2563eb"] {
+  color: #2563eb !important;
+}
+
+.fd204130-word-paper [style*="background-color: rgb(254, 243, 199)"],
+.fd204130-word-paper [style*="background-color:#fef3c7"],
+.fd204130-word-paper [style*="background-color: #fef3c7"] {
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+/* FLOWDESK_V20_4_131_DOC_EDITOR_FUNCTIONS_AND_CURSOR_FIX_END */
+
