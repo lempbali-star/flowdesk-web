@@ -34454,3 +34454,110 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_135_DOC_EDITOR_FULL_TOOLBAR_END */
 
+
+/* FLOWDESK_V20_4_136_DOC_TOOLBAR_VISIBLE_REORDER_START */
+/* v20.4.136：修正 v20.4.135 工具列沒有顯示、設定列卡在工具列前方的問題 */
+
+.fd204136-toolbar-visible {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 118px !important;
+  flex: 0 0 auto !important;
+  order: 20 !important;
+}
+
+.fd204136-toolbar-visible .fd204135-toolbar-row {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.fd204136-doc-info-after-toolbar {
+  order: 30 !important;
+  position: static !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  border-top: 0 !important;
+  border-bottom: 1px solid rgba(203, 213, 225, .92) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+}
+
+.fd204136-doc-info-after-toolbar summary {
+  min-height: 38px !important;
+  padding: 8px 22px !important;
+  font-size: 12px !important;
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+.fd204136-doc-info-after-toolbar summary::after {
+  content: "展開設定" !important;
+  min-height: 26px !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+
+.fd204136-doc-info-after-toolbar[open] summary::after {
+  content: "收合設定" !important;
+}
+
+.fd204130-word-stage {
+  order: 40 !important;
+}
+
+/* 讓全螢幕更明確：工具列與紙張區固定在剩餘高度內 */
+.fd20481-doc-modal {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.fd20481-doc-modal-body.fd204130-doc-modal-body {
+  height: 100% !important;
+  overflow: auto !important;
+}
+
+.fd204130-doc-editor-panel {
+  min-height: calc(100vh - 122px) !important;
+}
+
+.fd204130-word-stage {
+  min-height: calc(100vh - 352px) !important;
+}
+
+.fd204130-word-paper {
+  min-height: calc(100vh - 410px) !important;
+}
+
+/* 下拉工具列的選單區固定可見，不被其他舊樣式洗掉 */
+.fd204135-toolbar-row.primary,
+.fd204135-toolbar-row.inserts {
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.fd204135-toolbar-row select {
+  display: inline-block !important;
+  appearance: auto !important;
+}
+
+@media (max-width: 900px) {
+  .fd204136-toolbar-visible {
+    min-height: auto !important;
+  }
+
+  .fd204135-toolbar-row {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .fd204130-word-stage {
+    min-height: calc(100vh - 390px) !important;
+  }
+}
+/* FLOWDESK_V20_4_136_DOC_TOOLBAR_VISIBLE_REORDER_END */
+
