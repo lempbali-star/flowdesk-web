@@ -34561,3 +34561,280 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_136_DOC_TOOLBAR_VISIBLE_REORDER_END */
 
+
+
+/* FLOWDESK_V20_4_137_DOC_EDITOR_PROPORTION_REBALANCE_START */
+/* v20.4.137：重整文件備忘編輯器比例，縮短上方控制區、放大白紙編輯區、改善整體閱讀性 */
+.fd20481-doc-modal {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+}
+
+.fd20481-doc-modal-head {
+  padding: 14px 18px 12px !important;
+  gap: 10px !important;
+}
+
+.fd20481-doc-modal-head h2 {
+  margin-bottom: 4px !important;
+  font-size: 18px !important;
+  line-height: 1.2 !important;
+}
+
+.fd20481-doc-modal-head p {
+  font-size: 12px !important;
+}
+
+.fd20481-doc-modal-head > div:last-child {
+  gap: 8px !important;
+}
+
+.fd20481-doc-modal-head button,
+.fd20481-doc-modal-footer button,
+.fd204132-doc-title-actions button {
+  min-height: 36px !important;
+}
+
+.fd20481-doc-modal-body.fd204130-doc-modal-body {
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: auto !important;
+  background: #eef2f7 !important;
+}
+
+.fd204130-doc-editor-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: calc(100vh - 122px) !important;
+  padding: 0 !important;
+  background: #eef2f7 !important;
+}
+
+.fd204132-doc-title-row {
+  padding: 12px 18px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, .96) !important;
+  background: #ffffff !important;
+}
+
+.fd204132-doc-title-main {
+  gap: 12px !important;
+}
+
+.fd204132-doc-title-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 14px !important;
+}
+
+.fd204132-doc-title-main h3 {
+  font-size: 17px !important;
+  margin: 0 0 2px !important;
+}
+
+.fd204132-doc-title-main p,
+.fd204132-doc-title-actions span {
+  font-size: 12px !important;
+}
+
+.fd204132-doc-title-actions {
+  gap: 10px !important;
+}
+
+.fd204130-word-toolbar.fd204136-toolbar-visible {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 8 !important;
+  margin: 0 !important;
+  padding: 10px 18px !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(320px, 1fr)) !important;
+  gap: 8px 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(226, 232, 240, .96) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,250,252,.98)) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+.fd204135-toolbar-row {
+  display: flex !important;
+  align-items: end !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.fd204135-toolbar-row label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  min-width: 112px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #64748b !important;
+}
+
+.fd204135-toolbar-row label select,
+.fd204135-toolbar-row select {
+  min-height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid rgba(203, 213, 225, .98) !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.fd204135-toolbar-row button {
+  min-height: 34px !important;
+  padding: 0 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: #334155 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.fd204135-toolbar-row button:hover,
+.fd204135-toolbar-row button:focus-visible {
+  background: #eff6ff !important;
+  border-color: rgba(191, 219, 254, .98) !important;
+  color: #1d4ed8 !important;
+}
+
+.fd204135-toolbar-row.inserts {
+  grid-column: 1 / -1 !important;
+  padding-top: 2px !important;
+}
+
+.fd204136-doc-info-after-toolbar {
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(226, 232, 240, .96) !important;
+  background: #f8fafc !important;
+  box-shadow: none !important;
+}
+
+.fd204136-doc-info-after-toolbar summary {
+  min-height: 38px !important;
+  padding: 0 18px !important;
+  justify-content: flex-end !important;
+  background: #f8fafc !important;
+  color: transparent !important;
+}
+
+.fd204136-doc-info-after-toolbar summary::before {
+  content: '文件資訊與設定';
+  margin-right: auto;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd204136-doc-info-after-toolbar summary::after {
+  min-height: 28px !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+
+.fd204136-doc-info-after-toolbar .fd204130-doc-meta-grid {
+  padding: 0 18px 14px !important;
+}
+
+.fd204130-word-stage {
+  flex: 1 1 auto !important;
+  min-height: calc(100vh - 300px) !important;
+  margin-top: 0 !important;
+  padding: 18px 24px 22px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #edf1f6 0%, #e8edf4 100%) !important;
+  box-shadow: none !important;
+}
+
+.fd204130-word-paper {
+  width: min(1360px, calc(100% - 20px)) !important;
+  min-height: calc(100vh - 340px) !important;
+  margin: 0 auto !important;
+  padding: 48px 64px !important;
+  border: 1px solid rgba(226, 232, 240, .98) !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, .10) !important;
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+}
+
+.fd204130-word-paper p,
+.fd204130-word-paper li,
+.fd204130-word-paper td,
+.fd204130-word-paper th {
+  font-size: 16px !important;
+}
+
+.fd20481-doc-modal-footer {
+  padding: 12px 18px !important;
+  border-top: 1px solid rgba(226, 232, 240, .96) !important;
+  background: rgba(255,255,255,.96) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+@media (max-width: 1200px) {
+  .fd204130-word-toolbar.fd204136-toolbar-visible {
+    grid-template-columns: 1fr !important;
+  }
+
+  .fd204130-word-paper {
+    width: min(100%, calc(100% - 12px)) !important;
+    padding: 40px 36px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .fd20481-doc-modal-head {
+    padding: 12px 12px 10px !important;
+  }
+
+  .fd204132-doc-title-row,
+  .fd204130-word-toolbar.fd204136-toolbar-visible,
+  .fd204136-doc-info-after-toolbar summary,
+  .fd204136-doc-info-after-toolbar .fd204130-doc-meta-grid,
+  .fd20481-doc-modal-footer {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .fd204130-word-stage {
+    padding: 12px 10px 18px !important;
+    min-height: calc(100vh - 330px) !important;
+  }
+
+  .fd204130-word-paper {
+    width: 100% !important;
+    min-height: calc(100vh - 370px) !important;
+    padding: 28px 18px !important;
+  }
+
+  .fd204135-toolbar-row {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px !important;
+  }
+
+  .fd204135-toolbar-row label {
+    min-width: 108px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .fd204135-toolbar-row button,
+  .fd204135-toolbar-row select {
+    flex: 0 0 auto !important;
+  }
+}
+/* FLOWDESK_V20_4_137_DOC_EDITOR_PROPORTION_REBALANCE_END */
