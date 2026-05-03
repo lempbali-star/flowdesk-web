@@ -31924,3 +31924,21 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_114_PROJECT_PURCHASE_STYLE_PAGER_END */
 
+
+/* FLOWDESK_V20_4_115_PROJECT_DEFAULT_PAGE_SIZE_START */
+/* v20.4.115
+   專案管理預設每頁 5 筆，讓分頁列正常出現在第一屏附近。
+*/
+
+.project-workspace .fd204114-project-pagination,
+.project-workspace .project-pagination-bar.fd203-pagination {
+  margin-top: 16px !important;
+  margin-bottom: 0 !important;
+}
+
+.project-workspace .fd203-project-card-list,
+.project-workspace .fd203-project-card-list.expanded-gantt {
+  margin-bottom: 12px !important;
+}
+/* FLOWDESK_V20_4_115_PROJECT_DEFAULT_PAGE_SIZE_END */
+
