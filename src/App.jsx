@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.128'
+const FLOWDESK_APP_VERSION = '20.4.129'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7340,7 +7340,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel fd204124-doc-editor-panel">
             <div className="fd204124-doc-editor-head">
               <div>
-                <h3>文件內容 / Word 風格編輯器</h3>
+                <h3>文件內容 / 文件編輯器</h3>
                 <small>{contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
               </div>
               <div className="fd204128-doc-editor-status">
