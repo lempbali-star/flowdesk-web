@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.140'
+const FLOWDESK_APP_VERSION = '20.4.141'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7434,7 +7434,6 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     return (
       <div
         className={`fd204139-hover-select ${openHoverMenu === action ? 'open' : ''}`}
-        onMouseLeave={() => setOpenHoverMenu((current) => current === action ? null : current)}
       >
         <span>{hoverMenuLabel[action]}</span>
         <button
@@ -7456,12 +7455,6 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
               type="button"
               key={`${action}-${option.value}`}
               onMouseDown={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                applyTextFormat(action, option.value)
-                setOpenHoverMenu(null)
-              }}
-              onPointerDown={(event) => {
                 event.preventDefault()
                 event.stopPropagation()
                 applyTextFormat(action, option.value)
@@ -7624,7 +7617,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
                 onBlur={() => { syncRichEditorContent(); saveRichEditorSelection() }}
                 onMouseUp={saveRichEditorSelection}
                 onKeyUp={saveRichEditorSelection}
-                onFocus={saveRichEditorSelection}
+                onFocus={() => { saveRichEditorSelection(); setOpenHoverMenu(null) }}
               />
             </div>
           </section>
