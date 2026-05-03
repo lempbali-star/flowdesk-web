@@ -31776,137 +31776,179 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* FLOWDESK_V20_4_108_PROJECT_RIGHT_LAYER_REMOVE_END */
 
 
-/* FLOWDESK_V20_4_119_PROJECT_MAIN_PURCHASE_ALIGN_CLEAN_START */
-/* v20.4.119：專案管理主畫面對齊採購管理；只整理主畫面的列表、卡片、切換列與分頁列。 */
+/* FLOWDESK_V20_4_121_UNIFIED_PAGINATION_POSITION_START */
+/* v20.4.121：全系統分頁位置統一。
+   分頁列一律放在清單 / 卡片資料區下方，採購、專案、工作事項、文件、提醒、分析摘要都使用相同視覺規格。 */
+.fd20483-pagination,
+.purchase-pagination {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  translate: none !important;
+  float: none !important;
+  clear: both !important;
+  z-index: 1 !important;
 
-.project-workspace .fd203-project-list-pane,
-.project-workspace .fd203-project-list-pane.full {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow: visible;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+
+  margin: 16px 0 0 !important;
+  padding: 12px 14px !important;
+
+  border: 1px solid rgba(226, 232, 240, .92) !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .06) !important;
+  pointer-events: auto !important;
 }
 
-.project-workspace .fd203-project-list-pane::before,
-.project-workspace .fd203-project-list-pane::after,
-.project-workspace .fd203-project-card-list::before,
-.project-workspace .fd203-project-card-list::after {
+.fd20483-pagination::before,
+.fd20483-pagination::after,
+.purchase-pagination::before,
+.purchase-pagination::after {
   display: none !important;
   content: none !important;
 }
 
-.project-workspace .fd20490-project-list-topbar,
-.project-workspace .fd20490-list-topbar {
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 8px 0 14px;
+.fd20483-pagination-info,
+.fd20483-pagination-controls,
+.fd20483-page-size,
+.purchase-pagination > * {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  translate: none !important;
+  float: none !important;
+  min-width: 0 !important;
 }
 
-.project-workspace .fd20490-list-view-control {
-  flex: 0 0 auto;
-  margin-left: auto;
+.fd20483-pagination-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
 }
 
-.project-workspace .fd203-project-card-list,
-.project-workspace .fd203-project-card-list.expanded-gantt {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-  gap: 14px;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow: visible;
-  margin-bottom: 14px;
+.fd20483-pagination-info strong {
+  color: #0f172a !important;
+  font-size: 14px !important;
+  font-weight: 950 !important;
 }
 
-.project-workspace .fd203-project-card,
-.project-workspace .project-board-card,
-.project-workspace .project-card {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
+.fd20483-pagination-info span,
+.fd20483-page-indicator,
+.purchase-pagination span {
+  min-height: 30px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 5px 11px !important;
+  border-radius: 999px !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
 }
 
-.project-workspace .fd203-project-card *,
-.project-workspace .project-board-card *,
-.project-workspace .project-card * {
-  min-width: 0;
+.fd20483-pagination-controls {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 7px !important;
+  flex-wrap: wrap !important;
 }
 
-.project-workspace .fd203-project-card h3,
-.project-workspace .project-board-card h3,
-.project-workspace .project-card h3,
-.project-workspace .fd203-project-card strong,
-.project-workspace .project-board-card strong,
-.project-workspace .project-card strong {
-  white-space: normal;
-  word-break: normal;
-  overflow-wrap: anywhere;
+.fd20483-pagination-controls button,
+.fd20483-page-size select,
+.purchase-pagination button {
+  position: static !important;
+  transform: none !important;
+  translate: none !important;
+  min-height: 34px !important;
+  border: 1px solid rgba(148, 163, 184, .24) !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  pointer-events: auto !important;
 }
 
-.project-workspace .fd20483-pagination {
-  margin-top: 16px;
+.fd20483-pagination-controls button,
+.purchase-pagination button {
+  padding: 7px 12px !important;
 }
 
-.project-workspace .fd203-project-table {
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+.fd20483-pagination-controls button:disabled,
+.purchase-pagination button:disabled {
+  opacity: .42 !important;
+  cursor: not-allowed !important;
 }
 
-@media (min-width: 761px) and (max-width: 1360px) {
-  .project-workspace .fd203-project-card-list,
-  .project-workspace .fd203-project-card-list.expanded-gantt {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  }
+.fd20483-page-size {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
 }
 
-@media (min-width: 761px) and (max-width: 980px) {
-  .project-workspace .fd203-project-card-list,
-  .project-workspace .fd203-project-card-list.expanded-gantt {
-    grid-template-columns: 1fr;
-  }
-
-  .project-workspace .fd20490-list-topbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .project-workspace .fd20490-list-view-control {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-  }
+.fd20483-page-size select {
+  padding: 0 10px !important;
 }
-/* FLOWDESK_V20_4_119_PROJECT_MAIN_PURCHASE_ALIGN_CLEAN_END */
 
+/* 資料容器一律先完整排完，再接分頁列 */
+.purchase-card-list,
+.fd203-project-card-list,
+.fd203-project-table,
+.fd20481-doc-grid,
+.fd20481-doc-list,
+.fd20487-reminder-list,
+.fd20482-recent-list,
+.card-wall,
+.work-grid,
+.kanban {
+  position: relative !important;
+  z-index: 1 !important;
+  overflow: visible !important;
+  margin-bottom: 14px !important;
+}
 
-/* FLOWDESK_V20_4_120_PROJECT_CARD_LIST_HEIGHT_FIX_START */
-/* v20.4.120：專案管理卡片列表高度修正。
-   問題點：舊樣式讓 .fd203-project-card-list 保留 max-height，卡片溢出後分頁列會插到第二排中間。
-   修正：卡片模式列表取消 max-height，讓 5 張卡片完整撐開後，分頁列自然排在下方。
-*/
+/* 清單型表格可以橫向滑，但不能把分頁浮到上方 */
+.work-grid,
+.fd203-project-table {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}
+
+/* 專案卡片列表高度修正保留在全系統規格內 */
 .project-workspace .fd203-project-card-list,
 .project-workspace .fd203-project-card-list.expanded-gantt {
   height: auto !important;
   max-height: none !important;
-  overflow: visible !important;
   align-items: start !important;
-  margin-bottom: 16px !important;
 }
 
-.project-workspace .fd203-project-card-list + .fd20483-pagination,
-.project-workspace .fd203-project-table + .fd20483-pagination {
-  position: relative !important;
-  clear: both !important;
-  width: 100% !important;
-  margin-top: 16px !important;
-  z-index: 1 !important;
-}
+@media (max-width: 980px) {
+  .fd20483-pagination,
+  .purchase-pagination {
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+  }
 
-.project-workspace .fd20483-pagination {
-  flex-shrink: 0 !important;
+  .fd20483-pagination-controls,
+  .fd20483-page-size {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
 }
-/* FLOWDESK_V20_4_120_PROJECT_CARD_LIST_HEIGHT_FIX_END */
+/* FLOWDESK_V20_4_121_UNIFIED_PAGINATION_POSITION_END */
 

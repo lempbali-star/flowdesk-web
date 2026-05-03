@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.120'
+const FLOWDESK_APP_VERSION = '20.4.121'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -3072,14 +3072,6 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                         </button>
                       ))}
                     </div>
-                    <label className="purchase-page-size-control purchase-inline-page-size"><span>每頁筆數</span>
-                      <select value={purchasePageSize} onChange={(event) => setPurchasePageSize(Number(event.target.value))}>
-                        {purchasePageSizeOptions.map((size) => <option key={size} value={size}>{size} 筆</option>)}
-                      </select>
-                    </label>
-                    <div className="purchase-page-size-control compact-page-indicator">
-                      <span>第 {safePurchasePage} / {purchasePageCount} 頁</span>
-                    </div>
                   </div>
                 </div>
                 <div className="purchase-selection-status fd86-purchase-list-brief">
@@ -3168,11 +3160,20 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                   })}
                   {!pagedPurchases.length && <div className="purchase-empty-state">沒有符合條件的採購資料</div>}
                 </div>
-                <div className="purchase-pagination">
-                  <button type="button" onClick={() => setPurchasePage((page) => Math.max(1, page - 1))} disabled={safePurchasePage <= 1}>上一頁</button>
-                  <span>{((safePurchasePage - 1) * purchasePageSize) + (filteredPurchases.length ? 1 : 0)} - {Math.min(safePurchasePage * purchasePageSize, filteredPurchases.length)} / {filteredPurchases.length}</span>
-                  <button type="button" onClick={() => setPurchasePage((page) => Math.min(purchasePageCount, page + 1))} disabled={safePurchasePage >= purchasePageCount}>下一頁</button>
-                </div>
+                <FlowdeskPaginationV83
+                  label="採購管理"
+                  page={safePurchasePage}
+                  pageCount={purchasePageCount}
+                  pageSize={purchasePageSize}
+                  pageSizeOptions={purchasePageSizeOptions}
+                  total={filteredPurchases.length}
+                  currentCount={pagedPurchases.length}
+                  onPageChange={setPurchasePage}
+                  onPageSizeChange={(size) => {
+                    setPurchasePageSize(size)
+                    setPurchasePage(1)
+                  }}
+                />
               </section>
             </div>
           </>
