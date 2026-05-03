@@ -34180,3 +34180,100 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_133_DOC_WORD_EDITOR_LAYOUT_FIX_END */
 
+
+/* FLOWDESK_V20_4_134_DOC_INFO_PANEL_REPOSITION_START */
+/* v20.4.134 文件備忘版面修正：
+   文件資訊改到工具列上方，避免壓在白色紙張上。
+*/
+
+.fd204134-doc-info-toggle {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(203, 213, 225, .9) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
+  transform: none !important;
+  translate: none !important;
+}
+
+.fd204134-doc-info-toggle summary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 44px !important;
+  padding: 10px 20px !important;
+  cursor: pointer !important;
+  color: #0f172a !important;
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  list-style: none !important;
+}
+
+.fd204134-doc-info-toggle summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.fd204134-doc-info-toggle summary::after {
+  content: "展開設定";
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid rgba(191, 219, 254, .95);
+  border-radius: 999px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd204134-doc-info-toggle[open] summary::after {
+  content: "收合設定";
+}
+
+.fd204134-doc-info-toggle .fd204130-doc-meta-grid {
+  display: grid;
+  grid-template-columns: 1.25fr .95fr;
+  gap: 14px;
+  padding: 0 18px 16px;
+  background: #ffffff;
+}
+
+.fd204134-doc-info-toggle .fd204130-doc-meta-panel {
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+/* 保證文件紙張層級永遠在正常編輯區，不被設定區覆蓋 */
+.fd204130-word-stage {
+  position: relative !important;
+  z-index: 0 !important;
+  clear: both !important;
+  overflow: auto !important;
+}
+
+.fd204130-word-paper {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* 把舊設定區的重疊定位全部洗掉 */
+.fd204130-doc-fold:not(.fd204134-doc-info-toggle),
+.fd204133-doc-fold:not(.fd204134-doc-info-toggle) {
+  position: static !important;
+  display: block !important;
+  transform: none !important;
+  translate: none !important;
+}
+
+@media (max-width: 900px) {
+  .fd204134-doc-info-toggle .fd204130-doc-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* FLOWDESK_V20_4_134_DOC_INFO_PANEL_REPOSITION_END */
+
