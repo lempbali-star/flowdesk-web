@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.141'
+const FLOWDESK_APP_VERSION = '20.4.142'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7052,6 +7052,26 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     richEditorRef.current.innerHTML = normalizeDocEditorHtml(doc?.content || '')
   }, [doc?.id])
 
+  useEffect(() => {
+    function closeHoverMenuFromOutside(event) {
+      const target = event.target
+      if (target?.closest?.('.fd204139-hover-select')) return
+      setOpenHoverMenu(null)
+    }
+
+    function closeHoverMenuWithEscape(event) {
+      if (event.key === 'Escape') setOpenHoverMenu(null)
+    }
+
+    document.addEventListener('pointerdown', closeHoverMenuFromOutside)
+    document.addEventListener('keydown', closeHoverMenuWithEscape)
+
+    return () => {
+      document.removeEventListener('pointerdown', closeHoverMenuFromOutside)
+      document.removeEventListener('keydown', closeHoverMenuWithEscape)
+    }
+  }, [])
+
 
   if (!draft) return null
 
@@ -11850,6 +11870,7 @@ if (typeof window !== 'undefined' && !window.__flowdeskLeftNavScrollbarForceHide
 }
 // FLOWDESK_LEFT_NAV_SCROLLBAR_FORCE_HIDE_BRIDGE_END
 export default App
+
 
 
 
