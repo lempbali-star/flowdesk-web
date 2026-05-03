@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.115'
+const FLOWDESK_APP_VERSION = '20.4.116'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -3736,9 +3736,21 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return Math.max(1, Number(window.localStorage.getItem('flowdesk-project-page-v20316') || 1))
   })
   const [projectPageSize, setProjectPageSize] = useState(() => {
-    if (typeof window === 'undefined') return 10
-    const saved = Number(window.localStorage.getItem('flowdesk-project-page-size-v20316') || 10)
-    return [10, 20, 30, 40, 50].includes(saved) ? saved : 10
+    if (typeof window === 'undefined') return 5
+
+    const migrationKey = 'flowdesk-project-page-size-default-v204116'
+    const pageSizeKey = 'flowdesk-project-page-size-v20316'
+    const pageKey = 'flowdesk-project-page-v20316'
+
+    if (window.localStorage.getItem(migrationKey) !== 'done') {
+      window.localStorage.setItem(pageSizeKey, '5')
+      window.localStorage.setItem(pageKey, '1')
+      window.localStorage.setItem(migrationKey, 'done')
+      return 5
+    }
+
+    const saved = Number(window.localStorage.getItem(pageSizeKey) || 5)
+    return [5, 10, 20, 30, 40, 50].includes(saved) ? saved : 5
   })
   const [projectPageInput, setProjectPageInput] = useState(() => {
     if (typeof window === 'undefined') return '1'

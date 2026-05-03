@@ -31942,3 +31942,20 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_115_PROJECT_DEFAULT_PAGE_SIZE_END */
 
+
+/* FLOWDESK_V20_4_116_PROJECT_PAGE_SIZE_FORCE_5_START */
+/* v20.4.116
+   專案管理每頁 5 筆強制套用。
+*/
+
+.project-workspace .fd203-project-card-list,
+.project-workspace .fd203-project-card-list.expanded-gantt {
+  margin-bottom: 14px !important;
+}
+
+.project-workspace .fd204114-project-pagination,
+.project-workspace .project-pagination-bar.fd203-pagination {
+  margin-top: 16px !important;
+}
+/* FLOWDESK_V20_4_116_PROJECT_PAGE_SIZE_FORCE_5_END */
+
