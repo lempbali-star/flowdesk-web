@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.138'
+const FLOWDESK_APP_VERSION = '20.4.139'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7040,6 +7040,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
   const contentEditorRef = useRef(null)
   const richEditorRef = useRef(null)
   const savedRichSelectionRef = useRef(null)
+  const [openHoverMenu, setOpenHoverMenu] = useState(null)
 
   useEffect(() => {
     setDraft(doc)
@@ -7358,6 +7359,115 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     }
   }, [draft?.content])
 
+  const hoverMenuOptions = {
+    style: [
+      { value: 'paragraph', label: '本文' },
+      { value: 'h2', label: '標題 1' },
+      { value: 'h3', label: '標題 2' },
+      { value: 'quote', label: '引用' },
+      { value: 'code', label: '程式碼區塊', hover: false },
+    ],
+    fontName: [
+      { value: 'Microsoft JhengHei', label: '微軟正黑體' },
+      { value: 'Noto Sans TC', label: 'Noto Sans TC' },
+      { value: 'Arial', label: 'Arial' },
+      { value: 'Times New Roman', label: 'Times New Roman' },
+      { value: 'Consolas', label: 'Consolas' },
+    ],
+    fontSize: ['12', '14', '16', '18', '20', '24', '28', '32'].map((value) => ({ value, label: value })),
+    lineHeight: [
+      { value: '1.15', label: '1.15' },
+      { value: '1.5', label: '1.5' },
+      { value: '1.7', label: '1.7' },
+      { value: '2', label: '2.0' },
+    ],
+    align: [
+      { value: 'left', label: '靠左' },
+      { value: 'center', label: '置中' },
+      { value: 'right', label: '靠右' },
+      { value: 'justify', label: '左右對齊' },
+    ],
+    listType: [
+      { value: 'bullet', label: '項目清單' },
+      { value: 'number', label: '編號清單' },
+      { value: 'todo', label: '待辦清單', hover: false },
+    ],
+    insert: [
+      { value: 'quote', label: '引用' },
+      { value: 'callout', label: '提醒框' },
+      { value: 'table', label: '表格' },
+      { value: 'code', label: '程式碼' },
+      { value: 'divider', label: '分隔線' },
+      { value: 'date', label: '日期紀錄' },
+    ],
+    template: [
+      { value: 'sop', label: 'SOP 作業流程' },
+      { value: 'meeting', label: '會議紀錄' },
+      { value: 'mail', label: 'Mail 範本' },
+      { value: 'checklist', label: '檢查清單' },
+    ],
+  }
+
+  const hoverMenuLabel = {
+    style: '樣式',
+    fontName: '字體',
+    fontSize: '字級',
+    lineHeight: '行距',
+    align: '對齊',
+    listType: '清單',
+    insert: '插入',
+    template: 'FlowDesk 範本',
+  }
+
+  const hoverMenuPlaceholder = {
+    style: '段落樣式',
+    fontName: '選擇字體',
+    fontSize: '大小',
+    lineHeight: '行距',
+    align: '對齊',
+    listType: '清單',
+    insert: '選擇插入項目',
+    template: '選擇範本',
+  }
+
+  function renderHoverMenu(action, options = hoverMenuOptions[action], allowHoverPreview = true) {
+    return (
+      <div
+        className={`fd204139-hover-select ${openHoverMenu === action ? 'open' : ''}`}
+        onMouseLeave={() => setOpenHoverMenu((current) => current === action ? null : current)}
+      >
+        <span>{hoverMenuLabel[action]}</span>
+        <button
+          type="button"
+          className="fd204139-hover-select-button"
+          onMouseDown={(event) => { event.preventDefault(); saveRichEditorSelection() }}
+          onClick={() => setOpenHoverMenu((current) => current === action ? null : action)}
+          onFocus={() => setOpenHoverMenu(action)}
+        >
+          {hoverMenuPlaceholder[action]}
+        </button>
+        <div className="fd204139-hover-select-menu">
+          {options.map((option) => (
+            <button
+              type="button"
+              key={`${action}-${option.value}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => {
+                if (allowHoverPreview && option.hover !== false) applyTextFormat(action, option.value)
+              }}
+              onClick={() => {
+                applyTextFormat(action, option.value)
+                setOpenHoverMenu(null)
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fd20481-doc-modal-layer fd204123-doc-modal-layer">
       <button type="button" className="fd20481-doc-modal-backdrop" onClick={onClose} aria-label="關閉文件彈窗" />
@@ -7421,52 +7531,13 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
 
 
             <div className="fd204130-word-toolbar fd204131-word-toolbar fd204135-word-toolbar fd204136-toolbar-visible fd204138-word-ribbon" role="toolbar" aria-label="文件編輯工具列">
-              <div className="fd204135-toolbar-row primary">
-                <label>樣式
-                  <select defaultValue="" onChange={(event) => { applyTextFormat('style', event.target.value); event.target.value = '' }}>
-                    <option value="" disabled>段落樣式</option>
-                    <option value="paragraph">本文</option>
-                    <option value="h2">標題 1</option>
-                    <option value="h3">標題 2</option>
-                    <option value="quote">引用</option>
-                    <option value="code">程式碼區塊</option>
-                  </select>
-                </label>
-                <label>字體
-                  <select defaultValue="" onChange={(event) => { applyTextFormat('fontName', event.target.value); event.target.value = '' }}>
-                    <option value="" disabled>選擇字體</option>
-                    <option value="Microsoft JhengHei">微軟正黑體</option>
-                    <option value="Noto Sans TC">Noto Sans TC</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Consolas">Consolas</option>
-                  </select>
-                </label>
-                <label>字級
-                  <select defaultValue="" onChange={(event) => { applyTextFormat('fontSize', event.target.value); event.target.value = '' }}>
-                    <option value="" disabled>大小</option>
-                    <option value="12">12</option><option value="14">14</option><option value="16">16</option><option value="18">18</option>
-                    <option value="20">20</option><option value="24">24</option><option value="28">28</option><option value="32">32</option>
-                  </select>
-                </label>
-                <label>行距
-                  <select defaultValue="" onChange={(event) => { applyTextFormat('lineHeight', event.target.value); event.target.value = '' }}>
-                    <option value="" disabled>行距</option>
-                    <option value="1.15">1.15</option><option value="1.5">1.5</option><option value="1.7">1.7</option><option value="2">2.0</option>
-                  </select>
-                </label>
-                <label>對齊
-                  <select defaultValue="" onChange={(event) => { applyTextFormat('align', event.target.value); event.target.value = '' }}>
-                    <option value="" disabled>對齊</option>
-                    <option value="left">靠左</option><option value="center">置中</option><option value="right">靠右</option><option value="justify">左右對齊</option>
-                  </select>
-                </label>
-                <label>清單
-                  <select defaultValue="" onChange={(event) => { applyTextFormat('listType', event.target.value); event.target.value = '' }}>
-                    <option value="" disabled>清單</option>
-                    <option value="bullet">項目清單</option><option value="number">編號清單</option><option value="todo">待辦清單</option>
-                  </select>
-                </label>
+              <div className="fd204135-toolbar-row primary fd204139-toolbar-row-menu">
+                {renderHoverMenu('style')}
+                {renderHoverMenu('fontName')}
+                {renderHoverMenu('fontSize')}
+                {renderHoverMenu('lineHeight')}
+                {renderHoverMenu('align')}
+                {renderHoverMenu('listType')}
               </div>
               <div className="fd204135-toolbar-row secondary" onMouseDown={(event) => event.preventDefault()}>
                 <div className="fd204135-button-group">
@@ -7489,20 +7560,9 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
                   <button type="button" onClick={() => applyTextFormat('redo')}>重做</button>
                 </div>
               </div>
-              <div className="fd204135-toolbar-row inserts">
-                <label>插入
-                  <select defaultValue="" onChange={(event) => { applyTextFormat('insert', event.target.value); event.target.value = '' }}>
-                    <option value="" disabled>選擇插入項目</option>
-                    <option value="quote">引用</option><option value="callout">提醒框</option><option value="table">表格</option>
-                    <option value="code">程式碼</option><option value="divider">分隔線</option><option value="date">日期紀錄</option>
-                  </select>
-                </label>
-                <label>FlowDesk 範本
-                  <select defaultValue="" onChange={(event) => { applyTextFormat('template', event.target.value); event.target.value = '' }}>
-                    <option value="" disabled>選擇範本</option>
-                    <option value="sop">SOP 作業流程</option><option value="meeting">會議紀錄</option><option value="mail">Mail 範本</option><option value="checklist">檢查清單</option>
-                  </select>
-                </label>
+              <div className="fd204135-toolbar-row inserts fd204139-toolbar-row-menu">
+                {renderHoverMenu('insert', hoverMenuOptions.insert, false)}
+                {renderHoverMenu('template', hoverMenuOptions.template, false)}
               </div>
             </div>
 

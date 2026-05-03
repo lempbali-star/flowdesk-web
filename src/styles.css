@@ -35015,3 +35015,124 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_138_DOC_EDITOR_WORD_REBALANCE_END */
 
+
+/* FLOWDESK_V20_4_139_DOC_HOVER_DROPDOWN_START */
+/* v20.4.139：文件備忘下拉選單改成滑過即套用預覽
+   說明：原生 select 無法穩定做到 option hover 即時預覽，因此改成自訂 Word-like menu。
+*/
+
+.fd204139-toolbar-row-menu {
+  overflow: visible !important;
+}
+
+.fd204139-hover-select {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 112px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.fd204139-hover-select > span {
+  display: block;
+  padding-left: 2px;
+}
+
+.fd204139-hover-select-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px !important;
+  min-width: 112px;
+  padding: 4px 10px !important;
+  border: 1px solid rgba(203, 213, 225, .98) !important;
+  border-radius: 9px !important;
+  color: #0f172a !important;
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+  font-size: 12px !important;
+  font-weight: 780 !important;
+}
+
+.fd204139-hover-select-button::after {
+  content: "⌄";
+  margin-left: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.fd204139-hover-select.open .fd204139-hover-select-button,
+.fd204139-hover-select-button:hover,
+.fd204139-hover-select-button:focus-visible {
+  border-color: rgba(59, 130, 246, .55) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .10) !important;
+}
+
+.fd204139-hover-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 120;
+  display: none;
+  min-width: max(100%, 168px);
+  max-height: min(360px, 56vh);
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid rgba(203, 213, 225, .98);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 24px 58px rgba(15, 23, 42, .18);
+}
+
+.fd204139-hover-select.open .fd204139-hover-select-menu {
+  display: grid;
+  gap: 3px;
+}
+
+.fd204139-hover-select-menu button {
+  display: flex !important;
+  justify-content: flex-start !important;
+  width: 100%;
+  min-height: 30px !important;
+  padding: 6px 9px !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  color: #334155 !important;
+  background: transparent !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  text-align: left;
+}
+
+.fd204139-hover-select-menu button:hover,
+.fd204139-hover-select-menu button:focus-visible {
+  color: #1d4ed8 !important;
+  border-color: rgba(191, 219, 254, .95) !important;
+  background: #eff6ff !important;
+}
+
+.fd204138-word-ribbon,
+.fd204130-word-toolbar,
+.fd204135-toolbar-row {
+  overflow: visible !important;
+}
+
+@media (max-width: 760px) {
+  .fd204139-hover-select {
+    flex: 0 0 auto;
+  }
+
+  .fd204139-hover-select-menu {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    min-width: 0;
+  }
+}
+/* FLOWDESK_V20_4_139_DOC_HOVER_DROPDOWN_END */
+
