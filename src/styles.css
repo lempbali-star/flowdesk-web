@@ -33719,3 +33719,319 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_131_DOC_EDITOR_FUNCTIONS_AND_CURSOR_FIX_END */
 
+
+/* FLOWDESK_V20_4_132_DOC_EDITOR_PREMIUM_POLISH_START */
+/* v20.4.132 文件備忘進階視覺優化
+   讓文件編輯器更接近 Word / Google Docs 的正式文件工作區。
+*/
+
+.fd20481-doc-modal {
+  width: min(1640px, calc(100vw - 14px));
+  max-height: calc(100vh - 14px);
+  min-height: min(960px, calc(100vh - 14px));
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.fd20481-doc-modal-head {
+  min-height: 76px;
+  padding: 14px 20px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(59,130,246,.12), transparent 28rem),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid rgba(203, 213, 225, .95);
+}
+
+.fd20481-doc-modal-head .eyebrow {
+  color: #2563eb;
+}
+
+.fd20481-doc-modal-head h2 {
+  font-size: 24px;
+  letter-spacing: -.035em;
+}
+
+.fd20481-doc-modal-actions .ghost-btn,
+.fd20481-doc-modal-actions .primary-btn {
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.fd20481-doc-modal-body.fd204130-doc-modal-body {
+  padding: 0;
+  gap: 0;
+  background: #eef2f7;
+}
+
+.fd204130-doc-editor-panel {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.fd204130-doc-editor-head {
+  margin: 0;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(203, 213, 225, .95);
+  background: #ffffff;
+}
+
+.fd204130-doc-editor-head h3 {
+  font-size: 16px;
+  letter-spacing: -.02em;
+}
+
+.fd204130-doc-editor-head small {
+  font-size: 12px;
+}
+
+.fd204132-doc-title-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(203, 213, 225, .92);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.fd204132-doc-title-left,
+.fd204132-doc-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.fd204132-doc-file-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, .18);
+  font-size: 20px;
+}
+
+.fd204132-doc-title-left strong {
+  display: block;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 950;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.fd204132-doc-title-left small,
+.fd204132-doc-title-actions span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fd204132-doc-title-actions button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgba(191, 219, 254, .95);
+  border-radius: 10px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd204132-doc-title-actions button:hover {
+  background: #dbeafe;
+}
+
+.fd204130-word-toolbar.fd204131-word-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 0 14px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(203, 213, 225, .95);
+  border-radius: 0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, .055);
+}
+
+.fd204130-word-toolbar .fd204130-toolbar-group {
+  position: relative;
+  margin-top: 10px;
+  padding: 8px 10px;
+  gap: 5px;
+  border-right: 1px solid rgba(203, 213, 225, .8);
+  background: transparent;
+}
+
+.fd204130-word-toolbar .fd204130-toolbar-group::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.fd204130-word-toolbar .fd204130-toolbar-group:hover::after {
+  background: rgba(37, 99, 235, .28);
+}
+
+.fd204130-word-toolbar .fd204130-toolbar-group-last {
+  border-right: 0;
+}
+
+.fd204130-word-toolbar button {
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #334155;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.fd204130-word-toolbar button:hover {
+  color: #1d4ed8;
+  border-color: rgba(191, 219, 254, .95);
+  background: #eff6ff;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, .08);
+}
+
+.fd204130-word-stage {
+  margin: 0;
+  min-height: calc(100vh - 280px);
+  padding: 32px 28px 44px;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(148, 163, 184, .20), transparent 28rem),
+    linear-gradient(180deg, #e5e7eb 0%, #eef2f7 100%);
+  overflow: auto;
+}
+
+.fd204130-word-paper {
+  width: min(1040px, 100%);
+  min-height: 880px;
+  padding: 70px 82px;
+  border: 1px solid rgba(203, 213, 225, .95);
+  border-radius: 3px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, .06),
+    0 24px 60px rgba(15, 23, 42, .18);
+  font-family: "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", system-ui, sans-serif;
+  color: #111827;
+}
+
+.fd204130-word-paper:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(37, 99, 235, .10),
+    0 24px 60px rgba(15, 23, 42, .18);
+}
+
+.fd204130-word-paper h2 {
+  margin-top: 0;
+  font-size: 30px;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+.fd204130-word-paper h3 {
+  color: #1e293b;
+  font-size: 22px;
+}
+
+.fd204130-word-paper p,
+.fd204130-word-paper li,
+.fd204130-word-paper td,
+.fd204130-word-paper th {
+  font-size: 15.5px;
+}
+
+.fd204130-word-paper table {
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(203, 213, 225, .9);
+}
+
+.fd204130-word-paper th {
+  background: #f1f5f9;
+}
+
+.fd204130-doc-fold {
+  margin: 0 18px 18px;
+  border-radius: 14px;
+}
+
+.fd204130-doc-fold summary {
+  padding: 12px 16px;
+}
+
+.fd204130-doc-meta-grid {
+  padding: 0 12px 12px;
+}
+
+@media (max-width: 1280px) {
+  .fd204132-doc-title-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .fd204132-doc-title-actions {
+    flex-wrap: wrap;
+  }
+
+  .fd204130-word-stage {
+    padding: 22px 16px 34px;
+  }
+
+  .fd204130-word-paper {
+    padding: 52px 44px;
+  }
+}
+
+@media (max-width: 760px) {
+  .fd20481-doc-modal {
+    width: calc(100vw - 8px);
+    max-height: calc(100vh - 8px);
+  }
+
+  .fd204130-word-toolbar.fd204131-word-toolbar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 0 10px 10px;
+  }
+
+  .fd204130-word-toolbar .fd204130-toolbar-group {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+
+  .fd204130-word-stage {
+    padding: 12px;
+  }
+
+  .fd204130-word-paper {
+    min-height: 680px;
+    padding: 32px 22px;
+  }
+}
+/* FLOWDESK_V20_4_132_DOC_EDITOR_PREMIUM_POLISH_END */
+

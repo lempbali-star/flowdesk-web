@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.131'
+const FLOWDESK_APP_VERSION = '20.4.132'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7364,17 +7364,33 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
               </div>
             </div>
 
+            <div className="fd204132-doc-title-strip">
+              <div className="fd204132-doc-title-left">
+                <span className="fd204132-doc-file-icon">{draft.icon || '📄'}</span>
+                <div>
+                  <strong>{draft.title || '未命名文件'}</strong>
+                  <small>{draft.folder || '其他'} · {draft.type || '備忘'} · {draft.confidentiality || '一般'}</small>
+                </div>
+              </div>
+              <div className="fd204132-doc-title-actions">
+                <span>{draft.updated || todayDate()}</span>
+                <button type="button" onClick={() => applyTextFormat('sop')}>套用 SOP</button>
+                <button type="button" onClick={() => applyTextFormat('meeting')}>會議格式</button>
+                <button type="button" onClick={() => applyTextFormat('mail')}>Mail 範本</button>
+              </div>
+            </div>
+
             <div className="fd204130-word-toolbar fd204131-word-toolbar" role="toolbar" aria-label="文件編輯工具列" onMouseDown={(event) => event.preventDefault()}>
               <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('paragraph')}>本文</button>
-                <button type="button" onClick={() => applyTextFormat('h2')}>標題 1</button>
-                <button type="button" onClick={() => applyTextFormat('h3')}>標題 2</button>
+                <button type="button" onClick={() => applyTextFormat('h2')}>H1 標題</button>
+                <button type="button" onClick={() => applyTextFormat('h3')}>H2 小標</button>
               </div>
               <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('bold')}>粗體</button>
-                <button type="button" onClick={() => applyTextFormat('italic')}>斜體</button>
-                <button type="button" onClick={() => applyTextFormat('underline')}>底線</button>
-                <button type="button" onClick={() => applyTextFormat('strike')}>刪除線</button>
+                <button type="button" onClick={() => applyTextFormat('bold')}>B 粗體</button>
+                <button type="button" onClick={() => applyTextFormat('italic')}>I 斜體</button>
+                <button type="button" onClick={() => applyTextFormat('underline')}>U 底線</button>
+                <button type="button" onClick={() => applyTextFormat('strike')}>S 刪除線</button>
               </div>
               <div className="fd204130-toolbar-group">
                 <button type="button" onClick={() => applyTextFormat('fontSmall')}>小字</button>
@@ -7383,13 +7399,13 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
                 <button type="button" onClick={() => applyTextFormat('textBlack')}>黑字</button>
                 <button type="button" onClick={() => applyTextFormat('textBlue')}>藍字</button>
                 <button type="button" onClick={() => applyTextFormat('textRed')}>紅字</button>
-                <button type="button" onClick={() => applyTextFormat('highlight')}>螢光</button>
+                <button type="button" onClick={() => applyTextFormat('highlight')}>標記</button>
                 <button type="button" onClick={() => applyTextFormat('clear')}>清除</button>
               </div>
               <div className="fd204130-toolbar-group">
-                <button type="button" onClick={() => applyTextFormat('list')}>項目</button>
-                <button type="button" onClick={() => applyTextFormat('ordered')}>編號</button>
-                <button type="button" onClick={() => applyTextFormat('todo')}>待辦</button>
+                <button type="button" onClick={() => applyTextFormat('list')}>• 項目</button>
+                <button type="button" onClick={() => applyTextFormat('ordered')}>1. 編號</button>
+                <button type="button" onClick={() => applyTextFormat('todo')}>☐ 待辦</button>
                 <button type="button" onClick={() => applyTextFormat('indent')}>縮排</button>
                 <button type="button" onClick={() => applyTextFormat('outdent')}>外凸</button>
               </div>
@@ -7410,7 +7426,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
                 <button type="button" onClick={() => applyTextFormat('sop')}>SOP</button>
                 <button type="button" onClick={() => applyTextFormat('meeting')}>會議</button>
                 <button type="button" onClick={() => applyTextFormat('mail')}>Mail</button>
-                <button type="button" onClick={() => applyTextFormat('checklistTemplate')}>檢查清單</button>
+                <button type="button" onClick={() => applyTextFormat('checklistTemplate')}>檢查表</button>
               </div>
               <div className="fd204130-toolbar-group fd204130-toolbar-group-last">
                 <button type="button" onClick={() => applyTextFormat('undo')}>復原</button>
