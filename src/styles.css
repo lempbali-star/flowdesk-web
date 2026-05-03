@@ -34562,213 +34562,359 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* FLOWDESK_V20_4_136_DOC_TOOLBAR_VISIBLE_REORDER_END */
 
 
+/* FLOWDESK_V20_4_138_DOC_EDITOR_WORD_REBALANCE_START */
+/* v20.4.138 文件備忘：接近 Word 的全螢幕編輯器比例重整
+   目標：上方控制區收斂、工具列像 Ribbon、文件紙張最大化、設定區改成浮動抽屜。
+*/
 
-/* FLOWDESK_V20_4_137_DOC_EDITOR_PROPORTION_REBALANCE_START */
-/* v20.4.137：重整文件備忘編輯器比例，縮短上方控制區、放大白紙編輯區、改善整體閱讀性 */
+/* ===== 全螢幕骨架 ===== */
+.fd20481-doc-modal-layer {
+  padding: 0 !important;
+}
+
 .fd20481-doc-modal {
+  display: flex !important;
+  flex-direction: column !important;
   width: 100vw !important;
   height: 100vh !important;
   max-width: none !important;
   max-height: none !important;
+  min-height: 100vh !important;
+  border: 0 !important;
   border-radius: 0 !important;
+  overflow: hidden !important;
+  background: #f8fafc !important;
 }
 
 .fd20481-doc-modal-head {
-  padding: 14px 18px 12px !important;
-  gap: 10px !important;
+  flex: 0 0 auto !important;
+  min-height: 72px !important;
+  padding: 12px 18px !important;
+  border-bottom: 1px solid rgba(203, 213, 225, .96) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
 }
 
 .fd20481-doc-modal-head h2 {
-  margin-bottom: 4px !important;
-  font-size: 18px !important;
-  line-height: 1.2 !important;
+  margin: 1px 0 3px !important;
+  font-size: 20px !important;
+  line-height: 1.16 !important;
+  letter-spacing: -.035em !important;
 }
 
 .fd20481-doc-modal-head p {
   font-size: 12px !important;
+  line-height: 1.3 !important;
 }
 
+.fd20481-doc-modal-actions,
 .fd20481-doc-modal-head > div:last-child {
   gap: 8px !important;
 }
 
-.fd20481-doc-modal-head button,
-.fd20481-doc-modal-footer button,
-.fd204132-doc-title-actions button {
+.fd20481-doc-modal-actions button,
+.fd20481-doc-modal-head button {
   min-height: 36px !important;
+  padding: 7px 12px !important;
+  border-radius: 10px !important;
 }
 
+/* ===== 中間編輯器區 ===== */
 .fd20481-doc-modal-body.fd204130-doc-modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
   padding: 0 !important;
-  gap: 0 !important;
-  overflow: auto !important;
-  background: #eef2f7 !important;
+  overflow: hidden !important;
+  background: #e8edf4 !important;
 }
 
 .fd204130-doc-editor-panel {
   display: flex !important;
   flex-direction: column !important;
-  min-height: calc(100vh - 122px) !important;
+  min-height: 0 !important;
+  height: 100% !important;
   padding: 0 !important;
-  background: #eef2f7 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
-.fd204132-doc-title-row {
-  padding: 12px 18px !important;
+.fd204130-doc-editor-head {
+  display: none !important;
+}
+
+/* ===== 文件標題列：保留資訊，但不要搶版面 ===== */
+.fd204132-doc-title-strip {
+  flex: 0 0 auto !important;
+  min-height: 54px !important;
+  padding: 8px 18px !important;
   border-bottom: 1px solid rgba(226, 232, 240, .96) !important;
   background: #ffffff !important;
 }
 
-.fd204132-doc-title-main {
-  gap: 12px !important;
-}
-
-.fd204132-doc-title-icon {
-  width: 42px !important;
-  height: 42px !important;
-  border-radius: 14px !important;
-}
-
-.fd204132-doc-title-main h3 {
-  font-size: 17px !important;
-  margin: 0 0 2px !important;
-}
-
-.fd204132-doc-title-main p,
-.fd204132-doc-title-actions span {
-  font-size: 12px !important;
-}
-
+.fd204132-doc-title-left,
 .fd204132-doc-title-actions {
   gap: 10px !important;
 }
 
-.fd204130-word-toolbar.fd204136-toolbar-visible {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 8 !important;
-  margin: 0 !important;
-  padding: 10px 18px !important;
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(320px, 1fr)) !important;
-  gap: 8px 16px !important;
-  border: 0 !important;
-  border-bottom: 1px solid rgba(226, 232, 240, .96) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,250,252,.98)) !important;
-  backdrop-filter: blur(6px) !important;
+.fd204132-doc-file-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 11px !important;
+  font-size: 18px !important;
 }
 
-.fd204135-toolbar-row {
+.fd204132-doc-title-left strong {
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+}
+
+.fd204132-doc-title-left small,
+.fd204132-doc-title-actions span {
+  font-size: 12px !important;
+}
+
+.fd204132-doc-title-actions button {
+  display: none !important;
+}
+
+/* ===== Word-like Ribbon 工具列 ===== */
+.fd204138-word-ribbon {
+  flex: 0 0 auto !important;
+  order: 20 !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 30 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, .9fr) !important;
+  grid-template-areas:
+    "primary primary"
+    "secondary inserts" !important;
+  gap: 6px 14px !important;
+  min-height: auto !important;
+  padding: 8px 18px 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(203, 213, 225, .96) !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 18px rgba(15, 23, 42, .05) !important;
+}
+
+.fd204138-word-ribbon .fd204135-toolbar-row {
   display: flex !important;
-  align-items: end !important;
+  align-items: flex-end !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
   min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: visible !important;
 }
 
-.fd204135-toolbar-row label {
+.fd204138-word-ribbon .fd204135-toolbar-row.primary {
+  grid-area: primary !important;
+}
+
+.fd204138-word-ribbon .fd204135-toolbar-row.secondary {
+  grid-area: secondary !important;
+}
+
+.fd204138-word-ribbon .fd204135-toolbar-row.inserts {
+  grid-area: inserts !important;
+  justify-content: flex-end !important;
+}
+
+.fd204138-word-ribbon label {
   display: flex !important;
   flex-direction: column !important;
-  gap: 4px !important;
-  min-width: 112px !important;
-  font-size: 11px !important;
-  font-weight: 800 !important;
+  gap: 3px !important;
+  min-width: 106px !important;
   color: #64748b !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
 }
 
-.fd204135-toolbar-row label select,
-.fd204135-toolbar-row select {
-  min-height: 34px !important;
-  padding: 0 12px !important;
+.fd204138-word-ribbon select {
+  min-height: 32px !important;
+  min-width: 106px !important;
+  padding: 4px 28px 4px 9px !important;
   border: 1px solid rgba(203, 213, 225, .98) !important;
-  border-radius: 10px !important;
-  background: #fff !important;
+  border-radius: 9px !important;
   color: #0f172a !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-}
-
-.fd204135-toolbar-row button {
-  min-height: 34px !important;
-  padding: 0 10px !important;
-  border: 1px solid transparent !important;
-  border-radius: 10px !important;
-  background: transparent !important;
-  color: #334155 !important;
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
   font-size: 12px !important;
-  font-weight: 800 !important;
+  font-weight: 780 !important;
+  outline: none !important;
 }
 
-.fd204135-toolbar-row button:hover,
-.fd204135-toolbar-row button:focus-visible {
-  background: #eff6ff !important;
-  border-color: rgba(191, 219, 254, .98) !important;
+.fd204138-word-ribbon select:hover,
+.fd204138-word-ribbon select:focus {
+  border-color: rgba(59, 130, 246, .55) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .10) !important;
+}
+
+.fd204138-word-ribbon .fd204135-button-group {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  min-height: 32px !important;
+  margin: 0 6px 0 0 !important;
+  padding: 0 8px 0 0 !important;
+  border-right: 1px solid rgba(203, 213, 225, .85) !important;
+}
+
+.fd204138-word-ribbon .fd204135-button-group:last-child {
+  border-right: 0 !important;
+}
+
+.fd204138-word-ribbon button {
+  min-height: 31px !important;
+  padding: 4px 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  color: #334155 !important;
+  background: transparent !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.fd204138-word-ribbon button:hover,
+.fd204138-word-ribbon button:focus-visible {
   color: #1d4ed8 !important;
+  border-color: rgba(191, 219, 254, .95) !important;
+  background: #eff6ff !important;
 }
 
-.fd204135-toolbar-row.inserts {
-  grid-column: 1 / -1 !important;
-  padding-top: 2px !important;
-}
-
+/* ===== 文件資訊設定改成右上角浮動抽屜，不佔整列 ===== */
 .fd204136-doc-info-after-toolbar {
+  position: fixed !important;
+  top: 132px !important;
+  right: 18px !important;
+  z-index: 80 !important;
+  width: auto !important;
+  max-width: min(760px, calc(100vw - 36px)) !important;
+  height: auto !important;
   margin: 0 !important;
   border: 0 !important;
-  border-bottom: 1px solid rgba(226, 232, 240, .96) !important;
-  background: #f8fafc !important;
+  border-radius: 14px !important;
+  background: transparent !important;
   box-shadow: none !important;
+  overflow: visible !important;
+  transform: none !important;
+  translate: none !important;
 }
 
 .fd204136-doc-info-after-toolbar summary {
-  min-height: 38px !important;
-  padding: 0 18px !important;
-  justify-content: flex-end !important;
-  background: #f8fafc !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 32px !important;
+  padding: 5px 11px !important;
+  border: 1px solid rgba(191, 219, 254, .95) !important;
+  border-radius: 999px !important;
   color: transparent !important;
+  background: #eff6ff !important;
+  font-size: 0 !important;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .10) !important;
 }
 
 .fd204136-doc-info-after-toolbar summary::before {
-  content: '文件資訊與設定';
-  margin-right: auto;
-  color: #0f172a;
-  font-size: 12px;
-  font-weight: 900;
+  content: none !important;
 }
 
 .fd204136-doc-info-after-toolbar summary::after {
-  min-height: 28px !important;
-  padding: 4px 10px !important;
-  font-size: 12px !important;
-}
-
-.fd204136-doc-info-after-toolbar .fd204130-doc-meta-grid {
-  padding: 0 18px 14px !important;
-}
-
-.fd204130-word-stage {
-  flex: 1 1 auto !important;
-  min-height: calc(100vh - 300px) !important;
-  margin-top: 0 !important;
-  padding: 18px 24px 22px !important;
+  content: "文件設定" !important;
+  min-height: auto !important;
+  padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
-  background: linear-gradient(180deg, #edf1f6 0%, #e8edf4 100%) !important;
+  color: #1d4ed8 !important;
+  background: transparent !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.fd204136-doc-info-after-toolbar[open] {
+  width: min(760px, calc(100vw - 36px)) !important;
+  border: 1px solid rgba(203, 213, 225, .95) !important;
+  background: #ffffff !important;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .20) !important;
+}
+
+.fd204136-doc-info-after-toolbar[open] summary {
+  display: flex !important;
+  width: 100% !important;
+  justify-content: space-between !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(226, 232, 240, .96) !important;
+  border-radius: 14px 14px 0 0 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+}
+
+.fd204136-doc-info-after-toolbar[open] summary::before {
+  content: "文件資訊與設定" !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+}
+
+.fd204136-doc-info-after-toolbar[open] summary::after {
+  content: "收合" !important;
+}
+
+.fd204136-doc-info-after-toolbar:not([open]) .fd204130-doc-meta-grid {
+  display: none !important;
+}
+
+.fd204136-doc-info-after-toolbar[open] .fd204130-doc-meta-grid {
+  display: grid !important;
+  max-height: min(66vh, 620px) !important;
+  overflow: auto !important;
+  padding: 14px !important;
+  background: #ffffff !important;
+}
+
+/* ===== 文件主體：白紙放大、灰底減少、真正佔滿工作區 ===== */
+.fd204130-word-stage {
+  flex: 1 1 auto !important;
+  order: 40 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 18px 22px 24px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: auto !important;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(255,255,255,.65), transparent 34rem),
+    linear-gradient(180deg, #edf1f6 0%, #e7edf5 100%) !important;
   box-shadow: none !important;
 }
 
 .fd204130-word-paper {
-  width: min(1360px, calc(100% - 20px)) !important;
-  min-height: calc(100vh - 340px) !important;
+  width: min(1380px, calc(100vw - 84px)) !important;
+  min-height: max(720px, calc(100vh - 285px)) !important;
   margin: 0 auto !important;
-  padding: 48px 64px !important;
+  padding: 50px 68px !important;
   border: 1px solid rgba(226, 232, 240, .98) !important;
-  border-radius: 8px !important;
-  background: #fff !important;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, .10) !important;
+  border-radius: 4px !important;
+  background: #ffffff !important;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, .05),
+    0 28px 70px rgba(15, 23, 42, .13) !important;
+  color: #111827 !important;
   font-size: 16px !important;
   line-height: 1.8 !important;
+}
+
+.fd204130-word-paper:focus {
+  outline: none !important;
+  box-shadow:
+    0 0 0 4px rgba(37, 99, 235, .08),
+    0 28px 70px rgba(15, 23, 42, .13) !important;
 }
 
 .fd204130-word-paper p,
@@ -34778,63 +34924,94 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   font-size: 16px !important;
 }
 
+.fd204130-word-paper h2 {
+  font-size: 30px !important;
+  line-height: 1.25 !important;
+}
+
+.fd204130-word-paper h3 {
+  font-size: 22px !important;
+}
+
+/* ===== Footer 只保留必要高度 ===== */
 .fd20481-doc-modal-footer {
-  padding: 12px 18px !important;
+  flex: 0 0 auto !important;
+  padding: 10px 18px !important;
   border-top: 1px solid rgba(226, 232, 240, .96) !important;
   background: rgba(255,255,255,.96) !important;
   backdrop-filter: blur(8px) !important;
 }
 
-@media (max-width: 1200px) {
-  .fd204130-word-toolbar.fd204136-toolbar-visible {
+.fd20481-doc-modal-footer button {
+  min-height: 36px !important;
+  border-radius: 11px !important;
+}
+
+/* ===== RWD ===== */
+@media (max-width: 1280px) {
+  .fd204138-word-ribbon {
     grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "primary"
+      "secondary"
+      "inserts" !important;
+  }
+
+  .fd204138-word-ribbon .fd204135-toolbar-row.inserts {
+    justify-content: flex-start !important;
   }
 
   .fd204130-word-paper {
-    width: min(100%, calc(100% - 12px)) !important;
-    padding: 40px 36px !important;
+    width: calc(100vw - 42px) !important;
+    padding: 42px 42px !important;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 760px) {
   .fd20481-doc-modal-head {
-    padding: 12px 12px 10px !important;
+    min-height: auto !important;
+    padding: 10px 12px !important;
   }
 
-  .fd204132-doc-title-row,
-  .fd204130-word-toolbar.fd204136-toolbar-visible,
-  .fd204136-doc-info-after-toolbar summary,
-  .fd204136-doc-info-after-toolbar .fd204130-doc-meta-grid,
-  .fd20481-doc-modal-footer {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+  .fd204132-doc-title-strip {
+    padding: 8px 12px !important;
+  }
+
+  .fd204138-word-ribbon {
+    padding: 8px 12px !important;
+  }
+
+  .fd204138-word-ribbon .fd204135-toolbar-row {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 3px !important;
+  }
+
+  .fd204138-word-ribbon label,
+  .fd204138-word-ribbon button,
+  .fd204138-word-ribbon select,
+  .fd204138-word-ribbon .fd204135-button-group {
+    flex: 0 0 auto !important;
   }
 
   .fd204130-word-stage {
-    padding: 12px 10px 18px !important;
-    min-height: calc(100vh - 330px) !important;
+    padding: 10px !important;
   }
 
   .fd204130-word-paper {
     width: 100% !important;
-    min-height: calc(100vh - 370px) !important;
+    min-height: max(620px, calc(100vh - 330px)) !important;
     padding: 28px 18px !important;
   }
 
-  .fd204135-toolbar-row {
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    padding-bottom: 4px !important;
+  .fd204136-doc-info-after-toolbar {
+    top: 104px !important;
+    right: 12px !important;
   }
 
-  .fd204135-toolbar-row label {
-    min-width: 108px !important;
-    flex: 0 0 auto !important;
-  }
-
-  .fd204135-toolbar-row button,
-  .fd204135-toolbar-row select {
-    flex: 0 0 auto !important;
+  .fd204136-doc-info-after-toolbar[open] {
+    width: calc(100vw - 24px) !important;
   }
 }
-/* FLOWDESK_V20_4_137_DOC_EDITOR_PROPORTION_REBALANCE_END */
+/* FLOWDESK_V20_4_138_DOC_EDITOR_WORD_REBALANCE_END */
+

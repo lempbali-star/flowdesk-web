@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.137'
+const FLOWDESK_APP_VERSION = '20.4.138'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7420,7 +7420,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
 
 
 
-            <div className="fd204130-word-toolbar fd204131-word-toolbar fd204135-word-toolbar fd204136-toolbar-visible" role="toolbar" aria-label="文件編輯工具列">
+            <div className="fd204130-word-toolbar fd204131-word-toolbar fd204135-word-toolbar fd204136-toolbar-visible fd204138-word-ribbon" role="toolbar" aria-label="文件編輯工具列">
               <div className="fd204135-toolbar-row primary">
                 <label>樣式
                   <select defaultValue="" onChange={(event) => { applyTextFormat('style', event.target.value); event.target.value = '' }}>
