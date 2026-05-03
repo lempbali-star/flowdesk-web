@@ -34035,3 +34035,148 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 }
 /* FLOWDESK_V20_4_132_DOC_EDITOR_PREMIUM_POLISH_END */
 
+
+/* FLOWDESK_V20_4_133_DOC_WORD_EDITOR_LAYOUT_FIX_START */
+/* v20.4.133 文件備忘版面修正
+   修正「文件資訊與設定」壓在文件紙張上、彈窗編輯區不夠像 Word 的問題。
+*/
+
+.fd20481-doc-modal {
+  width: min(1680px, calc(100vw - 10px));
+  max-height: calc(100vh - 10px);
+  min-height: min(960px, calc(100vh - 10px));
+}
+
+/* 編輯區以文件為主，不讓設定區浮到紙張上 */
+.fd20481-doc-modal-body.fd204130-doc-modal-body {
+  display: block;
+  overflow: auto;
+  padding: 0;
+  background: #eef2f7;
+}
+
+.fd204130-doc-editor-panel {
+  display: block;
+  min-height: 0;
+}
+
+.fd204130-word-stage {
+  position: relative;
+  min-height: calc(100vh - 286px);
+  padding: 34px 28px 52px;
+  overflow: visible;
+}
+
+.fd204130-word-paper {
+  position: relative;
+  z-index: 1;
+  width: min(1080px, 100%);
+  min-height: 900px;
+  margin: 0 auto;
+}
+
+/* 設定區改成正常下方收合，不再蓋住文件 */
+.fd204130-doc-fold,
+.fd204133-doc-fold {
+  position: static !important;
+  inset: auto !important;
+  z-index: 0 !important;
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 18px 18px !important;
+  transform: none !important;
+  translate: none !important;
+  align-self: stretch !important;
+}
+
+.fd204133-doc-fold:not([open]) {
+  box-shadow: none;
+  border-color: rgba(203, 213, 225, .9);
+  background: rgba(255, 255, 255, .82);
+}
+
+.fd204133-doc-fold summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fd204133-doc-fold summary::after {
+  content: "展開";
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid rgba(191, 219, 254, .95);
+  border-radius: 999px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fd204133-doc-fold[open] summary::after {
+  content: "收合";
+}
+
+/* 工具列再收斂成 Word 風格橫條，避免看起來像後台按鈕牆 */
+.fd204130-word-toolbar.fd204131-word-toolbar {
+  gap: 0;
+  padding: 0 18px 10px;
+  background: #ffffff;
+}
+
+.fd204130-word-toolbar .fd204130-toolbar-group {
+  min-height: 46px;
+  padding: 7px 9px;
+}
+
+.fd204130-word-toolbar button {
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fd204132-doc-title-strip {
+  padding: 10px 20px;
+}
+
+/* 白紙更像文件，不要過度圓角與卡片感 */
+.fd204130-word-paper {
+  border-radius: 2px;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, .05),
+    0 26px 72px rgba(15, 23, 42, .18);
+}
+
+.fd204130-word-paper:empty::before {
+  content: "開始輸入文件內容...";
+  color: #94a3b8;
+}
+
+@media (max-width: 1280px) {
+  .fd204130-word-stage {
+    padding: 24px 16px 40px;
+  }
+}
+
+@media (max-width: 760px) {
+  .fd20481-doc-modal {
+    width: calc(100vw - 6px);
+    max-height: calc(100vh - 6px);
+  }
+
+  .fd204130-word-stage {
+    min-height: calc(100vh - 310px);
+    padding: 12px 10px 28px;
+  }
+
+  .fd204130-doc-fold,
+  .fd204133-doc-fold {
+    margin: 0 10px 12px !important;
+  }
+}
+/* FLOWDESK_V20_4_133_DOC_WORD_EDITOR_LAYOUT_FIX_END */
+

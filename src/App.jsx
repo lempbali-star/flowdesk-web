@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.132'
+const FLOWDESK_APP_VERSION = '20.4.133'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -7359,7 +7359,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
                 <small>Word 風格編輯 · {contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
               </div>
               <div className="fd204128-doc-editor-status fd204130-doc-editor-status">
-                <span>即時編輯</span>
+                <span>點白色紙張即可編輯</span>
                 <button type="button" onClick={copyDocText}>複製全文</button>
               </div>
             </div>
@@ -7450,7 +7450,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
             </div>
           </section>
 
-          <details className="fd204130-doc-fold" open>
+          <details className="fd204130-doc-fold fd204133-doc-fold">
             <summary>文件資訊與設定</summary>
             <div className="fd204130-doc-meta-grid">
               <section className="fd20481-doc-panel fd20481-doc-panel-main fd204123-doc-panel fd204130-doc-meta-panel">
