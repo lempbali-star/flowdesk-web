@@ -35438,18 +35438,23 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   }
 }
 
-/* FLOWDESK_PROJECT_CURRENT_TASK_SAFE_LAYOUT_FIX */
-.fd171-project-card-meta {
+
+
+/* FLOWDESK_PROJECT_CURRENT_TASK_VISIBLE_LAYOUT_FIX */
+.fd203-project-card-meta.fd171-project-card-meta,
+.fd203-project-card-meta:has(.fd171-current-task) {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) auto !important;
   grid-template-areas:
     "owner date"
     "task task" !important;
   align-items: center !important;
-  gap: 8px 10px !important;
+  gap: 7px 10px !important;
+  margin-top: 8px !important;
 }
 
-.fd171-project-card-meta > span:first-child {
+.fd203-project-card-meta.fd171-project-card-meta > span:first-child,
+.fd203-project-card-meta:has(.fd171-current-task) > span:first-child {
   grid-area: owner !important;
   min-width: 0 !important;
   overflow: hidden !important;
@@ -35457,30 +35462,37 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   white-space: nowrap !important;
 }
 
-.fd171-project-card-meta > span:last-child {
+.fd203-project-card-meta.fd171-project-card-meta > span:last-child,
+.fd203-project-card-meta:has(.fd171-current-task) > span:last-child {
   grid-area: date !important;
   justify-self: end !important;
   white-space: nowrap !important;
 }
 
+.fd203-project-card-meta .fd171-current-task,
 .fd171-current-task {
   grid-area: task !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
+  width: 100% !important;
+  max-width: none !important;
+  justify-self: stretch !important;
+  box-sizing: border-box !important;
   display: block !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-  color: var(--text, #172033) !important;
-  font-weight: 750 !important;
-  background: rgba(238, 246, 255, .82) !important;
-  border: 1px solid rgba(143, 177, 255, .34) !important;
+  color: #1e3a8a !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  background: linear-gradient(135deg, rgba(239, 246, 255, .98), rgba(219, 234, 254, .76)) !important;
+  border: 1px solid rgba(96, 165, 250, .42) !important;
   border-radius: 12px !important;
-  padding: 6px 10px !important;
+  padding: 7px 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.78) !important;
 }
 
 @media (max-width: 860px) {
-  .fd171-project-card-meta {
+  .fd203-project-card-meta.fd171-project-card-meta,
+  .fd203-project-card-meta:has(.fd171-current-task) {
     grid-template-columns: 1fr !important;
     grid-template-areas:
       "owner"
@@ -35488,8 +35500,1023 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
       "date" !important;
   }
 
-  .fd171-project-card-meta > span:last-child {
+  .fd203-project-card-meta.fd171-project-card-meta > span:last-child,
+  .fd203-project-card-meta:has(.fd171-current-task) > span:last-child {
     justify-self: start !important;
   }
 }
-/* END_FLOWDESK_PROJECT_CURRENT_TASK_SAFE_LAYOUT_FIX */
+/* END_FLOWDESK_PROJECT_CURRENT_TASK_VISIBLE_LAYOUT_FIX */
+
+/* FLOWDESK_PURCHASE_EDIT_MODAL_LOCAL_POLISH */
+.purchase-form-summary-strip .fd171-summary-edit {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.purchase-form-summary-strip .fd171-summary-edit input {
+  width: 100% !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(91, 117, 153, .22) !important;
+  background: transparent !important;
+  color: #172033 !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+  padding: 2px 0 5px !important;
+  outline: none !important;
+}
+
+.purchase-form-summary-strip .fd171-summary-edit input:focus {
+  border-bottom-color: rgba(86, 132, 255, .82) !important;
+  box-shadow: 0 8px 16px -14px rgba(86,132,255,.9) !important;
+}
+
+.fd20387-sticky-form-actions,
+.form-actions.sticky-form-actions.fd20387-sticky-form-actions {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 20 !important;
+  margin-top: 0 !important;
+  padding: 12px 18px !important;
+  border-top: 1px solid rgba(148, 163, 184, .24) !important;
+  background: rgba(248, 250, 252, .96) !important;
+  backdrop-filter: blur(14px) !important;
+  box-shadow: 0 -12px 28px rgba(15, 23, 42, .08) !important;
+}
+
+.fd20387-save-hint strong {
+  color: #172033 !important;
+}
+
+.fd20387-save-hint span {
+  color: #64748b !important;
+}
+
+.fd20387-status-grid label:has(input[type="date"]) input {
+  min-height: 40px !important;
+}
+
+@media (max-width: 860px) {
+  .fd20387-sticky-form-actions,
+  .form-actions.sticky-form-actions.fd20387-sticky-form-actions {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+}
+/* END_FLOWDESK_PURCHASE_EDIT_MODAL_LOCAL_POLISH */
+
+/* FLOWDESK_EDIT_PURCHASE_ARCHIVE_READONLY */
+.fd-edit-purchase-archive-readonly {
+  border: 1px solid rgba(191, 219, 254, .92);
+  background:
+    radial-gradient(circle at 96% 8%, rgba(99, 102, 241, .12), transparent 34%),
+    linear-gradient(135deg, rgba(255,255,255,.96), rgba(239,246,255,.82));
+  border-radius: 18px;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.fd-edit-purchase-archive-readonly-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fd-edit-purchase-archive-readonly-head h4 {
+  margin: 2px 0 4px;
+  color: #172033;
+  font-size: 15px;
+}
+
+.fd-edit-purchase-archive-readonly-head span,
+.fd-edit-purchase-archive-readonly-grid span,
+.fd-edit-purchase-archive-readonly-note {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.fd-edit-purchase-archive-readonly-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(140px, .7fr) minmax(120px, .55fr);
+  gap: 10px;
+}
+
+.fd-edit-purchase-archive-readonly-grid article {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(226,232,240,.9);
+}
+
+.fd-edit-purchase-archive-readonly-grid strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.fd-edit-purchase-archive-readonly-note {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(248,250,252,.92);
+  border: 1px dashed rgba(148,163,184,.45);
+}
+
+@media (max-width: 860px) {
+  .fd-edit-purchase-archive-readonly-head {
+    flex-direction: column;
+  }
+
+  .fd-edit-purchase-archive-readonly-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* END_FLOWDESK_EDIT_PURCHASE_ARCHIVE_READONLY */
+
+/* FLOWDESK_PURCHASE_CARD_READABLE_LAYOUT */
+
+/* 採購卡片可讀性優化：只調整卡片資訊層級，不動資料流 */
+.purchase-card,
+.purchase-card.local-purchase-card,
+.purchase-card-list .purchase-card,
+.purchase-board-card,
+[class*="purchase-card"] {
+  min-width: 0;
+}
+
+/* 卡片標題：買什麼要清楚，最多兩行 */
+.purchase-card h3,
+.purchase-card-title,
+.purchase-card-main-title,
+.purchase-card strong[class*="title"],
+[class*="purchase-card"] h3 {
+  color: #0f172a !important;
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.01em !important;
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+/* 卡片內的摘要 / 文字欄位不要整排爆掉 */
+.purchase-card p,
+.purchase-card span,
+.purchase-card small,
+.purchase-card strong,
+[class*="purchase-card"] p,
+[class*="purchase-card"] span,
+[class*="purchase-card"] small,
+[class*="purchase-card"] strong {
+  min-width: 0;
+}
+
+/* 單位、申請人、使用人、廠商這類資訊改成更像資料格 */
+.purchase-card-meta,
+.purchase-card-info,
+.purchase-meta-grid,
+.purchase-card-detail-grid,
+.purchase-card-body-grid,
+[class*="purchase-card"] [class*="meta"],
+[class*="purchase-card"] [class*="info-grid"],
+[class*="purchase-card"] [class*="detail-grid"] {
+  min-width: 0 !important;
+}
+
+/* 採購卡片中段資訊格：讓欄位比較明顯 */
+.purchase-card article,
+.purchase-card .purchase-card-field,
+.purchase-card .purchase-info-item,
+[class*="purchase-card"] article {
+  min-width: 0;
+}
+
+/* 常見標籤文字：降低搶眼程度 */
+.purchase-card label,
+.purchase-card .eyebrow,
+.purchase-card small,
+[class*="purchase-card"] .eyebrow {
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+
+/* 金額、狀態、重點數字要明顯 */
+.purchase-card .amount,
+.purchase-card .total,
+.purchase-card .price,
+.purchase-card [class*="amount"],
+.purchase-card [class*="total"],
+.purchase-card [class*="price"],
+[class*="purchase-card"] [class*="amount"],
+[class*="purchase-card"] [class*="total"],
+[class*="purchase-card"] [class*="price"] {
+  color: #0f172a !important;
+  font-weight: 950 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* 狀態 chip 不要太散 */
+.purchase-card .badge,
+.purchase-card [class*="badge"],
+.purchase-card [class*="chip"],
+[class*="purchase-card"] [class*="badge"],
+[class*="purchase-card"] [class*="chip"] {
+  white-space: nowrap !important;
+}
+
+/* 卡片底部操作列：避免按鈕與日期擠在一起 */
+.purchase-card-footer,
+.purchase-card-actions,
+.purchase-card-bottom,
+[class*="purchase-card"] [class*="footer"],
+[class*="purchase-card"] [class*="actions"],
+[class*="purchase-card"] [class*="bottom"] {
+  min-width: 0 !important;
+  gap: 8px !important;
+}
+
+/* 卡片內的長連結、長品項名稱都截斷，不把版面拉爆 */
+.purchase-card a,
+.purchase-card input,
+.purchase-card textarea,
+[class*="purchase-card"] a {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* 採購卡片整體留白微收斂，讓一眼可讀資訊更多 */
+.purchase-card,
+.purchase-board-card {
+  gap: 10px !important;
+}
+
+/* 小螢幕或窄卡片：資訊自動直排 */
+@media (max-width: 860px) {
+  .purchase-card-footer,
+  .purchase-card-actions,
+  .purchase-card-bottom,
+  [class*="purchase-card"] [class*="footer"],
+  [class*="purchase-card"] [class*="actions"],
+  [class*="purchase-card"] [class*="bottom"] {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+}
+
+/* 採購清單區：避免卡片在窄螢幕互相擠壓 */
+.purchase-card-list,
+.purchase-board-list,
+.purchase-grid,
+[class*="purchase-card-list"],
+[class*="purchase-grid"] {
+  min-width: 0 !important;
+}
+
+/* 採購卡片右上狀態群：維持在卡片內，不外溢 */
+.purchase-card-head,
+.purchase-card-header,
+[class*="purchase-card"] [class*="head"],
+[class*="purchase-card"] [class*="header"] {
+  min-width: 0 !important;
+  gap: 8px !important;
+}
+
+/* 避免過寬文字讓卡片橫向捲動 */
+.purchase-card *,
+.purchase-board-card * {
+  box-sizing: border-box;
+}
+
+/* END_FLOWDESK_PURCHASE_CARD_READABLE_LAYOUT */
+
+/* FLOWDESK_PURCHASE_CARD_STATUS_DATE */
+.fd74-purchase-status-date {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 3px !important;
+  padding: 9px 10px !important;
+  border-radius: 14px !important;
+  background: rgba(239, 246, 255, .82) !important;
+  border: 1px solid rgba(147, 197, 253, .48) !important;
+}
+
+.fd74-purchase-status-date span {
+  color: #64748b !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  letter-spacing: .06em !important;
+}
+
+.fd74-purchase-status-date strong {
+  color: #1e3a8a !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.fd74-purchase-status-date.ordered {
+  background: rgba(238, 246, 255, .9) !important;
+  border-color: rgba(96, 165, 250, .5) !important;
+}
+
+.fd74-purchase-status-date.arrived {
+  background: rgba(236, 253, 245, .9) !important;
+  border-color: rgba(52, 211, 153, .45) !important;
+}
+
+.fd74-purchase-status-date.done {
+  background: rgba(240, 253, 244, .92) !important;
+  border-color: rgba(34, 197, 94, .42) !important;
+}
+
+.fd74-purchase-status-date.request {
+  background: rgba(248, 250, 252, .94) !important;
+  border-color: rgba(203, 213, 225, .9) !important;
+}
+
+.purchase-card-list.purchase-list-mode .fd74-purchase-status-date {
+  min-height: 42px !important;
+}
+
+@media (max-width: 860px) {
+  .fd74-purchase-status-date {
+    grid-column: 1 / -1 !important;
+  }
+}
+/* END_FLOWDESK_PURCHASE_CARD_STATUS_DATE */
+
+/* FLOWDESK_GANTT_REMOVE_GLOBAL_EXPAND */
+.fd203-gantt-individual-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #64748b;
+  background: rgba(248, 250, 252, .92);
+  border: 1px dashed rgba(148, 163, 184, .45);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.fd203-inline-gantt-shell,
+.fd203-inline-gantt-shell-row {
+  display: none !important;
+}
+
+.fd203-project-card-list.expanded-gantt {
+  display: grid !important;
+}
+
+@media (max-width: 860px) {
+  .fd203-gantt-individual-note {
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
+  }
+}
+/* END_FLOWDESK_GANTT_REMOVE_GLOBAL_EXPAND */
+
+
+
+
+
+/* FLOWDESK_GANTT_LEFT_TASK_CARD_POLISH */
+
+/* 甘特圖小範圍優化：只收斂左側任務卡，不動右側時間軸與任務條定位 */
+.fd203-gantt-left,
+.fd203-gantt-task-panel,
+.fd203-gantt-lane-left,
+[class*="gantt"] [class*="left"],
+[class*="gantt"] [class*="task-panel"] {
+  background: rgba(248, 250, 252, .72) !important;
+}
+
+/* 左側任務卡不要太厚，資訊更集中 */
+.fd203-gantt-left article,
+.fd203-gantt-task-card,
+.fd203-gantt-lane-card,
+[class*="gantt"] article,
+[class*="gantt"] [class*="task-card"],
+[class*="gantt"] [class*="lane-card"] {
+  padding: 9px 10px !important;
+  border-radius: 13px !important;
+  gap: 7px !important;
+}
+
+/* 任務名稱維持一行，避免把卡片撐高 */
+.fd203-gantt-left strong,
+.fd203-gantt-task-card strong,
+.fd203-gantt-lane-card strong,
+[class*="gantt"] [class*="task-card"] strong,
+[class*="gantt"] [class*="lane-card"] strong {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* 左側任務日期與負責人資訊縮小，降低干擾 */
+.fd203-gantt-left small,
+.fd203-gantt-left p,
+.fd203-gantt-task-card small,
+.fd203-gantt-task-card p,
+[class*="gantt"] [class*="task-card"] small,
+[class*="gantt"] [class*="task-card"] p {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  color: #64748b !important;
+}
+
+/* 按鈕列收斂：不再一整排撐爆卡片 */
+.fd203-gantt-left .fd203-gantt-adjust-row,
+.fd203-gantt-left .fd203-gantt-shift-row,
+.fd203-gantt-task-card .fd203-gantt-adjust-row,
+.fd203-gantt-task-card .fd203-gantt-shift-row,
+[class*="gantt"] [class*="adjust-row"],
+[class*="gantt"] [class*="shift-row"],
+[class*="gantt"] [class*="action-row"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 5px !important;
+  margin-top: 6px !important;
+}
+
+/* 甘特圖左側小按鈕縮小，避免視覺很吵 */
+.fd203-gantt-left button,
+.fd203-gantt-task-card button,
+.fd203-gantt-lane-card button,
+[class*="gantt"] [class*="task-card"] button,
+[class*="gantt"] [class*="lane-card"] button {
+  min-height: 23px !important;
+  padding: 3px 7px !important;
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+  border-radius: 999px !important;
+}
+
+/* 第一個調整按鈕保留比較明顯，其餘快速位移按鈕降低存在感 */
+.fd203-gantt-left button:first-of-type,
+.fd203-gantt-task-card button:first-of-type,
+.fd203-gantt-lane-card button:first-of-type,
+[class*="gantt"] [class*="task-card"] button:first-of-type,
+[class*="gantt"] [class*="lane-card"] button:first-of-type {
+  font-weight: 850 !important;
+}
+
+/* 非主要按鈕淡一點 */
+.fd203-gantt-left button:not(:first-of-type),
+.fd203-gantt-task-card button:not(:first-of-type),
+.fd203-gantt-lane-card button:not(:first-of-type),
+[class*="gantt"] [class*="task-card"] button:not(:first-of-type),
+[class*="gantt"] [class*="lane-card"] button:not(:first-of-type) {
+  opacity: .82 !important;
+}
+
+/* 任務狀態膠囊縮小 */
+.fd203-gantt-left .badge,
+.fd203-gantt-left [class*="badge"],
+.fd203-gantt-left [class*="chip"],
+.fd203-gantt-task-card [class*="badge"],
+.fd203-gantt-task-card [class*="chip"],
+[class*="gantt"] [class*="task-card"] [class*="badge"],
+[class*="gantt"] [class*="task-card"] [class*="chip"] {
+  min-height: 22px !important;
+  padding: 3px 8px !important;
+  font-size: 10.5px !important;
+}
+
+/* 子任務或提示文字不要把左欄撐太高 */
+.fd203-gantt-left em,
+.fd203-gantt-left span,
+.fd203-gantt-task-card em,
+.fd203-gantt-task-card span,
+[class*="gantt"] [class*="task-card"] em,
+[class*="gantt"] [class*="task-card"] span {
+  max-width: 100% !important;
+}
+
+/* 小螢幕同樣只調左側卡片，不干擾時間軸 */
+@media (max-width: 860px) {
+  .fd203-gantt-left article,
+  .fd203-gantt-task-card,
+  .fd203-gantt-lane-card,
+  [class*="gantt"] article,
+  [class*="gantt"] [class*="task-card"],
+  [class*="gantt"] [class*="lane-card"] {
+    padding: 8px !important;
+  }
+
+  .fd203-gantt-left button,
+  .fd203-gantt-task-card button,
+  .fd203-gantt-lane-card button,
+  [class*="gantt"] [class*="task-card"] button,
+  [class*="gantt"] [class*="lane-card"] button {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+  }
+}
+
+/* END_FLOWDESK_GANTT_LEFT_TASK_CARD_POLISH */
+
+/* FLOWDESK_PROJECT_OVERVIEW_POLISH */
+
+/* 專案明細總覽：只整理總覽視覺，不碰甘特圖與資料邏輯 */
+.fd203-overview-panel {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+/* 主摘要卡：讓專案名稱、下一步、進度更像重點區 */
+.fd203-overview-panel .fd203-profile-card {
+  min-width: 0 !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(191, 219, 254, .86) !important;
+  background:
+    radial-gradient(circle at 96% 8%, rgba(59, 130, 246, .13), transparent 34%),
+    linear-gradient(135deg, rgba(255,255,255,.98), rgba(239,246,255,.82)) !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, .07) !important;
+}
+
+.fd203-overview-panel .fd203-profile-card h3 {
+  color: #172033 !important;
+  font-size: 22px !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.025em !important;
+  margin-bottom: 8px !important;
+}
+
+.fd203-overview-panel .fd203-profile-card p {
+  color: #475569 !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+  margin: 0 0 14px !important;
+}
+
+/* 進度條更明顯但不厚重 */
+.fd203-overview-panel .flow-progress.big {
+  height: 11px !important;
+  border-radius: 999px !important;
+  background: rgba(226,232,240,.92) !important;
+  overflow: hidden !important;
+}
+
+.fd203-overview-panel .flow-progress.big span {
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, rgba(37,99,235,.92), rgba(96,165,250,.82)) !important;
+}
+
+/* KPI 區：收斂成整齊資訊格 */
+.fd203-overview-panel .project-focus-kpis.fd203-kpis,
+.fd203-overview-panel .fd203-kpis {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+  margin-top: 14px !important;
+}
+
+.fd203-overview-panel .project-focus-kpis.fd203-kpis article,
+.fd203-overview-panel .fd203-kpis article {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 5px !important;
+  padding: 11px 12px !important;
+  border-radius: 16px !important;
+  background: rgba(255,255,255,.76) !important;
+  border: 1px solid rgba(226,232,240,.92) !important;
+}
+
+.fd203-overview-panel .project-focus-kpis.fd203-kpis article span,
+.fd203-overview-panel .fd203-kpis article span {
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+}
+
+.fd203-overview-panel .project-focus-kpis.fd203-kpis article strong,
+.fd203-overview-panel .fd203-kpis article strong {
+  min-width: 0 !important;
+  color: #172033 !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* 操作列不要太吵 */
+.fd203-overview-panel .project-focus-actions.fd203-action-row {
+  justify-content: flex-start !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-top: 14px !important;
+}
+
+.fd203-overview-panel .project-focus-actions.fd203-action-row button {
+  min-height: 34px !important;
+  padding: 7px 12px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+/* 專案重點卡 */
+.fd203-overview-panel .fd203-focus-card,
+.fd203-overview-panel .fd203-editor-card.fd203-focus-card {
+  min-width: 0 !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(226,232,240,.95) !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, .055) !important;
+}
+
+.fd203-overview-panel .fd203-focus-summary-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+.fd203-overview-panel .fd203-focus-summary-grid article {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 5px !important;
+  padding: 11px 12px !important;
+  border-radius: 15px !important;
+  background: rgba(248,250,252,.88) !important;
+  border: 1px solid rgba(226,232,240,.9) !important;
+}
+
+.fd203-overview-panel .fd203-focus-summary-grid span {
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+}
+
+.fd203-overview-panel .fd203-focus-summary-grid strong {
+  min-width: 0 !important;
+  color: #172033 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* 編輯說明改淡一點，不搶主內容 */
+.fd203-overview-panel .fd203-focus-note {
+  margin-top: 12px !important;
+  padding: 11px 12px !important;
+  border-radius: 15px !important;
+  border: 1px dashed rgba(148,163,184,.42) !important;
+  background: rgba(248,250,252,.82) !important;
+}
+
+.fd203-overview-panel .fd203-focus-note strong {
+  color: #334155 !important;
+}
+
+.fd203-overview-panel .fd203-focus-note span {
+  color: #64748b !important;
+  line-height: 1.6 !important;
+}
+
+/* 關聯工作區塊橫跨底部 */
+.fd203-overview-panel > .detail-block {
+  grid-column: 1 / -1 !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(226,232,240,.95) !important;
+  background: rgba(255,255,255,.94) !important;
+}
+
+.fd203-overview-panel .related-task-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.fd203-overview-panel .related-task-list article {
+  min-width: 0 !important;
+  padding: 12px 13px !important;
+  border-radius: 15px !important;
+  background: rgba(248,250,252,.88) !important;
+  border: 1px solid rgba(226,232,240,.9) !important;
+}
+
+.fd203-overview-panel .related-task-list article strong {
+  display: block !important;
+  min-width: 0 !important;
+  color: #172033 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.fd203-overview-panel .related-task-list article span {
+  color: #64748b !important;
+  font-size: 12px !important;
+}
+
+/* 小螢幕 / 窄視窗 */
+@media (max-width: 1100px) {
+  .fd203-overview-panel {
+    grid-template-columns: 1fr !important;
+  }
+
+  .fd203-overview-panel .project-focus-kpis.fd203-kpis,
+  .fd203-overview-panel .fd203-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .fd203-overview-panel .project-focus-kpis.fd203-kpis,
+  .fd203-overview-panel .fd203-kpis,
+  .fd203-overview-panel .fd203-focus-summary-grid,
+  .fd203-overview-panel .related-task-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .fd203-overview-panel .fd203-profile-card h3 {
+    font-size: 19px !important;
+  }
+}
+
+/* END_FLOWDESK_PROJECT_OVERVIEW_POLISH */
+
+/* FLOWDESK_PROJECT_TASK_TAB_READABLE_LAYOUT */
+
+/* 專案任務分頁：只整理任務卡片與表單密度，不碰甘特圖 */
+.fd203-project-modal--tasks .project-task-block,
+.project-task-block.fd203-tab-panel {
+  border-radius: 22px !important;
+  border: 1px solid rgba(226, 232, 240, .95) !important;
+  background: rgba(255, 255, 255, .96) !important;
+}
+
+.fd203-project-modal--tasks .detail-block-headline,
+.project-task-block .detail-block-headline {
+  align-items: center !important;
+  gap: 12px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, .82) !important;
+}
+
+.fd203-project-modal--tasks .detail-block-headline .eyebrow,
+.project-task-block .detail-block-headline .eyebrow {
+  margin: 0 !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  letter-spacing: .08em !important;
+}
+
+.fd203-project-modal--tasks .detail-block-headline button,
+.project-task-block .detail-block-headline button {
+  min-height: 36px !important;
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+/* 任務清單間距 */
+.project-task-block .project-detail-card-list.fd203-task-list {
+  display: grid !important;
+  gap: 14px !important;
+}
+
+/* 任務卡片：改成比較清楚的工作卡 */
+.project-task-block .project-detail-card.fd203-detail-card {
+  position: relative !important;
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 12px !important;
+  padding: 15px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(226, 232, 240, .96) !important;
+  background:
+    radial-gradient(circle at 98% 0%, rgba(59, 130, 246, .08), transparent 30%),
+    rgba(255, 255, 255, .98) !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .055) !important;
+}
+
+/* 任務標題列 */
+.project-task-block .project-detail-card.fd203-detail-card > .project-detail-card-head {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 0 0 10px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, .82) !important;
+}
+
+.project-task-block .project-detail-card.fd203-detail-card > .project-detail-card-head strong {
+  min-width: 0 !important;
+  color: #172033 !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+  line-height: 1.35 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.project-task-block .project-detail-card.fd203-detail-card > .project-detail-card-head span {
+  min-width: 48px !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 30px !important;
+  padding: 5px 10px !important;
+  border-radius: 999px !important;
+  color: #1d4ed8 !important;
+  background: rgba(239, 246, 255, .96) !important;
+  border: 1px solid rgba(147, 197, 253, .82) !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* 前置任務提示更像狀態條 */
+.project-task-block .fd203-task-dependency-note.detail {
+  margin: 0 !important;
+  padding: 9px 11px !important;
+  border-radius: 14px !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  line-height: 1.5 !important;
+}
+
+/* 任務表單：日期 / 負責人 / 前置 / 進度排列更穩 */
+.project-task-block .project-detail-form-grid {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(150px, .8fr) repeat(2, minmax(132px, .7fr)) !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+
+.project-task-block .project-detail-form-grid label {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 6px !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+
+.project-task-block .project-detail-form-grid input,
+.project-task-block .project-detail-form-grid select,
+.project-task-block .project-detail-form-grid textarea,
+.project-task-block .project-detail-form-grid .chinese-text-field,
+.project-task-block .project-detail-form-grid [contenteditable="true"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 38px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(203, 213, 225, .92) !important;
+  background: rgba(248, 250, 252, .88) !important;
+}
+
+.project-task-block .project-detail-form-grid small {
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+/* 進度 range 不要把欄位撐得很怪 */
+.project-task-block .project-detail-form-grid input[type="range"] {
+  min-height: 28px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+/* 任務操作按鈕：收斂成一排小膠囊 */
+.project-task-block .project-detail-card-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  justify-content: flex-start !important;
+  padding-top: 2px !important;
+}
+
+.project-task-block .project-detail-card-actions button {
+  min-height: 30px !important;
+  padding: 6px 11px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+/* 刪除類按鈕降低一點視覺，不要太搶 */
+.project-task-block .project-detail-card-actions button:last-child {
+  color: #b91c1c !important;
+  background: rgba(254, 242, 242, .82) !important;
+  border-color: rgba(252, 165, 165, .65) !important;
+}
+
+/* 子任務區塊：縮排、淡化，讓主任務更明顯 */
+.project-task-block .fd203-subtask-list {
+  display: grid !important;
+  gap: 9px !important;
+  margin-top: 2px !important;
+  padding-left: 12px !important;
+  border-left: 3px solid rgba(147, 197, 253, .36) !important;
+}
+
+.project-task-block .fd203-subtask-editor {
+  display: grid !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  border-radius: 16px !important;
+  background: rgba(248, 250, 252, .9) !important;
+  border: 1px solid rgba(226, 232, 240, .9) !important;
+  box-shadow: none !important;
+}
+
+.project-task-block .fd203-subtask-editor .project-detail-card-head {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+.project-task-block .fd203-subtask-editor .project-detail-card-head strong {
+  min-width: 0 !important;
+  color: #334155 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.project-task-block .fd203-subtask-editor .project-detail-card-head span {
+  min-width: 44px !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  min-height: 26px !important;
+  padding: 4px 9px !important;
+  border-radius: 999px !important;
+  color: #475569 !important;
+  background: rgba(255,255,255,.88) !important;
+  border: 1px solid rgba(203,213,225,.82) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+
+/* 子任務 compact-3 表單也整理 */
+.project-task-block .project-detail-form-grid.compact-3 {
+  grid-template-columns: minmax(220px, 1.25fr) minmax(140px, .75fr) repeat(3, minmax(120px, .58fr)) !important;
+}
+
+/* 窄螢幕改成單欄，避免擠爆 */
+@media (max-width: 1180px) {
+  .project-task-block .project-detail-form-grid,
+  .project-task-block .project-detail-form-grid.compact-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .project-task-block .project-detail-card.fd203-detail-card {
+    padding: 13px !important;
+  }
+
+  .project-task-block .project-detail-form-grid,
+  .project-task-block .project-detail-form-grid.compact-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .project-task-block .project-detail-card.fd203-detail-card > .project-detail-card-head,
+  .project-task-block .fd203-subtask-editor .project-detail-card-head {
+    grid-template-columns: 1fr !important;
+  }
+
+  .project-task-block .project-detail-card.fd203-detail-card > .project-detail-card-head span,
+  .project-task-block .fd203-subtask-editor .project-detail-card-head span {
+    justify-self: start !important;
+  }
+}
+
+/* END_FLOWDESK_PROJECT_TASK_TAB_READABLE_LAYOUT */

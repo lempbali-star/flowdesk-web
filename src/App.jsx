@@ -3183,7 +3183,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
         )}
       </section>
       {showPurchaseForm && <PurchaseModal onClose={() => setShowPurchaseForm(false)} onSubmit={addPurchase} stages={activeStages} />}
-      {editingPurchase && <PurchaseModal onClose={() => setEditingPurchase(null)} onSubmit={savePurchase} stages={activeStages} initial={editingPurchase} mode="edit" />}
+      {editingPurchase && <PurchaseModal onClose={() => setEditingPurchase(null)} onSubmit={savePurchase} onArchiveSave={(row, folder) => updatePurchaseMeta(row || editingPurchase, { archiveFolder: folder }, '更新採購歸檔設定。')} stages={activeStages} initial={editingPurchase} mode="edit" />}
     </div>
   )
 }
@@ -3785,10 +3785,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [ganttDragRange, setGanttDragRange] = useState(null)
   const [ganttDragPreview, setGanttDragPreview] = useState(null)
   const [ganttProgressEditor, setGanttProgressEditor] = useState(null)
-  const [ganttShowSubtasks, setGanttShowSubtasks] = useState(() => {
-    if (typeof window === 'undefined') return true
-    return window.localStorage.getItem('flowdesk-gantt-show-subtasks-v20316') !== 'false'
-  })
+  const [ganttShowSubtasks, setGanttShowSubtasks] = useState(false)
   // FLOWDESK_V20_4_66_GANTT_WEEK_START_STATE_START
   const [ganttWeekStartDay, setGanttWeekStartDay] = useState(() => {
     if (typeof window === 'undefined') return 1
@@ -5471,10 +5468,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           </div>
           <div className="fd203-project-card-foot">
             <span className="fd203-card-date-pill" title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
-            <span className="fd203-card-open-pill">{projectListExpandAllGantt ? '甘特圖已展開' : '開啟專案'}</span>
+            <span className="fd203-card-open-pill">開啟專案</span>
           </div>
         </article>
-        {projectListExpandAllGantt ? <div className="fd203-inline-gantt-shell">{renderGantt(project, { embedded: true, compact: true })}</div> : null}
+        {null}
       </div>
     )
   }
@@ -5511,7 +5508,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</small></span>
           <span className="fd203-row-badges"><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.phase} /><Badge value={project.health} />{getProjectStatusMeta(project).notices.slice(0, 2).map((notice) => <span key={notice.label} className={`fd203-status-chip ${notice.tone}`}>{notice.label}</span>)}</span>
         </article>
-        {projectListExpandAllGantt ? <div className="fd203-inline-gantt-shell fd203-inline-gantt-shell-row">{renderGantt(project, { embedded: true, compact: true })}</div> : null}
+        {null}
       </div>
     )
   }
@@ -5618,7 +5615,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             </label>
             <span className="fd20426-gantt-stability-pill">凍結表頭 / 左欄</span>
             <button type="button" onClick={() => addProjectTask(project.id)}>新增任務</button>
-            <button type="button" className={ganttShowSubtasks ? 'fd203-gantt-global-toggle open' : 'fd203-gantt-global-toggle closed'} onClick={toggleAllGanttSubtasks}>{ganttShowSubtasks ? '全部收合子任務' : '全部展開子任務'}</button>
+            
           </div>
         </div>
 
@@ -6175,9 +6172,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             </div>
             <div className="fd203-pane-actions">
               <small>{filteredProjects.length} 筆 · 可拖曳排序 · 點擊開啟彈窗</small>
-              <button type="button" className={projectListExpandAllGantt ? 'ghost-btn active' : 'ghost-btn'} onClick={() => setProjectListExpandAllGantt((value) => !value)}>
-                {projectListExpandAllGantt ? '收合全部甘特圖' : '展開全部甘特圖'}
-              </button>
+              
             </div>
           </div>
 
@@ -6202,7 +6197,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           {!projects.length && <div className="flow-empty-card"><strong>目前沒有專案</strong><span>可先新增一筆專案開始建立時程。</span></div>}
 
           {projectViewMode === 'cards' ? (
-            <div className={projectListExpandAllGantt ? 'fd203-project-card-list expanded-gantt' : 'fd203-project-card-list'}>
+            <div className="fd203-project-card-list">
               {paginatedProjects.map(renderProjectCard)}
             </div>
           ) : (
@@ -10051,7 +10046,7 @@ function normalizePurchaseList(rows = []) {
   })
 }
 
-function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) {
+function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode = 'create' }) {
   const [saveAttempted, setSaveAttempted] = useState(false)
   const [form, setForm] = useState(() => ({
     id: initial?.id,
@@ -10149,6 +10144,14 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
       ...current,
       items: current.items.length > 1 ? current.items.filter((item) => item.id !== itemId) : current.items,
     }))
+  }
+
+  function saveArchiveFolderFromPurchaseEdit(nextFolder) {
+    const cleanFolder = normalizeArchiveFolderV67(nextFolder, { type: '採購', id: form.id, title: purchaseTitle(form), department: form.department, date: form.requestDate });
+    setForm((current) => ({ ...current, archiveFolder: cleanFolder }));
+    if (mode === 'edit' && typeof onArchiveSave === 'function') {
+      onArchiveSave(initial || form, cleanFolder);
+    }
   }
 
   function submitForm() {
@@ -10320,12 +10323,35 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
             <div className="purchase-form-section-head">
               <div><p className="eyebrow">歸檔資料</p><h3>FlowDesk 只記錄雲端資料夾，不存附件本體</h3></div>
             </div>
-            <ArchiveFolderPanelV67
-              title="採購歸檔資料夾"
-              folder={form.archiveFolder}
-              suggestedName={buildArchiveFolderNameV67({ type: '採購', id: form.id, title: purchaseTitle(form), department: form.department, date: form.requestDate })}
-              onChange={(next) => update('archiveFolder', next)}
-            />
+            <div className="fd-edit-purchase-archive-readonly">
+              <div className="fd-edit-purchase-archive-readonly-head">
+                <div>
+                  <p className="eyebrow">ARCHIVE FOLDER</p>
+                  <h4>採購歸檔資料夾</h4>
+                  <span>避免與採購明細的歸檔資料互相覆蓋，編輯採購頁僅顯示目前狀態。</span>
+                </div>
+                <Badge value={purchaseArchiveStatusV72(form)} />
+              </div>
+
+              <div className="fd-edit-purchase-archive-readonly-grid">
+                <article>
+                  <span>資料夾名稱</span>
+                  <strong>{form.archiveFolder?.name || buildArchiveFolderNameV67({ type: '採購', id: form.id, title: purchaseTitle(form), department: form.department, date: form.requestDate })}</strong>
+                </article>
+                <article>
+                  <span>雲端連結</span>
+                  <strong>{form.archiveFolder?.url || form.archiveFolder?.link ? '已建立連結' : '尚未建立連結'}</strong>
+                </article>
+                <article>
+                  <span>歸檔狀態</span>
+                  <strong>{purchaseArchiveStatusV72(form)}</strong>
+                </article>
+              </div>
+
+              <div className="fd-edit-purchase-archive-readonly-note">
+                請至「採購明細 → 歸檔資料」管理雲端資料夾連結、清除連結與歸檔狀態。
+              </div>
+            </div>
           </section>
 
           <section className="purchase-form-section">
@@ -11008,13 +11034,15 @@ function buildArchiveFolderNameV67({ type = '資料', id = '', title = '', depar
 }
 
 function normalizeArchiveFolderV67(value = {}, fallback = {}) {
-  const next = value && typeof value === 'object' ? value : {}
-  const hasUrl = Object.prototype.hasOwnProperty.call(next, 'url')
-  const rawUrl = hasUrl ? next.url : next.link
-  const cleanUrl = String(rawUrl || '').trim()
+  const next = value && typeof value === 'object' ? value : {};
+  const hasOwnUrl = Object.prototype.hasOwnProperty.call(next, 'url');
+  const hasOwnLink = Object.prototype.hasOwnProperty.call(next, 'link');
+  const forceClear = next.__flowdeskClearArchiveLink === true || next.__clearLink === true || next.clearLink === true;
+  const rawUrl = forceClear ? '' : (hasOwnUrl ? next.url : (hasOwnLink ? next.link : ''));
+  const cleanUrl = String(rawUrl || '').trim();
   const cleanStatus = cleanUrl
-    ? (next.status && next.status !== '未建立' ? next.status : '已建立')
-    : '未建立'
+    ? (next.status && next.status !== '\u672a\u5efa\u7acb' ? next.status : '\u5df2\u5efa\u7acb')
+    : '\u672a\u5efa\u7acb';
   return {
     name: next.name || buildArchiveFolderNameV67(fallback),
     url: cleanUrl,
@@ -11022,7 +11050,7 @@ function normalizeArchiveFolderV67(value = {}, fallback = {}) {
     status: cleanStatus,
     note: next.note || '',
     updatedAt: next.updatedAt || '',
-  }
+  };
 }
 
 function purchaseArchiveStatusV72(row = {}) {
@@ -11030,6 +11058,51 @@ function purchaseArchiveStatusV72(row = {}) {
   if (folder.status === '已歸檔') return '已歸檔'
   if (folder.url) return folder.status && folder.status !== '未建立' ? folder.status : '已建立'
   return '未建立'
+}
+
+
+function getPurchaseStatusDateMetaFlowDesk(row = {}) {
+  const status = String(row.status || '').trim();
+  const arrivalStatus = String(row.arrivalStatus || '').trim();
+  const acceptanceStatus = String(row.acceptanceStatus || '').trim();
+
+  const accepted = status.includes('\u5df2\u9a57\u6536') || status.includes('\u5df2\u5b8c\u6210') || acceptanceStatus.includes('\u5df2\u9a57\u6536');
+  const arrived = !arrivalStatus.includes('\u672a\u5230\u8ca8') && (status.includes('\u5df2\u5230\u8ca8') || arrivalStatus.includes('\u5df2\u5230\u8ca8'));
+  const ordered = status.includes('\u5df2\u4e0b\u55ae') || status.includes('\u4e0b\u55ae\u5b8c\u6210') || Boolean(row.orderDate);
+
+  if (accepted) {
+    return {
+      label: '\u9a57\u6536\u65e5',
+      value: row.acceptanceDate || row.arrivalDate || row.orderDate || row.requestDate || '',
+      empty: '\u672a\u586b\u9a57\u6536\u65e5',
+      tone: 'done',
+    };
+  }
+
+  if (arrived) {
+    return {
+      label: '\u5230\u8ca8\u65e5',
+      value: row.arrivalDate || row.expectedArrivalDate || row.orderDate || row.requestDate || '',
+      empty: '\u672a\u586b\u5230\u8ca8\u65e5',
+      tone: 'arrived',
+    };
+  }
+
+  if (ordered) {
+    return {
+      label: '\u4e0b\u55ae\u65e5',
+      value: row.orderDate || '',
+      empty: '\u672a\u586b\u4e0b\u55ae\u65e5',
+      tone: 'ordered',
+    };
+  }
+
+  return {
+    label: '\u7533\u8acb\u65e5',
+    value: row.requestDate || '',
+    empty: '\u672a\u586b\u7533\u8acb\u65e5',
+    tone: 'request',
+  };
 }
 
 function PurchaseCardFocusMetaV74({ row, amount }) {
@@ -11099,7 +11172,7 @@ function PurchaseArchiveHintV72({ row }) {
   )
 }
 
-function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedName, onChange, compact = false }) {
+function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedName, onChange, onSave, compact = false }) {
   const safeFolder = normalizeArchiveFolderV67(folder, { title: suggestedName })
   const [draft, setDraft] = useState(() => ({
     name: safeFolder.name || suggestedName || '',
@@ -11123,15 +11196,16 @@ function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedNam
   }
 
   function buildCleanFolder(nextDraft = draft, forceEmpty = false) {
-    const cleanUrl = forceEmpty ? '' : String(nextDraft.url || '').trim()
+    const cleanUrl = forceEmpty ? '' : String(nextDraft.url || nextDraft.link || '').trim();
     return {
       name: nextDraft.name || suggestedName || safeFolder.name,
       url: cleanUrl,
       link: cleanUrl,
-      status: cleanUrl ? (nextDraft.status && nextDraft.status !== '未建立' ? nextDraft.status : '已建立') : '未建立',
+      status: cleanUrl ? (nextDraft.status && nextDraft.status !== '\u672a\u5efa\u7acb' ? nextDraft.status : '\u5df2\u5efa\u7acb') : '\u672a\u5efa\u7acb',
       note: nextDraft.note || '',
       updatedAt: todayDate(),
-    }
+      __flowdeskClearArchiveLink: forceEmpty === true,
+    };
   }
 
   function saveFolder() {
@@ -11147,16 +11221,16 @@ function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedNam
   }
 
   function clearFolderLink() {
-    if (!canEdit) return
-    const nextDraft = { ...draft, url: '', status: '未建立' }
-    const nextFolder = buildCleanFolder(nextDraft, true)
+    if (!canEdit) return;
+    const nextDraft = { ...draft, url: '', link: '', status: '\u672a\u5efa\u7acb' };
+    const nextFolder = buildCleanFolder(nextDraft, true);
     setDraft({
       name: nextFolder.name,
       url: '',
-      status: '未建立',
+      status: '\u672a\u5efa\u7acb',
       note: nextFolder.note,
-    })
-    onChange(nextFolder)
+    });
+    onChange(nextFolder);
   }
 
   async function copyName() {
@@ -12039,3 +12113,10 @@ export default App
 
 
 
+
+
+// FLOWDESK_PURCHASE_ARCHIVE_CLEAR_LINK_FIX
+
+// FLOWDESK_PURCHASE_EDIT_ARCHIVE_SAVE_FIX
+
+// FLOWDESK_GANTT_GLOBAL_BUTTON_TEXT_REMOVED
