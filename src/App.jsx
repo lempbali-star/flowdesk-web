@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.170'
+const FLOWDESK_APP_VERSION = '20.4.171'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -2685,7 +2685,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   function updatePurchaseStatus(row, status) {
     if (!row || !status) return
-    const patch = { status }
+    const patch = buildPurchaseOrderDatePatchV171(row, { status })
     if (arrivedStages.includes(status) && (row.arrivalStatus || '未到貨') === '未到貨') patch.arrivalStatus = '已到貨'
     if (doneStages.includes(status)) {
       if ((row.arrivalStatus || '未到貨') !== '已到貨') patch.arrivalStatus = '已到貨'
@@ -2699,7 +2699,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   function updatePurchaseMeta(row, patch, message) {
     if (!row) return
-    const next = normalizePurchase({ ...row, ...patch })
+    const safePatch = buildPurchaseOrderDatePatchV171(row, patch || {})
+    const next = normalizePurchase({ ...row, ...safePatch })
     setPurchases((rows) => rows.map((item) => isSamePurchase(item, row) ? next : item))
     setSelectedPurchase(next)
     writeHistory(row.id, purchaseTitle(row), message || '更新採購追蹤欄位。')
@@ -3330,6 +3331,20 @@ function todayDate() {
   return formatLocalDateValue(new Date())
 }
 
+function isPurchaseOrderedStageV171(status) {
+  const text = String(status || '').trim()
+  if (!text || text.includes('待下單') || text.includes('未下單')) return false
+  return ['已下單', '下單完成', '已送單', '已採購', '訂購完成'].includes(text) || text.includes('已下單') || text.includes('下單完成')
+}
+
+function buildPurchaseOrderDatePatchV171(current = {}, patch = {}) {
+  const nextStatus = patch.status ?? current.status
+  if (isPurchaseOrderedStageV171(nextStatus) && !patch.orderDate && !current.orderDate) {
+    return { ...patch, orderDate: todayDate() }
+  }
+  return patch
+}
+
 function addDaysDate(days) {
   const date = new Date()
   date.setDate(date.getDate() + days)
@@ -3653,7 +3668,12 @@ function TaskModal({ onClose, onSubmit, statusOptions, initial, mode = 'create' 
   const [form, setForm] = useState(() => ({ ...createEmptyTask(), ...(initial || {}), tagsText: Array.isArray(initial?.tags) ? initial.tags.join(', ') : initial?.tagsText || '' }))
 
   function update(field, value) {
-    setForm((current) => ({ ...current, [field]: value }))
+    setForm((current) => {
+      const patch = field === 'status'
+        ? buildPurchaseOrderDatePatchV171(current, { [field]: value })
+        : { [field]: value }
+      return { ...current, ...patch }
+    })
   }
 
   function submitTask() {
@@ -5258,22 +5278,26 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   function getProjectListInfo(project = {}) {
     const today = todayDate()
     const flatItems = (project.tasks || []).flatMap((task, taskIndex) => {
-      const taskLabel = task.name || `任務 ${taskIndex + 1}`
+      const rawTaskName = String(task.name || '').trim()
+      const taskLabel = rawTaskName || `任務 ${taskIndex + 1}`
       const taskItem = {
         type: '任務',
         name: taskLabel,
         label: taskLabel,
+        named: Boolean(rawTaskName),
         start: task.start || project.startDate,
         end: task.end || project.endDate,
         progress: clampPercent(task.progress),
         done: Boolean(task.done) || clampPercent(task.progress) >= 100,
       }
       const subItems = (task.subtasks || []).map((subtask, subIndex) => {
-        const subLabel = subtask.name || `子任務 ${subIndex + 1}`
+        const rawSubName = String(subtask.name || '').trim()
+        const subLabel = rawSubName || `子任務 ${subIndex + 1}`
         return {
           type: '子任務',
           name: subLabel,
           label: `${taskLabel} / ${subLabel}`,
+          named: Boolean(rawSubName),
           start: subtask.start || task.start || project.startDate,
           end: subtask.end || task.end || project.endDate,
           progress: clampPercent(subtask.progress),
@@ -5285,18 +5309,20 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
 
     const openItems = flatItems.filter((item) => !item.done)
     const itemRank = (item) => (item.type === '任務' ? 0 : 1)
+    const namedRank = (item) => (item.named ? 0 : 1)
     const sortByWorkPriority = (a, b) => (
       (itemRank(a) - itemRank(b)) ||
+      (namedRank(a) - namedRank(b)) ||
       String(a.start).localeCompare(String(b.start)) ||
       String(a.end).localeCompare(String(b.end)) ||
       String(a.label).localeCompare(String(b.label))
     )
     const currentItems = openItems
       .filter((item) => item.start <= today && item.end >= today)
-      .sort((a, b) => (itemRank(a) - itemRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)) || String(a.label).localeCompare(String(b.label)))
+      .sort((a, b) => (itemRank(a) - itemRank(b)) || (namedRank(a) - namedRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)) || String(a.label).localeCompare(String(b.label)))
     const activeItems = openItems
       .filter((item) => item.progress > 0 && item.progress < 100 && item.start <= today)
-      .sort((a, b) => (itemRank(a) - itemRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)) || String(a.label).localeCompare(String(b.label)))
+      .sort((a, b) => (itemRank(a) - itemRank(b)) || (namedRank(a) - namedRank(b)) || (b.progress - a.progress) || String(a.end).localeCompare(String(b.end)) || String(a.label).localeCompare(String(b.label)))
     const upcomingItems = openItems
       .filter((item) => item.start > today)
       .sort(sortByWorkPriority)
@@ -5311,8 +5337,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       .filter(Boolean)
     const manualLooksActive = manualNext && activeTexts.some((text) => text.includes(manualNext) || manualNext.includes(text.split(' / ').pop()))
 
+    const runningText = runningItem ? `${runningItem.type}：${runningItem.label}` : '尚未設定正在進行'
     return {
-      running: runningItem ? `${runningItem.type}：${runningItem.label}` : '尚未設定正在進行',
+      running: runningText,
+      currentTask: runningItem ? runningItem.label : '',
       next: nextItem
         ? `${nextItem.type}：${nextItem.label}`
         : manualNext && !manualLooksActive
@@ -5431,8 +5459,9 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             <span>{daysBetween(todayDate(), project.endDate || todayDate()) >= 0 ? `剩 ${daysBetween(todayDate(), project.endDate || todayDate())} 天` : `逾期 ${Math.abs(daysBetween(todayDate(), project.endDate || todayDate()))} 天`}</span>
             <span>{listInfo.next === '尚未設定下一步' ? '缺下一步' : '已有下一步'}</span>
           </div>
-          <div className="fd203-project-card-meta">
+          <div className="fd203-project-card-meta fd171-project-card-meta">
             <span>{project.owner || '未指定'}</span>
+            <span className="fd171-current-task" title={listInfo.running}>目前：{listInfo.currentTask || listInfo.running}</span>
             <span title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
           </div>
           <div className="task-progress-row">
@@ -10027,7 +10056,7 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
   const [form, setForm] = useState(() => ({
     id: initial?.id,
     _purchaseKey: initial?._purchaseKey || initial?.uid || initial?.key,
-    item: initial ? purchaseTitle(initial) : '',
+    item: initial ? (initial?.summary || initial?.customTitle || initial?.item || purchaseTitle(initial)) : '',
     items: initial ? getPurchaseItems(initial) : [{ id: `line-${Date.now()}`, name: '', quantity: 1, unitPrice: 0, note: '' }],
     department: initial?.department || '',
     requester: initial?.requester || '',
@@ -10079,7 +10108,12 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
   const validationVisible = saveAttempted || validationIssues.length > 0
 
   function update(field, value) {
-    setForm((current) => ({ ...current, [field]: value }))
+    setForm((current) => {
+      const patch = field === 'status'
+        ? buildPurchaseOrderDatePatchV171(current, { [field]: value })
+        : { [field]: value }
+      return { ...current, ...patch }
+    })
   }
 
   function updateItem(itemId, field, value) {
@@ -10135,11 +10169,16 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
     ].filter(Boolean)
     if (blockers.length) return
 
-    onSubmit({
+    const cleanSummary = String(form.item || '').trim()
+    const fallbackTitle = cleanItems.length > 1 ? `${cleanItems[0].name || '採購品項'} 等 ${cleanItems.length} 項` : (cleanItems[0]?.name || form.item || '未命名採購')
+    const payload = {
       ...form,
-      items: cleanItems.length ? cleanItems : [{ id: `line-${Date.now()}`, name: form.item || '未命名品項', quantity: 1, unitPrice: 0, note: '' }],
-      item: cleanItems.length > 1 ? `${cleanItems[0].name || '採購品項'} 等 ${cleanItems.length} 項` : (cleanItems[0]?.name || form.item || '未命名採購'),
-    })
+      items: cleanItems.length ? cleanItems : [{ id: `line-${Date.now()}`, name: cleanSummary || form.item || '未命名品項', quantity: 1, unitPrice: 0, note: '' }],
+      item: cleanSummary || fallbackTitle,
+      summary: cleanSummary || fallbackTitle,
+      customTitle: cleanSummary || fallbackTitle,
+    }
+    onSubmit(buildPurchaseOrderDatePatchV171(payload, {}))
   }
 
   return (
@@ -10156,8 +10195,8 @@ function PurchaseModal({ onClose, onSubmit, stages, initial, mode = 'create' }) 
 
         <div className="purchase-modal-body fd20387-purchase-modal-body">
           <section className="purchase-form-summary-strip" aria-label="採購表單摘要">
-            <article><span>採購摘要</span><strong>{purchaseTitle(form)}</strong></article>
-            <article><span>使用單位</span><strong>{form.department || '未填寫'}</strong></article>
+            <article className="fd171-summary-edit"><span>採購摘要</span><input value={form.item || ''} onChange={(event) => update('item', event.target.value)} placeholder="例如 Cisco 7821 IP話機" /></article>
+            <article className="fd171-summary-edit"><span>使用單位</span><input value={form.department || ''} onChange={(event) => update('department', event.target.value)} placeholder="例如 皇家可口" /></article>
             <article><span>優先等級</span><strong><PurchasePriorityBadge value={form.priority} compact /></strong></article>
             <article><span>含稅總額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
           </section>
@@ -10319,6 +10358,8 @@ function normalizePurchase(row) {
     id: String(row.id || '').trim(),
     _purchaseKey: row._purchaseKey || row.uid || row.key || createPurchaseKey(),
     item: title,
+    summary: String(row.summary || row.customTitle || row.item || title).trim() || title,
+    customTitle: String(row.summary || row.customTitle || row.item || title).trim() || title,
     items,
     priority: normalizePurchasePriority(row.priority),
     user: row.user || row.usedBy || row.requester || '未指定',
@@ -10362,6 +10403,8 @@ function purchaseCardTitle(row = {}) {
 }
 
 function purchaseTitle(row = {}) {
+  const manualTitle = String(row.summary || row.customTitle || '').trim()
+  if (manualTitle) return manualTitle
   const items = getPurchaseItems(row).filter((item) => item.name)
   if (!items.length) return row.item || '未命名採購'
   if (items.length === 1) return items[0].name

@@ -35381,7 +35381,7 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* FLOWDESK_V20_4_145_PROJECT_LIST_NO_INNER_SCROLL_END */
 
 
-/* FLOWDESK_V20_4_170_PURCHASE_ARCHIVE_SAVE_BUTTON_FIX */
+/* FLOWDESK_V20_4_171_PURCHASE_EDIT_AND_PROJECT_CURRENT_TASK */
 .fd67-archive-form .ghost-btn {
   background: #f8fafc;
   color: #475569;
@@ -35390,4 +35390,50 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd67-archive-form .ghost-btn:disabled {
   opacity: .45;
   cursor: not-allowed;
+}
+
+
+/* FLOWDESK_V20_4_171_PURCHASE_EDIT_AND_PROJECT_CURRENT_TASK */
+.purchase-form-summary-strip .fd171-summary-edit {
+  align-items: stretch;
+  gap: 8px;
+}
+.purchase-form-summary-strip .fd171-summary-edit input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: rgba(255,255,255,.78);
+  color: var(--text, #172033);
+  font: inherit;
+  font-weight: 750;
+  padding: 6px 0 2px;
+  border-bottom: 1px solid rgba(91, 117, 153, .18);
+  border-radius: 0;
+}
+.purchase-form-summary-strip .fd171-summary-edit input:focus {
+  border-bottom-color: rgba(86, 132, 255, .72);
+  box-shadow: 0 8px 16px -14px rgba(86,132,255,.9);
+}
+.fd171-project-card-meta {
+  grid-template-columns: minmax(46px, .62fr) minmax(120px, 1.25fr) minmax(116px, 1fr);
+  align-items: center;
+}
+.fd171-current-task {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text, #172033);
+  font-weight: 750;
+  background: rgba(238, 246, 255, .78);
+  border: 1px solid rgba(143, 177, 255, .34);
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+@media (max-width: 860px) {
+  .fd171-project-card-meta {
+    grid-template-columns: 1fr;
+  }
+  .fd171-current-task {
+    max-width: 100%;
+  }
 }
