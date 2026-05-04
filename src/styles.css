@@ -35437,3 +35437,59 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     max-width: 100%;
   }
 }
+
+/* FLOWDESK_PROJECT_CURRENT_TASK_SAFE_LAYOUT_FIX */
+.fd171-project-card-meta {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas:
+    "owner date"
+    "task task" !important;
+  align-items: center !important;
+  gap: 8px 10px !important;
+}
+
+.fd171-project-card-meta > span:first-child {
+  grid-area: owner !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.fd171-project-card-meta > span:last-child {
+  grid-area: date !important;
+  justify-self: end !important;
+  white-space: nowrap !important;
+}
+
+.fd171-current-task {
+  grid-area: task !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: var(--text, #172033) !important;
+  font-weight: 750 !important;
+  background: rgba(238, 246, 255, .82) !important;
+  border: 1px solid rgba(143, 177, 255, .34) !important;
+  border-radius: 12px !important;
+  padding: 6px 10px !important;
+}
+
+@media (max-width: 860px) {
+  .fd171-project-card-meta {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "owner"
+      "task"
+      "date" !important;
+  }
+
+  .fd171-project-card-meta > span:last-child {
+    justify-self: start !important;
+  }
+}
+/* END_FLOWDESK_PROJECT_CURRENT_TASK_SAFE_LAYOUT_FIX */
