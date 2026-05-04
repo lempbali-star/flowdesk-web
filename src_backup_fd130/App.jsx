@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.170'
+const FLOWDESK_APP_VERSION = '20.4.129'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -3060,7 +3060,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                 onDuplicate={() => duplicatePurchase(detailDialogPurchaseV78)}
                 onCreateTask={() => createTaskFromPurchase(detailDialogPurchaseV78)}
                 onCreateReminder={(type) => createReminderFromPurchase(detailDialogPurchaseV78, type)}
-                onUpdateMeta={(patch, message) => updatePurchaseMeta(detailDialogPurchaseV78, patch, message)}
+                onUpdateMeta={(patch, message) => updatePurchase(detailDialogPurchaseV78.id, patch, message)}
               />
             ) : null}
                   <div className="purchase-list-head-actions">
@@ -7039,8 +7039,6 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
   const [editorMode, setEditorMode] = useState('編輯')
   const contentEditorRef = useRef(null)
   const richEditorRef = useRef(null)
-  const savedRichSelectionRef = useRef(null)
-  const [openHoverMenu, setOpenHoverMenu] = useState(null)
 
   useEffect(() => {
     setDraft(doc)
@@ -7051,56 +7049,6 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     if (!richEditorRef.current) return
     richEditorRef.current.innerHTML = normalizeDocEditorHtml(doc?.content || '')
   }, [doc?.id])
-
-  useEffect(() => {
-    function closeDocumentDropdownFinal(event) {
-      const target = event.target
-      if (target?.closest?.('.fd204144-dropdown')) return
-      setOpenHoverMenu(null)
-    }
-
-    function closeDocumentDropdownByEscape(event) {
-      if (event.key === 'Escape') setOpenHoverMenu(null)
-    }
-
-    function closeDocumentDropdownOnScroll(event) {
-      const target = event.target
-      if (target?.closest?.('.fd204144-dropdown-menu')) return
-      setOpenHoverMenu(null)
-    }
-
-    document.addEventListener('pointerdown', closeDocumentDropdownFinal, true)
-    document.addEventListener('mousedown', closeDocumentDropdownFinal, true)
-    document.addEventListener('keydown', closeDocumentDropdownByEscape)
-    document.addEventListener('scroll', closeDocumentDropdownOnScroll, true)
-
-    return () => {
-      document.removeEventListener('pointerdown', closeDocumentDropdownFinal, true)
-      document.removeEventListener('mousedown', closeDocumentDropdownFinal, true)
-      document.removeEventListener('keydown', closeDocumentDropdownByEscape)
-      document.removeEventListener('scroll', closeDocumentDropdownOnScroll, true)
-    }
-  }, [])
-
-  useEffect(() => {
-    function closeHoverMenuFromOutside(event) {
-      const target = event.target
-      if (target?.closest?.('.fd204139-hover-select')) return
-      setOpenHoverMenu(null)
-    }
-
-    function closeHoverMenuWithEscape(event) {
-      if (event.key === 'Escape') setOpenHoverMenu(null)
-    }
-
-    document.addEventListener('pointerdown', closeHoverMenuFromOutside)
-    document.addEventListener('keydown', closeHoverMenuWithEscape)
-
-    return () => {
-      document.removeEventListener('pointerdown', closeHoverMenuFromOutside)
-      document.removeEventListener('keydown', closeHoverMenuWithEscape)
-    }
-  }, [])
 
 
   if (!draft) return null
@@ -7219,78 +7167,21 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     }, 0)
   }
 
-  function saveRichEditorSelection() {
-    if (typeof window === 'undefined' || !richEditorRef.current) return
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-    const range = selection.getRangeAt(0)
-    if (!richEditorRef.current.contains(range.commonAncestorContainer)) return
-    savedRichSelectionRef.current = range.cloneRange()
-  }
-
-  function restoreRichEditorSelection() {
-    if (typeof window === 'undefined' || !richEditorRef.current || !savedRichSelectionRef.current) return
-    const selection = window.getSelection()
-    if (!selection) return
-    selection.removeAllRanges()
-    selection.addRange(savedRichSelectionRef.current)
-  }
-
   function insertRichHtml(html) {
     if (!richEditorRef.current) return
     richEditorRef.current.focus()
-    restoreRichEditorSelection()
     document.execCommand('insertHTML', false, html)
     syncRichEditorContent()
-    saveRichEditorSelection()
+    setEditorMode('分割')
     focusRichEditor()
   }
 
-  function applyTextFormat(action, value = '') {
+  function applyTextFormat(action) {
     if (!richEditorRef.current) return
     richEditorRef.current.focus()
-    restoreRichEditorSelection()
     const today = todayDate()
 
-    if (action === 'style') {
-      if (value === 'paragraph') document.execCommand('formatBlock', false, 'p')
-      else if (value === 'h2') document.execCommand('formatBlock', false, 'h2')
-      else if (value === 'h3') document.execCommand('formatBlock', false, 'h3')
-      else if (value === 'quote') document.execCommand('formatBlock', false, 'blockquote')
-      else if (value === 'code') { insertRichHtml('<pre><code>貼上指令、設定或紀錄內容</code></pre><p><br></p>'); return }
-    } else if (action === 'fontName') {
-      document.execCommand('fontName', false, value || 'Microsoft JhengHei')
-    } else if (action === 'fontSize') {
-      const sizeMap = { '12': '2', '14': '3', '16': '3', '18': '4', '20': '4', '24': '5', '28': '6', '32': '7' }
-      document.execCommand('fontSize', false, sizeMap[value] || '3')
-    } else if (action === 'textColor') {
-      document.execCommand('foreColor', false, value || '#0f172a')
-    } else if (action === 'highlightColor') {
-      document.execCommand('backColor', false, value || '#fef3c7')
-    } else if (action === 'lineHeight') {
-      richEditorRef.current.style.lineHeight = value || '1.7'
-    } else if (action === 'align') {
-      if (value === 'left') document.execCommand('justifyLeft', false, null)
-      else if (value === 'center') document.execCommand('justifyCenter', false, null)
-      else if (value === 'right') document.execCommand('justifyRight', false, null)
-      else if (value === 'justify') document.execCommand('justifyFull', false, null)
-    } else if (action === 'listType') {
-      if (value === 'bullet') document.execCommand('insertUnorderedList', false, null)
-      else if (value === 'number') document.execCommand('insertOrderedList', false, null)
-      else if (value === 'todo') { insertRichHtml('<p class="fd204127-todo-line">☐ 待確認項目</p>'); return }
-    } else if (action === 'insert') {
-      if (value === 'quote') document.execCommand('formatBlock', false, 'blockquote')
-      else if (value === 'callout') { insertRichHtml('<blockquote><strong>注意：</strong> 請在這裡補充重點提醒。</blockquote><p><br></p>'); return }
-      else if (value === 'table') { insertRichHtml('<table><tbody><tr><th>項目</th><th>說明</th><th>狀態</th></tr><tr><td>例：設備 / 系統</td><td>補充說明</td><td>待確認</td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>'); return }
-      else if (value === 'code') { insertRichHtml('<pre><code>貼上指令、設定或紀錄內容</code></pre><p><br></p>'); return }
-      else if (value === 'divider') { insertRichHtml('<hr><p><br></p>'); return }
-      else if (value === 'date') { insertRichHtml(`<p><strong>【${today}】</strong> 處理紀錄：</p>`); return }
-    } else if (action === 'template') {
-      if (value === 'sop') { insertRichHtml('<h2>SOP 作業流程</h2><p><strong>目的：</strong></p><p><strong>前置條件：</strong></p><ol><li>步驟一</li><li>步驟二</li><li>步驟三</li></ol><blockquote><strong>異常處理：</strong> 請補充例外狀況處理方式。</blockquote><p><br></p>'); return }
-      else if (value === 'meeting') { insertRichHtml(`<h2>會議紀錄</h2><p><strong>日期：</strong>${today}</p><p><strong>參與人員：</strong></p><h3>討論重點</h3><ul><li>重點一</li><li>重點二</li></ul><h3>待辦事項</h3><p class="fd204127-todo-line">☐ 待辦事項</p><p><br></p>`); return }
-      else if (value === 'mail') { insertRichHtml('<h2>Mail 範本</h2><p>您好，</p><p>這邊想跟您確認以下事項：</p><ul><li>項目一</li><li>項目二</li></ul><p>再麻煩您協助確認，謝謝。</p><p><br></p>'); return }
-      else if (value === 'checklist') { insertRichHtml('<h2>檢查清單</h2><p class="fd204127-todo-line">☐ 檢查項目一</p><p class="fd204127-todo-line">☐ 檢查項目二</p><p class="fd204127-todo-line">☐ 檢查項目三</p><p><br></p>'); return }
-    } else if (action === 'h2') {
+    if (action === 'h2') {
       document.execCommand('formatBlock', false, 'h2')
     } else if (action === 'h3') {
       document.execCommand('formatBlock', false, 'h3')
@@ -7298,12 +7189,6 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
       document.execCommand('formatBlock', false, 'p')
     } else if (action === 'bold') {
       document.execCommand('bold', false, null)
-    } else if (action === 'italic') {
-      document.execCommand('italic', false, null)
-    } else if (action === 'underline') {
-      document.execCommand('underline', false, null)
-    } else if (action === 'strike') {
-      document.execCommand('strikeThrough', false, null)
     } else if (action === 'list') {
       document.execCommand('insertUnorderedList', false, null)
     } else if (action === 'ordered') {
@@ -7318,22 +7203,6 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
       document.execCommand('justifyRight', false, null)
     } else if (action === 'highlight') {
       document.execCommand('backColor', false, '#fef3c7')
-    } else if (action === 'textBlack') {
-      document.execCommand('foreColor', false, '#0f172a')
-    } else if (action === 'textBlue') {
-      document.execCommand('foreColor', false, '#2563eb')
-    } else if (action === 'textRed') {
-      document.execCommand('foreColor', false, '#dc2626')
-    } else if (action === 'fontSmall') {
-      document.execCommand('fontSize', false, '2')
-    } else if (action === 'fontNormal') {
-      document.execCommand('fontSize', false, '3')
-    } else if (action === 'fontLarge') {
-      document.execCommand('fontSize', false, '5')
-    } else if (action === 'indent') {
-      document.execCommand('indent', false, null)
-    } else if (action === 'outdent') {
-      document.execCommand('outdent', false, null)
     } else if (action === 'clear') {
       document.execCommand('removeFormat', false, null)
       document.execCommand('formatBlock', false, 'p')
@@ -7368,30 +7237,14 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     } else if (action === 'mail') {
       insertRichHtml('<h2>Mail 範本</h2><p>您好，</p><p>這邊想跟您確認以下事項：</p><ul><li>項目一</li><li>項目二</li></ul><p>再麻煩您協助確認，謝謝。</p><p><br></p>')
       return
-    } else if (action === 'checklistTemplate') {
-      insertRichHtml('<h2>檢查清單</h2><p class="fd204127-todo-line">☐ 檢查項目一</p><p class="fd204127-todo-line">☐ 檢查項目二</p><p class="fd204127-todo-line">☐ 檢查項目三</p><p><br></p>')
-      return
     }
 
     syncRichEditorContent()
-    saveRichEditorSelection()
     focusRichEditor()
   }
 
   function renderDocContentPreview(text = '') {
     return <div className="fd204127-doc-html-preview" dangerouslySetInnerHTML={{ __html: normalizeDocEditorHtml(text) }} />
-  }
-
-  function handleSaveDocMemo() {
-    const latestContent = getRichEditorHtml()
-    const nextDraft = {
-      ...draft,
-      content: latestContent,
-      updated: todayDate(),
-    }
-    setDraft(nextDraft)
-    setOpenHoverMenu(null)
-    onSave?.(nextDraft)
   }
 
   function copyDocText() {
@@ -7421,142 +7274,10 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
     }
   }, [draft?.content])
 
-  const hoverMenuOptions = {
-    style: [
-      { value: 'paragraph', label: '本文' },
-      { value: 'h2', label: '標題 1' },
-      { value: 'h3', label: '標題 2' },
-      { value: 'quote', label: '引用' },
-      { value: 'code', label: '程式碼區塊', hover: false },
-    ],
-    fontName: [
-      { value: 'Microsoft JhengHei', label: '微軟正黑體' },
-      { value: 'Noto Sans TC', label: 'Noto Sans TC' },
-      { value: 'Arial', label: 'Arial' },
-      { value: 'Times New Roman', label: 'Times New Roman' },
-      { value: 'Consolas', label: 'Consolas' },
-    ],
-    fontSize: ['12', '14', '16', '18', '20', '24', '28', '32'].map((value) => ({ value, label: value })),
-    lineHeight: [
-      { value: '1.15', label: '1.15' },
-      { value: '1.5', label: '1.5' },
-      { value: '1.7', label: '1.7' },
-      { value: '2', label: '2.0' },
-    ],
-    align: [
-      { value: 'left', label: '靠左' },
-      { value: 'center', label: '置中' },
-      { value: 'right', label: '靠右' },
-      { value: 'justify', label: '左右對齊' },
-    ],
-    listType: [
-      { value: 'bullet', label: '項目清單' },
-      { value: 'number', label: '編號清單' },
-      { value: 'todo', label: '待辦清單', hover: false },
-    ],
-    insert: [
-      { value: 'quote', label: '引用' },
-      { value: 'callout', label: '提醒框' },
-      { value: 'table', label: '表格' },
-      { value: 'code', label: '程式碼' },
-      { value: 'divider', label: '分隔線' },
-      { value: 'date', label: '日期紀錄' },
-    ],
-    template: [
-      { value: 'sop', label: 'SOP 作業流程' },
-      { value: 'meeting', label: '會議紀錄' },
-      { value: 'mail', label: 'Mail 範本' },
-      { value: 'checklist', label: '檢查清單' },
-    ],
-  }
-
-  const hoverMenuLabel = {
-    style: '樣式',
-    fontName: '字體',
-    fontSize: '字級',
-    lineHeight: '行距',
-    align: '對齊',
-    listType: '清單',
-    insert: '插入',
-    template: 'FlowDesk 範本',
-  }
-
-  const hoverMenuPlaceholder = {
-    style: '段落樣式',
-    fontName: '選擇字體',
-    fontSize: '大小',
-    lineHeight: '行距',
-    align: '對齊',
-    listType: '清單',
-    insert: '選擇插入項目',
-    template: '選擇範本',
-  }
-
-  function renderHoverMenu(action, options = hoverMenuOptions[action], allowHoverPreview = true) {
-    const isOpen = openHoverMenu === action
-
-    function toggleMenu(event) {
-      event.preventDefault()
-      event.stopPropagation()
-      saveRichEditorSelection()
-      setOpenHoverMenu((current) => current === action ? null : action)
-    }
-
-    function chooseOption(event, option) {
-      event.preventDefault()
-      event.stopPropagation()
-      restoreRichEditorSelection()
-      applyTextFormat(action, option.value)
-      saveRichEditorSelection()
-      setOpenHoverMenu(null)
-    }
-
-    function previewOption(option) {
-      if (!isOpen || !allowHoverPreview || option.hover === false) return
-      restoreRichEditorSelection()
-      applyTextFormat(action, option.value)
-      saveRichEditorSelection()
-    }
-
-    return (
-      <div className={`fd204139-hover-select fd204144-dropdown ${isOpen ? 'open' : ''}`} data-menu-id={action}>
-        <span>{hoverMenuLabel[action]}</span>
-        <button
-          type="button"
-          className="fd204139-hover-select-button fd204143-hover-trigger fd204144-dropdown-trigger"
-          aria-expanded={isOpen}
-          onMouseDown={toggleMenu}
-        >
-          {hoverMenuPlaceholder[action]}
-        </button>
-
-        {isOpen ? (
-          <div
-            className="fd204139-hover-select-menu fd204144-dropdown-menu"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            {options.map((option) => (
-              <button
-                type="button"
-                className="fd204143-hover-option fd204144-dropdown-option"
-                key={`${action}-${option.value}`}
-                onMouseEnter={() => previewOption(option)}
-                onMouseDown={(event) => chooseOption(event, option)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    )
-  }
-
-
   return (
     <div className="fd20481-doc-modal-layer fd204123-doc-modal-layer">
       <button type="button" className="fd20481-doc-modal-backdrop" onClick={onClose} aria-label="關閉文件彈窗" />
-      <section className="fd20481-doc-modal fd204123-doc-modal fd204143-doc-modal-stable" role="dialog" aria-modal="true" aria-label="文件備忘詳情">
+      <section className="fd20481-doc-modal fd204123-doc-modal" role="dialog" aria-modal="true" aria-label="文件備忘詳情">
         <header className="fd20481-doc-modal-head fd204123-doc-modal-head">
           <div>
             <p className="eyebrow">文件備忘</p>
@@ -7567,7 +7288,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
             <button type="button" className="ghost-btn" onClick={copyDocText}>複製內容</button>
             <button type="button" className="ghost-btn" onClick={() => onTogglePin?.(draft)}>{draft.pinned ? '取消釘選' : '釘選'}</button>
             <button type="button" className="ghost-btn" onClick={onClose}>關閉</button>
-            <button type="button" className="primary-btn" onClick={handleSaveDocMemo}>儲存</button>
+            <button type="button" className="primary-btn" onClick={() => onSave?.(draft)}>儲存</button>
           </div>
         </header>
 
@@ -7584,126 +7305,111 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           ))}
         </div>
 
-        <div className="fd20481-doc-modal-body fd204123-doc-modal-body fd204130-doc-modal-body">
-          <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel fd204124-doc-editor-panel fd204130-doc-editor-panel">
-            <div className="fd204124-doc-editor-head fd204130-doc-editor-head">
+        <div className="fd20481-doc-modal-body fd204123-doc-modal-body">
+          <section className="fd20481-doc-panel fd20481-doc-panel-main fd204123-doc-panel">
+            <h3>基本資料</h3>
+            <div className="fd20481-doc-form-grid fd204123-doc-form-grid">
+              <label className="wide">文件標題<input value={draft.title || ''} onChange={(event) => updateDraft('title', event.target.value)} placeholder="輸入文件名稱" /></label>
+              <label>分類<select value={draft.folder || '其他'} onChange={(event) => updateDraft('folder', event.target.value)}>{folderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+              <label>類型<select value={draft.type || '備忘'} onChange={(event) => updateDraft('type', event.target.value)}>{typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+              <label>狀態<select value={draft.status || '使用中'} onChange={(event) => updateDraft('status', event.target.value)}>{statusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+              <label>重要性<select value={draft.importance || '中'} onChange={(event) => updateDraft('importance', event.target.value)}>{importanceOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+              <label>保密層級<select value={draft.confidentiality || '一般'} onChange={(event) => updateDraft('confidentiality', event.target.value)}>{confidentialityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+              <label>負責人<input value={draft.owner || ''} onChange={(event) => updateDraft('owner', event.target.value)} placeholder="負責維護者" /></label>
+              <label>下次檢視日<input type="date" value={draft.reviewDate || ''} onChange={(event) => updateDraft('reviewDate', event.target.value)} /></label>
+              <label>來源 / 系統<input value={draft.source || ''} onChange={(event) => updateDraft('source', event.target.value)} placeholder="例如 FortiGate / Veeam / 中華電信" /></label>
+              <label>圖示<input value={draft.icon || ''} onChange={(event) => updateDraft('icon', event.target.value)} placeholder="例如 📄 / 🌐 / 🛡️" /></label>
+              <label className="wide">外部連結<input value={draft.link || ''} onChange={(event) => updateDraft('link', event.target.value)} placeholder="可貼 Google Drive、Notion、Wiki 或其他連結" /></label>
+              <label className="wide">摘要<textarea value={draft.summary || ''} onChange={(event) => updateDraft('summary', event.target.value)} placeholder="用 1～3 句說明這份文件用途" /></label>
+            </div>
+          </section>
+
+          <section className="fd20481-doc-panel fd204123-doc-panel">
+            <h3>標籤、關聯與檢查清單</h3>
+            <label>標籤<input value={tags.join('、')} onChange={(event) => updateListField('tags', event.target.value)} placeholder="用頓號或逗號分隔" /></label>
+            <label>關聯項目<input value={links.join('、')} onChange={(event) => updateListField('links', event.target.value)} placeholder="例如 採購管理、備份、FortiGate" /></label>
+            <label>檢查清單<textarea value={checklist.join('\n')} onChange={(event) => updateListField('checklist', event.target.value)} placeholder="一行一個檢查項目" /></label>
+            <div className="fd20481-doc-summary-box fd204123-doc-summary-box">
+              <article><span>狀態</span><strong>{draft.status || '使用中'}</strong></article>
+              <article><span>重要性</span><strong>{draft.importance || '中'}</strong></article>
+              <article><span>分類</span><strong>{draft.folder || '其他'}</strong></article>
+              <article><span>檢查項目</span><strong>{checklist.length}</strong></article>
+            </div>
+          </section>
+
+          <section className="fd20481-doc-panel fd20481-doc-content-panel fd204123-doc-content-panel fd204124-doc-editor-panel">
+            <div className="fd204124-doc-editor-head">
               <div>
-                <h3>文件內容</h3>
-                <small>Word 風格編輯 · {contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
+                <h3>文件內容 / 文件編輯器</h3>
+                <small>{contentStats.lines} 行 · {contentStats.chars} 字元 · {contentStats.words} 組文字</small>
               </div>
-              <div className="fd204128-doc-editor-status fd204130-doc-editor-status">
-                <span>點白色紙張即可編輯</span>
-                <button type="button" onClick={copyDocText}>複製全文</button>
-              </div>
-            </div>
-
-            <div className="fd204132-doc-title-strip">
-              <div className="fd204132-doc-title-left">
-                <span className="fd204132-doc-file-icon">{draft.icon || '📄'}</span>
-                <div>
-                  <strong>{draft.title || '未命名文件'}</strong>
-                  <small>{draft.folder || '其他'} · {draft.type || '備忘'} · {draft.confidentiality || '一般'}</small>
-                </div>
-              </div>
-              <div className="fd204132-doc-title-actions">
-                <span>{draft.updated || todayDate()}</span>
-                <button type="button" onClick={() => applyTextFormat('sop')}>套用 SOP</button>
-                <button type="button" onClick={() => applyTextFormat('meeting')}>會議格式</button>
-                <button type="button" onClick={() => applyTextFormat('mail')}>Mail 範本</button>
+              <div className="fd204128-doc-editor-status">
+                <span>Word 風格即時編輯</span>
+                <button type="button" onClick={copyDocText}>複製文字</button>
               </div>
             </div>
 
-
-
-            <div className="fd204130-word-toolbar fd204131-word-toolbar fd204135-word-toolbar fd204136-toolbar-visible fd204138-word-ribbon" role="toolbar" aria-label="文件編輯工具列">
-              <div className="fd204135-toolbar-row primary fd204139-toolbar-row-menu">
-                {renderHoverMenu('style')}
-                {renderHoverMenu('fontName')}
-                {renderHoverMenu('fontSize')}
-                {renderHoverMenu('lineHeight')}
-                {renderHoverMenu('align')}
-                {renderHoverMenu('listType')}
+            <div className="fd204128-word-editor-ribbon">
+              <div className="fd204128-ribbon-group">
+                <span>段落</span>
+                <button type="button" onClick={() => applyTextFormat('paragraph')}>本文</button>
+                <button type="button" onClick={() => applyTextFormat('h2')}>大標</button>
+                <button type="button" onClick={() => applyTextFormat('h3')}>小標</button>
               </div>
-              <div className="fd204135-toolbar-row secondary" onMouseDown={(event) => event.preventDefault()}>
-                <div className="fd204135-button-group">
-                  <button type="button" onClick={() => applyTextFormat('bold')}>B</button>
-                  <button type="button" onClick={() => applyTextFormat('italic')}>I</button>
-                  <button type="button" onClick={() => applyTextFormat('underline')}>U</button>
-                  <button type="button" onClick={() => applyTextFormat('strike')}>S</button>
-                </div>
-                <div className="fd204135-button-group">
-                  <button type="button" onClick={() => applyTextFormat('textColor', '#0f172a')}>黑字</button>
-                  <button type="button" onClick={() => applyTextFormat('textColor', '#2563eb')}>藍字</button>
-                  <button type="button" onClick={() => applyTextFormat('textColor', '#dc2626')}>紅字</button>
-                  <button type="button" onClick={() => applyTextFormat('highlightColor', '#fef3c7')}>標記</button>
-                  <button type="button" onClick={() => applyTextFormat('clear')}>清除格式</button>
-                </div>
-                <div className="fd204135-button-group">
-                  <button type="button" onClick={() => applyTextFormat('indent')}>縮排</button>
-                  <button type="button" onClick={() => applyTextFormat('outdent')}>外凸</button>
-                  <button type="button" onClick={() => applyTextFormat('undo')}>復原</button>
-                  <button type="button" onClick={() => applyTextFormat('redo')}>重做</button>
-                </div>
+              <div className="fd204128-ribbon-group">
+                <span>文字</span>
+                <button type="button" onClick={() => applyTextFormat('bold')}>粗體</button>
+                <button type="button" onClick={() => applyTextFormat('highlight')}>螢光</button>
+                <button type="button" onClick={() => applyTextFormat('clear')}>清除格式</button>
               </div>
-              <div className="fd204135-toolbar-row inserts fd204139-toolbar-row-menu">
-                {renderHoverMenu('insert', hoverMenuOptions.insert, false)}
-                {renderHoverMenu('template', hoverMenuOptions.template, false)}
+              <div className="fd204128-ribbon-group">
+                <span>清單</span>
+                <button type="button" onClick={() => applyTextFormat('list')}>項目</button>
+                <button type="button" onClick={() => applyTextFormat('ordered')}>編號</button>
+                <button type="button" onClick={() => applyTextFormat('todo')}>待辦</button>
+              </div>
+              <div className="fd204128-ribbon-group">
+                <span>插入</span>
+                <button type="button" onClick={() => applyTextFormat('quote')}>引用</button>
+                <button type="button" onClick={() => applyTextFormat('callout')}>提醒框</button>
+                <button type="button" onClick={() => applyTextFormat('code')}>程式碼</button>
+                <button type="button" onClick={() => applyTextFormat('table')}>表格</button>
+                <button type="button" onClick={() => applyTextFormat('divider')}>分隔線</button>
+                <button type="button" onClick={() => applyTextFormat('date')}>日期紀錄</button>
+              </div>
+              <div className="fd204128-ribbon-group">
+                <span>版面</span>
+                <button type="button" onClick={() => applyTextFormat('alignLeft')}>置左</button>
+                <button type="button" onClick={() => applyTextFormat('alignCenter')}>置中</button>
+                <button type="button" onClick={() => applyTextFormat('alignRight')}>置右</button>
+              </div>
+              <div className="fd204128-ribbon-group">
+                <span>範本</span>
+                <button type="button" onClick={() => applyTextFormat('sop')}>SOP</button>
+                <button type="button" onClick={() => applyTextFormat('meeting')}>會議</button>
+                <button type="button" onClick={() => applyTextFormat('mail')}>Mail</button>
+              </div>
+              <div className="fd204128-ribbon-group compact">
+                <span>操作</span>
+                <button type="button" onClick={() => applyTextFormat('undo')}>復原</button>
+                <button type="button" onClick={() => applyTextFormat('redo')}>重做</button>
               </div>
             </div>
 
-<details className="fd204130-doc-fold fd204133-doc-fold fd204134-doc-info-toggle fd204136-doc-info-after-toolbar">
-            <summary>文件資訊與設定</summary>
-            <div className="fd204130-doc-meta-grid">
-              <section className="fd20481-doc-panel fd20481-doc-panel-main fd204123-doc-panel fd204130-doc-meta-panel">
-                <h3>基本資料</h3>
-                <div className="fd20481-doc-form-grid fd204123-doc-form-grid">
-                  <label className="wide">文件標題<input value={draft.title || ''} onChange={(event) => updateDraft('title', event.target.value)} placeholder="輸入文件名稱" /></label>
-                  <label>分類<select value={draft.folder || '其他'} onChange={(event) => updateDraft('folder', event.target.value)}>{folderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>類型<select value={draft.type || '備忘'} onChange={(event) => updateDraft('type', event.target.value)}>{typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>狀態<select value={draft.status || '使用中'} onChange={(event) => updateDraft('status', event.target.value)}>{statusOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>重要性<select value={draft.importance || '中'} onChange={(event) => updateDraft('importance', event.target.value)}>{importanceOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>保密層級<select value={draft.confidentiality || '一般'} onChange={(event) => updateDraft('confidentiality', event.target.value)}>{confidentialityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>負責人<input value={draft.owner || ''} onChange={(event) => updateDraft('owner', event.target.value)} placeholder="負責維護者" /></label>
-                  <label>下次檢視日<input type="date" value={draft.reviewDate || ''} onChange={(event) => updateDraft('reviewDate', event.target.value)} /></label>
-                  <label>來源 / 系統<input value={draft.source || ''} onChange={(event) => updateDraft('source', event.target.value)} placeholder="例如 FortiGate / Veeam / 中華電信" /></label>
-                  <label>圖示<input value={draft.icon || ''} onChange={(event) => updateDraft('icon', event.target.value)} placeholder="例如 📄 / 🌐 / 🛡️" /></label>
-                  <label className="wide">外部連結<input value={draft.link || ''} onChange={(event) => updateDraft('link', event.target.value)} placeholder="可貼 Google Drive、Notion、Wiki 或其他連結" /></label>
-                  <label className="wide">摘要<textarea value={draft.summary || ''} onChange={(event) => updateDraft('summary', event.target.value)} placeholder="用 1～3 句說明這份文件用途" /></label>
-                </div>
-              </section>
-
-              <section className="fd20481-doc-panel fd204123-doc-panel fd204130-doc-meta-panel">
-                <h3>標籤、關聯與檢查清單</h3>
-                <label>標籤<input value={tags.join('、')} onChange={(event) => updateListField('tags', event.target.value)} placeholder="用頓號或逗號分隔" /></label>
-                <label>關聯項目<input value={links.join('、')} onChange={(event) => updateListField('links', event.target.value)} placeholder="例如 採購管理、備份、FortiGate" /></label>
-                <label>檢查清單<textarea value={checklist.join('\n')} onChange={(event) => updateListField('checklist', event.target.value)} placeholder="一行一個檢查項目" /></label>
-                <div className="fd20481-doc-summary-box fd204123-doc-summary-box">
-                  <article><span>狀態</span><strong>{draft.status || '使用中'}</strong></article>
-                  <article><span>重要性</span><strong>{draft.importance || '中'}</strong></article>
-                  <article><span>分類</span><strong>{draft.folder || '其他'}</strong></article>
-                  <article><span>檢查項目</span><strong>{checklist.length}</strong></article>
-                </div>
-              </section>
-            </div>
-          </details>
-
-            <div className="fd204130-word-stage">
+            <div className="fd204128-word-editor-layout">
               <article
                 ref={richEditorRef}
-                className="fd204127-word-paper fd204128-word-paper fd204130-word-paper"
+                className="fd204127-word-paper fd204128-word-paper"
                 contentEditable
                 suppressContentEditableWarning
                 spellCheck={false}
-                onInput={() => { syncRichEditorContent(); saveRichEditorSelection() }}
-                onBlur={() => { syncRichEditorContent(); saveRichEditorSelection() }}
-                onMouseUp={saveRichEditorSelection}
-                onKeyUp={saveRichEditorSelection}
-                onFocus={() => { saveRichEditorSelection(); setOpenHoverMenu(null) }}
+                onInput={syncRichEditorContent}
+                onBlur={syncRichEditorContent}
+                dangerouslySetInnerHTML={{ __html: normalizeDocEditorHtml(draft.content) }}
               />
             </div>
           </section>
 
-          
         </div>
 
         <footer className="fd20481-doc-modal-footer">
@@ -7711,7 +7417,7 @@ function DocMemoDialog({ doc, folderOptions, typeOptions, statusOptions, importa
           <div>
             <button type="button" onClick={() => onDuplicate?.(draft)}>複製</button>
             {draft.link ? <button type="button" onClick={() => window.open(draft.link, '_blank', 'noopener,noreferrer')}>開啟連結</button> : null}
-            <button type="button" className="primary-btn" onClick={handleSaveDocMemo}>儲存並關閉</button>
+            <button type="button" className="primary-btn" onClick={() => onSave?.(draft)}>儲存並關閉</button>
           </div>
         </footer>
       </section>
@@ -10966,17 +10672,10 @@ function buildArchiveFolderNameV67({ type = '資料', id = '', title = '', depar
 
 function normalizeArchiveFolderV67(value = {}, fallback = {}) {
   const next = value && typeof value === 'object' ? value : {}
-  const hasUrl = Object.prototype.hasOwnProperty.call(next, 'url')
-  const rawUrl = hasUrl ? next.url : next.link
-  const cleanUrl = String(rawUrl || '').trim()
-  const cleanStatus = cleanUrl
-    ? (next.status && next.status !== '未建立' ? next.status : '已建立')
-    : '未建立'
   return {
     name: next.name || buildArchiveFolderNameV67(fallback),
-    url: cleanUrl,
-    link: cleanUrl,
-    status: cleanStatus,
+    url: next.url || next.link || '',
+    status: next.status || (next.url || next.link ? '已建立' : '未建立'),
     note: next.note || '',
     updatedAt: next.updatedAt || '',
   }
@@ -11079,41 +10778,14 @@ function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedNam
     setDraft((current) => ({ ...current, [key]: value }))
   }
 
-  function buildCleanFolder(nextDraft = draft, forceEmpty = false) {
-    const cleanUrl = forceEmpty ? '' : String(nextDraft.url || '').trim()
-    return {
-      name: nextDraft.name || suggestedName || safeFolder.name,
-      url: cleanUrl,
-      link: cleanUrl,
-      status: cleanUrl ? (nextDraft.status && nextDraft.status !== '未建立' ? nextDraft.status : '已建立') : '未建立',
-      note: nextDraft.note || '',
-      updatedAt: todayDate(),
-    }
-  }
-
   function saveFolder() {
     if (!canEdit) return
-    const nextFolder = buildCleanFolder(draft)
-    setDraft({
-      name: nextFolder.name,
-      url: nextFolder.url,
-      status: nextFolder.status,
-      note: nextFolder.note,
+    onChange({
+      ...draft,
+      name: draft.name || suggestedName || safeFolder.name,
+      status: draft.url ? '已建立' : draft.status || '未建立',
+      updatedAt: todayDate(),
     })
-    onChange(nextFolder)
-  }
-
-  function clearFolderLink() {
-    if (!canEdit) return
-    const nextDraft = { ...draft, url: '', status: '未建立' }
-    const nextFolder = buildCleanFolder(nextDraft, true)
-    setDraft({
-      name: nextFolder.name,
-      url: '',
-      status: '未建立',
-      note: nextFolder.note,
-    })
-    onChange(nextFolder)
   }
 
   async function copyName() {
@@ -11174,7 +10846,6 @@ function ArchiveFolderPanelV67({ title = '歸檔資料夾', folder, suggestedNam
             <input value={draft.note} onChange={(event) => updateDraft('note', event.target.value)} placeholder="例如 權限、資料夾位置或歸檔規則" />
           </label>
           <button type="button" onClick={saveFolder}>儲存歸檔設定</button>
-          <button type="button" className="ghost-btn" onClick={clearFolderLink} disabled={!draft.url}>清除連結</button>
         </div>
       ) : null}
     </section>
@@ -11966,8 +11637,6 @@ if (typeof window !== 'undefined' && !window.__flowdeskLeftNavScrollbarForceHide
 }
 // FLOWDESK_LEFT_NAV_SCROLLBAR_FORCE_HIDE_BRIDGE_END
 export default App
-
-
 
 
 
