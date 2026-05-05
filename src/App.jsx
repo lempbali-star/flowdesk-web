@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.171'
+const FLOWDESK_APP_VERSION = '20.4.174'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -2653,6 +2653,44 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     return `PO-${String(maxNumber + 1).padStart(3, '0')}`
   }
 
+
+  function commitPurchaseRowV204171(targetRow, nextRow, historyMessage = '') {
+    const next = normalizePurchase(nextRow || {});
+    setPurchases((rows) => {
+      const finalRows = rows.map((item) => (
+        isSamePurchase(item, targetRow) ||
+        isSamePurchase(item, next) ||
+        (item.id && next.id && item.id === next.id)
+      ) ? next : item);
+
+      try {
+        window.localStorage.setItem('flowdesk-purchases-v19', JSON.stringify(finalRows));
+      } catch (error) {
+        console.warn('FlowDesk purchase local save failed', error);
+      }
+
+      queuePurchaseCloudSave('purchases', finalRows);
+      return finalRows;
+    });
+
+    setSelectedPurchase(next);
+
+    if (purchaseDetailOpenId && (
+      purchaseDetailOpenId === getPurchaseKey(targetRow || {}) ||
+      purchaseDetailOpenId === targetRow?.id ||
+      purchaseDetailOpenId === getPurchaseKey(next) ||
+      purchaseDetailOpenId === next.id
+    )) {
+      setPurchaseDetailOpenId(getPurchaseKey(next) || next.id);
+    }
+
+    if (historyMessage) {
+      writeHistory(next.id, purchaseTitle(next), historyMessage);
+    }
+
+    return next;
+  }
+
   function addPurchase(form) {
     const next = normalizePurchase({
       ...form,
@@ -2666,44 +2704,60 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
 
   function savePurchase(form) {
     const source = editingPurchase || form
+    const purchaseNote = String(form?.note ?? form?.remark ?? form?.memo ?? source?.note ?? source?.remark ?? source?.memo ?? '').trim()
+
     const next = normalizePurchase({
       ...source,
       ...form,
       id: form.id || source?.id,
       _purchaseKey: form._purchaseKey || source?._purchaseKey || source?.uid || source?.key,
+      note: purchaseNote,
+      remark: purchaseNote,
+      memo: purchaseNote,
     })
+
     const before = purchases.find((row) => isSamePurchase(row, source)) || purchases.find((row) => row.id && row.id === next.id)
-    setPurchases((rows) => rows.map((row) => isSamePurchase(row, source) || (row.id && row.id === next.id && !source?._purchaseKey) ? next : row))
-    if (before?.status !== next.status) {
-      writeHistory(next.id, next.item, `狀態由「${before?.status || '未設定'}」改為「${next.status}」。`)
-    } else {
-      writeHistory(next.id, next.item, '更新採購資料。')
-    }
-    setSelectedPurchase(next)
+    const message = before?.status !== next.status
+      ? `狀態由「${before?.status || '未設定'}」改為「${next.status}」。`
+      : '更新採購資料。'
+
+    commitPurchaseRowV204171(source, next, message)
     setEditingPurchase(null)
   }
 
   function updatePurchaseStatus(row, status) {
     if (!row || !status) return
+
     const patch = buildPurchaseOrderDatePatchV171(row, { status })
-    if (arrivedStages.includes(status) && (row.arrivalStatus || '未到貨') === '未到貨') patch.arrivalStatus = '已到貨'
+
+    if (arrivedStages.includes(status) && (row.arrivalStatus || '未到貨') === '未到貨') {
+      patch.arrivalStatus = '已到貨'
+    }
+
     if (doneStages.includes(status)) {
       if ((row.arrivalStatus || '未到貨') !== '已到貨') patch.arrivalStatus = '已到貨'
       if ((row.acceptanceStatus || '未驗收') !== '已驗收') patch.acceptanceStatus = '已驗收'
     }
+
     const next = normalizePurchase({ ...row, ...patch })
-    setPurchases((rows) => rows.map((item) => isSamePurchase(item, row) ? next : item))
-    setSelectedPurchase(next)
-    writeHistory(row.id, purchaseTitle(row), `狀態改為「${status}」。`)
+    commitPurchaseRowV204171(row, next, `狀態改為「${status}」。`)
   }
 
   function updatePurchaseMeta(row, patch, message) {
     if (!row) return
+
     const safePatch = buildPurchaseOrderDatePatchV171(row, patch || {})
-    const next = normalizePurchase({ ...row, ...safePatch })
-    setPurchases((rows) => rows.map((item) => isSamePurchase(item, row) ? next : item))
-    setSelectedPurchase(next)
-    writeHistory(row.id, purchaseTitle(row), message || '更新採購追蹤欄位。')
+    const purchaseNote = String(safePatch.note ?? safePatch.remark ?? safePatch.memo ?? row.note ?? row.remark ?? row.memo ?? '').trim()
+
+    const next = normalizePurchase({
+      ...row,
+      ...safePatch,
+      note: purchaseNote,
+      remark: purchaseNote,
+      memo: purchaseNote,
+    })
+
+    commitPurchaseRowV204171(row, next, message || '更新採購追蹤欄位。')
   }
 
   function advancePurchase(row) {
@@ -3062,6 +3116,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                 onCreateTask={() => createTaskFromPurchase(detailDialogPurchaseV78)}
                 onCreateReminder={(type) => createReminderFromPurchase(detailDialogPurchaseV78, type)}
                 onUpdateMeta={(patch, message) => updatePurchaseMeta(detailDialogPurchaseV78, patch, message)}
+                onStatusChange={(status) => updatePurchaseStatus(detailDialogPurchaseV78, status)}
               />
             ) : null}
                   <div className="purchase-list-head-actions">
@@ -3179,7 +3234,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
             </div>
           </>
         ) : (
-          <CollectionPreviewPanel collection={activeCollection} view={collectionView} pageSize={collectionPageSize} records={records} />
+          <CollectionPreviewPanel collection={activeCollection} view={collectionView} pageSize={collectionPageSize} records={records} purchases={purchases} />
         )}
       </section>
       {showPurchaseForm && <PurchaseModal onClose={() => setShowPurchaseForm(false)} onSubmit={addPurchase} stages={activeStages} />}
@@ -3212,7 +3267,401 @@ function buildCollectionPreviewRows(collection, records) {
   }))
 }
 
-function CollectionPreviewPanel({ collection, view, pageSize, records }) {
+
+
+function buildVendorBlankV204173() {
+  return {
+    id: '',
+    name: '',
+    type: '設備 / 硬體',
+    status: '合作中',
+    taxId: '',
+    contact: '',
+    title: '',
+    phone: '',
+    mobile: '',
+    email: '',
+    address: '',
+    payment: '',
+    note: '',
+    cardFront: '',
+    cardBack: '',
+    cardText: '',
+    updatedAt: todayDate(),
+  }
+}
+
+function normalizeVendorRowV204173(row = {}) {
+  return {
+    ...buildVendorBlankV204173(),
+    ...row,
+    cardText: row.cardText || row.businessCardText || '',
+  }
+}
+
+function createVendorSeedRowsV204173(purchases = []) {
+  const vendorMap = new Map()
+  purchases.forEach((row) => {
+    const name = String(row.vendor || '').trim()
+    if (!name) return
+    const current = vendorMap.get(name) || {
+      id: `VEN-${String(vendorMap.size + 1).padStart(3, '0')}`,
+      name,
+      type: guessPurchaseItemCategory(purchaseTitle(row)),
+      status: '合作中',
+      taxId: '',
+      contact: row.requester || '',
+      title: '',
+      phone: '',
+      mobile: '',
+      email: '',
+      address: '',
+      payment: row.paymentStatus || '依採購單',
+      note: '',
+      cardFront: '',
+      cardBack: '',
+      cardText: '',
+      updatedAt: row.requestDate || todayDate(),
+    }
+    vendorMap.set(name, current)
+  })
+
+  const derived = Array.from(vendorMap.values()).map(normalizeVendorRowV204173)
+  if (derived.length) return derived
+
+  return [
+    { id: 'VEN-001', name: '欣南資訊', type: '設備 / 硬體', status: '合作中', taxId: '', contact: '業務窗口', title: '', phone: '', mobile: '', email: '', address: '', payment: '依報價單', note: '常用資訊設備與報價窗口。', cardFront: '', cardBack: '', cardText: '', updatedAt: todayDate() },
+    { id: 'VEN-002', name: '昌達科技', type: '網路 / 通訊', status: '合作中', taxId: '', contact: '業務窗口', title: '', phone: '', mobile: '', email: '', address: '', payment: '依採購單', note: '網路、會議設備與周邊詢價窗口。', cardFront: '', cardBack: '', cardText: '', updatedAt: todayDate() },
+    { id: 'VEN-003', name: '凌群電腦', type: '維護 / 服務', status: '追蹤中', taxId: '', contact: '專案窗口', title: '', phone: '', mobile: '', email: '', address: '', payment: '依合約', note: '專案、維護與需求訪談窗口。', cardFront: '', cardBack: '', cardText: '', updatedAt: todayDate() },
+  ].map(normalizeVendorRowV204173)
+}
+
+function readVendorRowsV204173(purchases = []) {
+  if (typeof window === 'undefined') return createVendorSeedRowsV204173(purchases)
+  try {
+    const saved = window.localStorage.getItem('flowdesk-vendors-v204172') || window.localStorage.getItem('flowdesk-vendors-v204173')
+    const parsed = saved ? JSON.parse(saved) : null
+    if (Array.isArray(parsed) && parsed.length) return parsed.map(normalizeVendorRowV204173)
+  } catch {
+    // ignore broken local data
+  }
+  return createVendorSeedRowsV204173(purchases)
+}
+
+function extractVendorCardFieldsV204173(text = '') {
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+  const joined = lines.join(' ')
+  const email = joined.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || ''
+  const mobile = joined.match(/09\d{2}[-\s]?\d{3}[-\s]?\d{3}/)?.[0] || ''
+  const phone = joined.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{3,4}(?:\s*(?:#|分機|ext\.?|EXT\.?)\s*\d+)?/i)?.[0] || ''
+  const taxId = joined.match(/(?:統編|統一編號)[:：\s]*(\d{8})/)?.[1] || ''
+  const nameLine = lines.find((line) => !line.includes('@') && !/電話|手機|TEL|FAX|統編|地址|www\.|http/i.test(line)) || ''
+  const titleLine = lines.find((line) => /經理|主任|專員|業務|窗口|顧問|工程師|副理|協理|代表|Sales|Manager|Engineer/i.test(line)) || ''
+  const addressLine = lines.find((line) => /市|縣|區|路|街|大道|樓|號/.test(line) && !line.includes('@')) || ''
+  return { email, mobile, phone, taxId, contact: nameLine, title: titleLine, address: addressLine }
+}
+
+function VendorBusinessCardDropZoneV204173({ label, image, field, onImage, onClear }) {
+  function loadFile(file) {
+    if (!file || !String(file.type || '').startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = () => onImage(field, String(reader.result || ''))
+    reader.readAsDataURL(file)
+  }
+
+  function handleDrop(event) {
+    event.preventDefault()
+    loadFile(event.dataTransfer?.files?.[0])
+  }
+
+  function handlePaste(event) {
+    const items = Array.from(event.clipboardData?.items || [])
+    const imageItem = items.find((item) => String(item.type || '').startsWith('image/'))
+    const file = imageItem?.getAsFile?.()
+    if (file) {
+      event.preventDefault()
+      loadFile(file)
+    }
+  }
+
+  return (
+    <label
+      className={`fd-vendor-card-dropzone-v204173 ${image ? 'has-image' : ''}`}
+      onDrop={handleDrop}
+      onDragOver={(event) => event.preventDefault()}
+      onPaste={handlePaste}
+      tabIndex={0}
+    >
+      <input type="file" accept="image/*" onChange={(event) => loadFile(event.target.files?.[0])} />
+      {image ? (
+        <>
+          <img src={image} alt={label} />
+          <span>{label}｜點擊更換、可拖放或 Ctrl+V</span>
+          <button type="button" onClick={(event) => { event.preventDefault(); onClear(field) }}>清除</button>
+        </>
+      ) : (
+        <div>
+          <strong>{label}</strong>
+          <span>點擊上傳、拖拉圖片到這裡，或先點一下後 Ctrl+V 貼上截圖</span>
+        </div>
+      )}
+    </label>
+  )
+}
+
+function VendorCardsPanelV204173({ collection, view = 'card', pageSize, purchases = [] }) {
+  const vendorTypes = ['全部', '設備 / 硬體', '軟體 / 授權', '網路 / 通訊', '維護 / 服務', '耗材 / 周邊', '其他']
+  const vendorStatuses = ['全部', '合作中', '追蹤中', '待整理', '暫停合作', '停用']
+
+  const [vendors, setVendors] = useState(() => readVendorRowsV204173(purchases))
+  const [keyword, setKeyword] = useState('')
+  const [typeFilter, setTypeFilter] = useState('全部')
+  const [statusFilter, setStatusFilter] = useState('全部')
+  const [vendorPage, setVendorPage] = useState(1)
+  const [editingId, setEditingId] = useState('')
+  const [draft, setDraft] = useState(() => buildVendorBlankV204173())
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('flowdesk-vendors-v204172', JSON.stringify(vendors))
+  }, [vendors])
+
+  useEffect(() => {
+    setVendorPage(1)
+  }, [keyword, typeFilter, statusFilter, pageSize, view])
+
+  function updateDraft(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  function nextVendorId(rows = vendors) {
+    const maxNumber = rows.reduce((max, row) => {
+      const matched = String(row.id || '').match(/VEN-(\d+)/)
+      return matched ? Math.max(max, Number(matched[1])) : max
+    }, 0)
+    return `VEN-${String(maxNumber + 1).padStart(3, '0')}`
+  }
+
+  function startAddVendor() {
+    setEditingId('new')
+    setDraft({ ...buildVendorBlankV204173(), id: nextVendorId() })
+  }
+
+  function startEditVendor(vendor) {
+    setEditingId(vendor.id)
+    setDraft(normalizeVendorRowV204173(vendor))
+  }
+
+  function saveVendor() {
+    const name = String(draft.name || '').trim()
+    if (!name) return
+
+    const next = normalizeVendorRowV204173({
+      ...draft,
+      id: draft.id || nextVendorId(),
+      name,
+      updatedAt: todayDate(),
+    })
+
+    setVendors((rows) => {
+      const exists = rows.some((row) => row.id === next.id)
+      return exists ? rows.map((row) => row.id === next.id ? next : row) : [next, ...rows]
+    })
+
+    setEditingId('')
+    setDraft(buildVendorBlankV204173())
+  }
+
+  function removeVendor(vendor) {
+    if (!confirmDestructiveAction(vendor.name || '廠商資料')) return
+    setVendors((rows) => rows.filter((row) => row.id !== vendor.id))
+  }
+
+  function setCardImage(field, value) {
+    updateDraft(field, value)
+  }
+
+  function clearCardImage(field) {
+    updateDraft(field, '')
+  }
+
+  function applyCardTextToDraft() {
+    const parsed = extractVendorCardFieldsV204173(draft.cardText)
+    setDraft((current) => ({
+      ...current,
+      contact: current.contact || parsed.contact,
+      title: current.title || parsed.title,
+      phone: current.phone || parsed.phone,
+      mobile: current.mobile || parsed.mobile,
+      email: current.email || parsed.email,
+      taxId: current.taxId || parsed.taxId,
+      address: current.address || parsed.address,
+    }))
+  }
+
+  const filtered = vendors.filter((vendor) => {
+    const searchText = [
+      vendor.id,
+      vendor.name,
+      vendor.type,
+      vendor.status,
+      vendor.taxId,
+      vendor.contact,
+      vendor.title,
+      vendor.phone,
+      vendor.mobile,
+      vendor.email,
+      vendor.address,
+      vendor.payment,
+      vendor.note,
+      vendor.cardText,
+    ].join(' ').toLowerCase()
+
+    const keywordOk = !keyword.trim() || searchText.includes(keyword.trim().toLowerCase())
+    const typeOk = typeFilter === '全部' || vendor.type === typeFilter
+    const statusOk = statusFilter === '全部' || vendor.status === statusFilter
+    return keywordOk && typeOk && statusOk
+  })
+
+  const effectiveVendorPageSize = Math.max(1, Number(pageSize || 12) || 12)
+  const totalVendorPages = Math.max(1, Math.ceil(filtered.length / effectiveVendorPageSize))
+  const safeVendorPage = Math.min(Math.max(1, vendorPage), totalVendorPages)
+  const visibleRows = filtered.slice((safeVendorPage - 1) * effectiveVendorPageSize, safeVendorPage * effectiveVendorPageSize)
+  const purchaseCountByVendor = (vendorName) => purchases.filter((row) => String(row.vendor || '').trim() === String(vendorName || '').trim()).length
+
+  return (
+    <section className={`fd-vendor-shell-v204173 collection-view-panel ${view === 'list' ? 'list-mode' : 'card-mode'}`}>
+      <div className="collection-view-hero fd-vendor-hero-v204173">
+        <div>
+          <p className="eyebrow">VENDOR DATABASE</p>
+          <h3>{collection?.name || '廠商資料'}</h3>
+          <span>{view === 'list' ? '清單視圖' : '卡片視圖'} · 支援手 key 名片、拖拉圖片、Ctrl+V 貼上截圖與名片正反面管理 · 顯示 {visibleRows.length} / {filtered.length} 筆</span>
+        </div>
+        <button type="button" className="primary-btn" onClick={startAddVendor}>新增廠商</button>
+      </div>
+
+      <div className="fd-vendor-toolbar-v204173">
+        <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜尋廠商、聯絡人、電話、Email、統編、名片文字..." />
+        <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+          {vendorTypes.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          {vendorStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </div>
+
+      {editingId ? (
+        <section className="fd-vendor-editor-v204173">
+          <div className="project-section-head compact">
+            <div>
+              <p className="eyebrow">VENDOR FORM</p>
+              <h4>{editingId === 'new' ? '新增廠商' : '編輯廠商'}</h4>
+            </div>
+            <small>名片可用手 key、拖放、點擊上傳或 Ctrl+V 貼上圖片</small>
+          </div>
+
+          <div className="fd-vendor-form-grid-v204173">
+            <label>廠商名稱<input value={draft.name || ''} onChange={(event) => updateDraft('name', event.target.value)} placeholder="例如：欣南資訊" /></label>
+            <label>類型<select value={draft.type || '設備 / 硬體'} onChange={(event) => updateDraft('type', event.target.value)}>{vendorTypes.filter((item) => item !== '全部').map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label>狀態<select value={draft.status || '合作中'} onChange={(event) => updateDraft('status', event.target.value)}>{vendorStatuses.filter((item) => item !== '全部').map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label>統一編號<input value={draft.taxId || ''} onChange={(event) => updateDraft('taxId', event.target.value)} /></label>
+            <label>主聯絡人<input value={draft.contact || ''} onChange={(event) => updateDraft('contact', event.target.value)} /></label>
+            <label>職稱<input value={draft.title || ''} onChange={(event) => updateDraft('title', event.target.value)} /></label>
+            <label>公司電話<input value={draft.phone || ''} onChange={(event) => updateDraft('phone', event.target.value)} /></label>
+            <label>手機<input value={draft.mobile || ''} onChange={(event) => updateDraft('mobile', event.target.value)} /></label>
+            <label>Email<input value={draft.email || ''} onChange={(event) => updateDraft('email', event.target.value)} /></label>
+            <label>付款條件<input value={draft.payment || ''} onChange={(event) => updateDraft('payment', event.target.value)} placeholder="例如：月結 30 天" /></label>
+            <label className="wide">地址<input value={draft.address || ''} onChange={(event) => updateDraft('address', event.target.value)} /></label>
+            <label className="wide">備註<textarea value={draft.note || ''} onChange={(event) => updateDraft('note', event.target.value)} placeholder="紀錄合作條件、報價習慣、注意事項" /></label>
+          </div>
+
+          <div className="fd-vendor-card-tools-v204173">
+            <section className="fd-vendor-card-manual-v204173">
+              <div>
+                <p className="eyebrow">BUSINESS CARD TEXT</p>
+                <h4>名片手 key / 貼文字</h4>
+                <span>可直接把名片上的姓名、職稱、電話、Email、地址貼進來，再按「帶入欄位」。</span>
+              </div>
+              <textarea value={draft.cardText || ''} onChange={(event) => updateDraft('cardText', event.target.value)} placeholder={'例如：\n王小明\n業務經理\n0912-345-678\n02-1234-5678 #123\nname@example.com\n台北市...'} />
+              <button type="button" onClick={applyCardTextToDraft}>從手 key 內容帶入欄位</button>
+            </section>
+
+            <section className="fd-vendor-card-upload-v204173">
+              <VendorBusinessCardDropZoneV204173 label="名片正面" field="cardFront" image={draft.cardFront} onImage={setCardImage} onClear={clearCardImage} />
+              <VendorBusinessCardDropZoneV204173 label="名片背面" field="cardBack" image={draft.cardBack} onImage={setCardImage} onClear={clearCardImage} />
+            </section>
+          </div>
+
+          <div className="modal-actions inline-actions">
+            <button type="button" onClick={() => setEditingId('')}>取消</button>
+            <button type="button" className="primary-btn" onClick={saveVendor} disabled={!String(draft.name || '').trim()}>儲存廠商</button>
+          </div>
+        </section>
+      ) : null}
+
+      <div className="fd-vendor-card-grid-v204173">
+        {visibleRows.map((vendor) => (
+          <article key={vendor.id} className="fd-vendor-card-v204173">
+            <header>
+              <span className="record-id">{vendor.id}</span>
+              <Badge value={vendor.status || '未設定'} />
+            </header>
+
+            <div className="fd-vendor-main-v204173">
+              <strong>{vendor.name}</strong>
+              <small>{vendor.type || '未分類'} · {vendor.taxId || '統編未填'}</small>
+            </div>
+
+            <div className="fd-vendor-contact-v204173">
+              <span><b>主聯絡人</b>{vendor.contact || '未設定'}{vendor.title ? ` / ${vendor.title}` : ''}</span>
+              <span><b>電話</b>{vendor.mobile || vendor.phone || '未設定'}</span>
+              <span><b>Email</b>{vendor.email || '未設定'}</span>
+              <span><b>付款</b>{vendor.payment || '未設定'}</span>
+              <span><b>關聯採購</b>{purchaseCountByVendor(vendor.name)} 筆</span>
+            </div>
+
+            <p>{vendor.note || '尚未填寫備註。'}</p>
+
+            {vendor.cardText ? <pre className="fd-vendor-card-text-preview-v204173">{vendor.cardText}</pre> : null}
+
+            <div className="fd-vendor-business-card-row-v204173">
+              {vendor.cardFront ? <img src={vendor.cardFront} alt="名片正面" onClick={() => window.open(vendor.cardFront, '_blank')} /> : <span>無名片正面</span>}
+              {vendor.cardBack ? <img src={vendor.cardBack} alt="名片背面" onClick={() => window.open(vendor.cardBack, '_blank')} /> : <span>無名片背面</span>}
+            </div>
+
+            <footer>
+              <small>更新：{vendor.updatedAt || '未記錄'}</small>
+              <div>
+                <button type="button" onClick={() => startEditVendor(vendor)}>編輯</button>
+                <button type="button" className="danger" onClick={() => removeVendor(vendor)}>刪除</button>
+              </div>
+            </footer>
+          </article>
+        ))}
+
+        {!visibleRows.length ? <div className="flow-empty-card">目前沒有符合條件的廠商資料。</div> : null}
+      </div>
+
+      <div className="fd-vendor-pagination-v204174">
+        <span>共 {filtered.length} 筆｜第 {safeVendorPage} / {totalVendorPages} 頁｜每頁 {effectiveVendorPageSize} 筆</span>
+        <div>
+          <button type="button" onClick={() => setVendorPage(1)} disabled={safeVendorPage <= 1}>第一頁</button>
+          <button type="button" onClick={() => setVendorPage((page) => Math.max(1, page - 1))} disabled={safeVendorPage <= 1}>上一頁</button>
+          <button type="button" onClick={() => setVendorPage((page) => Math.min(totalVendorPages, page + 1))} disabled={safeVendorPage >= totalVendorPages}>下一頁</button>
+          <button type="button" onClick={() => setVendorPage(totalVendorPages)} disabled={safeVendorPage >= totalVendorPages}>最後頁</button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CollectionPreviewPanel({ collection, view, pageSize, records, purchases = [] }) {
+  const isVendorCollectionV204173 = String(collection?.id || '').toLowerCase().includes('vendor') || String(collection?.name || '').includes('廠商')
+  if (isVendorCollectionV204173) return <VendorCardsPanelV204173 collection={collection} view={view} pageSize={pageSize} purchases={purchases} />
+
+  const isVendorCollectionV204172 = String(collection?.id || '').toLowerCase().includes('vendor') || String(collection?.name || '').includes('廠商')
+  if (isVendorCollectionV204172) return <VendorCardsPanelV204172 collection={collection} pageSize={pageSize} purchases={purchases} />
+
   const matchedRecords = records.filter((record) => record.table === collection?.name)
   const isSamplePreview = matchedRecords.length === 0
   const rows = buildCollectionPreviewRows(collection, records).slice(0, pageSize)
@@ -5338,6 +5787,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     return {
       running: runningText,
       currentTask: runningItem ? runningItem.label : '',
+      currentStart: runningItem ? (runningItem.start || project.startDate || '') : '',
+      currentEnd: runningItem ? (runningItem.end || project.endDate || '') : '',
       next: nextItem
         ? `${nextItem.type}：${nextItem.label}`
         : manualNext && !manualLooksActive
@@ -5459,7 +5910,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div className="fd203-project-card-meta fd171-project-card-meta">
             <span>{project.owner || '未指定'}</span>
             <span className="fd171-current-task" title={listInfo.running}>目前：{listInfo.currentTask || listInfo.running}</span>
-            <span title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</span>
+            <span title={dateRangeLabel(listInfo.currentStart || project.startDate, listInfo.currentEnd || project.endDate)}>{formatMonthDayWeekday(listInfo.currentStart || project.startDate)} → {formatMonthDayWeekday(listInfo.currentEnd || project.endDate)}</span>
           </div>
           <div className="task-progress-row">
             <div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div>
@@ -7000,6 +7451,27 @@ function DocsPage({ docs = [] }) {
   )
 }
 
+function docPreviewPlainTextV204171(value = '') {
+  return String(value || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/p\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function docPreviewTextV204171(doc = {}) {
+  return docPreviewPlainTextV204171(doc.summary || doc.content || '尚未填寫摘要。') || '尚未填寫摘要。'
+}
+
 function DocMemoCard({ doc, onOpen, onPin }) {
   const tags = Array.isArray(doc.tags) ? doc.tags : []
   const links = Array.isArray(doc.links) ? doc.links : []
@@ -7015,7 +7487,7 @@ function DocMemoCard({ doc, onOpen, onPin }) {
             <small>{doc.folder || '其他'} · {doc.type || '備忘'} · {doc.updated || '未更新'}</small>
           </div>
         </div>
-        <p>{doc.summary || doc.content || '尚未填寫摘要。'}</p>
+        <p>{docPreviewTextV204171(doc)}</p>
         <div className="fd204123-doc-card-status">
           <Badge value={doc.status || '使用中'} />
           <Badge value={`${doc.importance || '中'}重要`} />
@@ -7044,7 +7516,7 @@ function DocMemoRow({ doc, onOpen, onPin }) {
         <span className="doc-icon">{doc.icon || '📄'}</span>
         <div>
           <strong>{doc.title || '未命名文件'}</strong>
-          <small>{doc.summary || doc.content || '尚未填寫摘要。'}</small>
+          <small>{docPreviewTextV204171(doc)}</small>
         </div>
       </button>
       <div><Badge value={doc.folder || '其他'} /><small>{doc.type || '備忘'} · {doc.confidentiality || '一般'}</small></div>
@@ -8563,7 +9035,7 @@ function RemindersPage({ reminders, setReminders, workItems = [], onNavigateSour
   const purchases = readFlowdeskLocalArray('flowdesk-purchases-v19')
   const tasks = readFlowdeskLocalArray('flowdesk-tasks-v1972')
   const projectRows = readFlowdeskLocalArray('flowdesk-projects-v1972')
-  const autoReminders = buildAutoReminderRows({ purchases, workItems, tasks, projects: projectRows }, autoDone, autoSnooze)
+  const autoReminders = []
   const allReminderRows = [...reminders.map((item) => ({ ...item, virtual: false })), ...autoReminders]
   const summary = getReminderSummary(allReminderRows)
   const highPriorityCount = allReminderRows.filter((item) => item.status !== '已完成' && ['緊急', '高'].includes(item.priority)).length
@@ -9961,7 +10433,7 @@ function ContextPanel({ selected, onUpdateItem, onDeleteItem, onDuplicateItem })
 
       <div className="work-edit-form">
         <label className="work-edit-wide"><span>標題</span><input value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} /></label>
-        <label><span>狀態</span><select value={draft.lane} onChange={(event) => updateDraft('lane', event.target.value)}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
+        <label><span>狀態</span><select value={draft.lane} onChange={(event) => { const nextLane = event.target.value; updateDraft('lane', nextLane); onUpdateItem?.(selected.id, { lane: nextLane }); }}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label>
         <label><span>優先級</span><select value={draft.priority} onChange={(event) => updateDraft('priority', event.target.value)}>{['緊急', '高', '中', '低'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
         <label><span>類型</span><input value={draft.type} onChange={(event) => updateDraft('type', event.target.value)} /></label>
         <label><span>負責人</span><input value={draft.owner} onChange={(event) => updateDraft('owner', event.target.value)} /></label>
@@ -9975,7 +10447,7 @@ function ContextPanel({ selected, onUpdateItem, onDeleteItem, onDuplicateItem })
       </div>
 
       <div className="context-quick-lanes">
-        {lanes.map((lane) => <button key={lane.id} type="button" className={draft.lane === lane.id ? 'active' : ''} onClick={() => updateDraft('lane', lane.id)}>{lane.title}</button>)}
+        {lanes.map((lane) => <button key={lane.id} type="button" className={draft.lane === lane.id ? 'active' : ''} onClick={() => { updateDraft('lane', lane.id); onUpdateItem?.(selected.id, { lane: lane.id }); }}>{lane.title}</button>)}
       </div>
 
       <div className="context-action-row">
@@ -10077,7 +10549,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
     requestDate: initial?.requestDate || new Date().toISOString().slice(0, 10),
     orderDate: initial?.orderDate || '',
     arrivalDate: initial?.arrivalDate || '',
-    note: initial?.note || '',
+    note: initial?.note || initial?.remark || initial?.memo || '',
   }))
 
   const amount = calculatePurchase(form)
@@ -10173,15 +10645,19 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
     if (blockers.length) return
 
     const cleanSummary = String(form.item || '').trim()
+    const purchaseNote = String(form.note ?? form.remark ?? form.memo ?? '').trim()
     const fallbackTitle = cleanItems.length > 1 ? `${cleanItems[0].name || '採購品項'} 等 ${cleanItems.length} 項` : (cleanItems[0]?.name || form.item || '未命名採購')
     const payload = {
       ...form,
+      note: purchaseNote,
+      remark: purchaseNote,
+      memo: purchaseNote,
       items: cleanItems.length ? cleanItems : [{ id: `line-${Date.now()}`, name: cleanSummary || form.item || '未命名品項', quantity: 1, unitPrice: 0, note: '' }],
       item: cleanSummary || fallbackTitle,
       summary: cleanSummary || fallbackTitle,
       customTitle: cleanSummary || fallbackTitle,
     }
-    onSubmit(buildPurchaseOrderDatePatchV171(payload, {}))
+    onSubmit(buildPurchaseOrderDatePatchV171(form, payload))
   }
 
   return (
@@ -10392,6 +10868,9 @@ function normalizePurchase(row) {
     usedBy: row.user || row.usedBy || row.requester || '未指定',
     attachments: normalizeAttachmentList(row.attachments),
     archiveFolder: normalizeArchiveFolderV67(row.archiveFolder, { type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate }),
+    note: String(row.note ?? row.remark ?? row.memo ?? '').trim(),
+    remark: String(row.note ?? row.remark ?? row.memo ?? '').trim(),
+    memo: String(row.note ?? row.remark ?? row.memo ?? '').trim(),
     quantity: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
     unitPrice: items.length === 1 ? Number(items[0].unitPrice || 0) : 0,
     taxRate: Number(row.taxRate ?? 5),
@@ -10622,7 +11101,7 @@ function PurchaseDetailModalV76({
 }
 
 
-function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTab = '基本資料', onEdit, onDelete, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder, onUpdateMeta }) {
+function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTab = '基本資料', onEdit, onDelete, onAdvance, onComplete, onDuplicate, onCreateTask, onCreateReminder, onUpdateMeta, onStatusChange }) {
   const amount = calculatePurchase(row)
   const items = getPurchaseItems(row)
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -10735,6 +11214,25 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
           <strong>{row.id} · {purchaseTitle(row)}</strong>
         </div>
         <small>{row.vendor || '未指定廠商'} · 優先：{normalizePurchasePriority(row.priority)} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
+      </div>
+
+      <div className="fd205-purchase-direct-status-edit">
+        <label>
+          <span>流程狀態</span>
+          <select
+            value={row.status || ''}
+            onChange={(event) => {
+              const nextStatus = event.target.value;
+              onUpdateMeta?.({ status: nextStatus }, `狀態改為「${nextStatus}」。`);
+            }}
+          >
+            {(stages || initialPurchaseStages).map((stage) => {
+              const value = stage.name || stage.id || stage;
+              return <option key={value} value={value}>{value}</option>;
+            })}
+          </select>
+        </label>
+        <small>可直接指定採購流程狀態；「下一流程」仍保留作為快速推進。</small>
       </div>
 
       <div className="purchase-detail-actions fd79-detail-actions">
@@ -12120,3 +12618,27 @@ export default App
 // FLOWDESK_PURCHASE_EDIT_ARCHIVE_SAVE_FIX
 
 // FLOWDESK_GANTT_GLOBAL_BUTTON_TEXT_REMOVED
+
+// FLOWDESK_REMINDER_CENTER_MANUAL_ONLY
+
+// FLOWDESK_PURCHASE_NOTE_SAVE_FIX
+
+// FLOWDESK_PURCHASE_NOTE_FIELD_SYNC
+
+// FLOWDESK_FORCE_PURCHASE_NOTE_SAVE
+
+// FLOWDESK_V20_4_171_LOCAL_PURCHASE_NOTE_FORCE_SAVE
+
+// FLOWDESK_V20_4_171_PURCHASE_COMMIT_CORE_FIX
+
+// FLOWDESK_V20_4_171_PURCHASE_SAVE_CORE_DIRECT_FIX
+
+// FLOWDESK_V20_4_171_PURCHASE_SAVE_CONNECT_CORE
+
+// FLOWDESK_V20_4_171_DOC_PLAIN_PREVIEW_FIX
+
+// FLOWDESK_V20_4_172_VENDOR_CARDS_V1
+
+// FLOWDESK_V20_4_173_VENDOR_CARD_QUICK_INPUT
+
+// FLOWDESK_V20_4_174_VENDOR_VIEW_PAGINATION_FIX
