@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.188'
+const FLOWDESK_APP_VERSION = '20.4.189'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -24,6 +24,22 @@ function getPlatformMark(value) {
 const PROJECT_PHASE_OPTIONS = ['規劃中', '需求確認', '執行中', '測試驗收', '待驗收', '上線導入', '暫緩', '已完成', '已取消']
 const PROJECT_HEALTH_OPTIONS = ['穩定推進', '待確認', '高風險', '卡關']
 const PROJECT_PRIORITY_OPTIONS = ['緊急', '高', '中', '低']
+
+const PROJECT_DRIVE_STATUS_OPTIONS_V204189 = ['主推', '追蹤', '等待回覆', '待確認', '暫緩', '已完成', '已取消']
+
+function getProjectDriveStatusV204189(project = {}) {
+  const raw = String(project.driveStatus || project.pushStatus || project.workStatus || '').trim()
+  if (PROJECT_DRIVE_STATUS_OPTIONS_V204189.includes(raw)) return raw
+  const phase = String(project.phase || '')
+  const health = String(project.health || '')
+  const progress = Number(project.progress || 0)
+  if (phase.includes('完成') || progress >= 100) return '已完成'
+  if (phase.includes('取消')) return '已取消'
+  if (phase.includes('暫緩')) return '暫緩'
+  if (health.includes('待確認')) return '待確認'
+  return '追蹤'
+}
+
 const PROJECT_SORT_OPTIONS = ['優先順序', '手動排序', '到期日', '進度', '名稱']
 
 function mergeOptionList(base = [], current) {
@@ -4210,6 +4226,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   const [projectPhaseFilter, setProjectPhaseFilter] = useState('全部')
   const [projectHealthFilter, setProjectHealthFilter] = useState('全部')
   const [projectPriorityFilter, setProjectPriorityFilter] = useState('全部')
+  const [projectDriveFilter, setProjectDriveFilter] = useState('全部')
   const [projectCaseFilter, setProjectCaseFilter] = useState('進行中')
   const [projectSortMode, setProjectSortMode] = useState(() => {
     if (typeof window === 'undefined') return '優先順序'
@@ -4337,7 +4354,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       return
     }
     setProjectPage(1)
-  }, [projectKeyword, projectPhaseFilter, projectHealthFilter, projectPriorityFilter, projectViewMode, projectSortMode, projectPageSize])
+  }, [projectKeyword, projectPhaseFilter, projectHealthFilter, projectPriorityFilter, projectDriveFilter, projectViewMode, projectSortMode, projectPageSize])
 
   useEffect(() => {
     const handleEsc = (event) => {
@@ -4501,6 +4518,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       progress: 0,
       health: '待確認',
       priority: '中',
+      driveStatus: '追蹤',
       tone: 'blue',
       next: '',
       taskName: '專案啟動',
@@ -4530,6 +4548,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       owner: project.owner || 'Kyle',
       health: project.health || '待確認',
       priority: PROJECT_PRIORITY_OPTIONS.includes(project.priority) ? project.priority : '中',
+      driveStatus: getProjectDriveStatusV204189(project),
       next: project.next || '',
       tone: project.tone || 'blue',
       progress: clampPercent(project.progress),
@@ -4626,6 +4645,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       progress: clampPercent(form.progress),
       health: form.health || '待確認',
       priority: PROJECT_PRIORITY_OPTIONS.includes(form.priority) ? form.priority : '中',
+      driveStatus: form.driveStatus || '追蹤',
       tone: form.tone || 'blue',
       next: String(form.next || '').trim(),
       note: String(form.note || '').trim(),
@@ -5433,6 +5453,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       .filter((project) => projectPhaseFilter === '全部' || project.phase === projectPhaseFilter)
       .filter((project) => projectHealthFilter === '全部' || project.health === projectHealthFilter)
       .filter((project) => projectPriorityFilter === '全部' || project.priority === projectPriorityFilter || getProjectPriorityMeta(project).label === projectPriorityFilter)
+      .filter((project) => projectDriveFilter === '全部' || getProjectDriveStatusV204189(project) === projectDriveFilter)
       .filter((project) => {
         if (!keyword) return true
         return [
@@ -5443,6 +5464,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           project.health,
           project.priority,
           getProjectPriorityMeta(project).label,
+          getProjectDriveStatusV204189(project),
           project.next,
           ...(project.related || []),
           ...(project.records || []),
@@ -5451,11 +5473,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         ].join(' ').toLowerCase().includes(keyword)
       })
       .sort(compareProjectsBySort)
-  }, [projects, projectKeyword, projectCaseFilter, projectPhaseFilter, projectHealthFilter, projectPriorityFilter, projectSortMode])
+  }, [projects, projectKeyword, projectCaseFilter, projectPhaseFilter, projectHealthFilter, projectPriorityFilter, projectDriveFilter, projectSortMode])
 
   const projectPhaseOptions = useMemo(() => ['全部', ...Array.from(new Set([...PROJECT_PHASE_OPTIONS, ...projects.map((project) => project.phase)].filter(Boolean)))], [projects])
   const projectHealthOptions = useMemo(() => ['全部', ...Array.from(new Set([...PROJECT_HEALTH_OPTIONS, ...projects.map((project) => project.health)].filter(Boolean)))], [projects])
   const projectPriorityOptions = useMemo(() => ['全部', ...PROJECT_PRIORITY_OPTIONS], [])
+  const projectDriveOptions = useMemo(() => ['全部', ...PROJECT_DRIVE_STATUS_OPTIONS_V204189], [])
   const selectedProject = normalizeProject(projects.find((project) => project.id === selectedId) || filteredProjects[0] || projects[0] || {})
   const hasSelectedProject = Boolean(selectedProject?.id)
   const avgProgress = Math.round(projects.reduce((sum, project) => sum + Number(project.progress || 0), 0) / Math.max(projects.length, 1))
@@ -5472,6 +5495,12 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     summary.all += 1
     return summary
   }, { open: 0, done: 0, cancelled: 0, all: 0 })
+  const projectDriveCounts = projects.map(normalizeProject).reduce((summary, project) => {
+    const status = getProjectDriveStatusV204189(project)
+    summary[status] = (summary[status] || 0) + 1
+    summary.all += 1
+    return summary
+  }, { all: 0 })
   const projectPageTotal = Math.max(1, Math.ceil(filteredProjects.length / projectPageSize))
   const safeProjectPage = Math.min(projectPage, projectPageTotal)
   const projectPageStart = (safeProjectPage - 1) * projectPageSize
@@ -5892,6 +5921,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const estimated = estimateProjectProgress(project)
     const listInfo = getProjectListInfo(project)
     const priorityMeta = getProjectPriorityMeta(project)
+    const driveStatus = getProjectDriveStatusV204189(project)
     return (
       <div key={project.id} className="fd203-project-entry">
         <article
@@ -5910,6 +5940,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         >
           <div className="fd203-project-card-head">
             <span className="record-id">☰ {project.id}</span>
+            <span className="fd204189-project-drive-chip">{driveStatus}</span>
             <span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span>
           </div>
           <div className="fd203-project-card-title">
@@ -5982,7 +6013,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <span><strong>{project.owner || '未指定'}</strong><small title={dateRangeLabel(project.startDate, project.endDate)}>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)}</small></span>
           <span className="fd203-row-progress"><div className="flow-progress"><span style={{ width: `${project.progress}%` }} /></div><small>{project.progress}% / 估 {estimated}%</small></span>
           <span><strong>{project.tasks?.length || 0} 任務</strong><small>{project.tasks?.reduce((sum, task) => sum + (task.subtasks || []).length, 0) || 0} 子任務</small></span>
-          <span className="fd203-row-badges"><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.phase} /><Badge value={project.health} />{getProjectStatusMeta(project).notices.slice(0, 2).map((notice) => <span key={notice.label} className={`fd203-status-chip ${notice.tone}`}>{notice.label}</span>)}</span>
+          <span className="fd203-row-badges"><span className="fd204189-project-drive-chip">{driveStatus}</span><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.phase} /><Badge value={project.health} />{getProjectStatusMeta(project).notices.slice(0, 2).map((notice) => <span key={notice.label} className={`fd203-status-chip ${notice.tone}`}>{notice.label}</span>)}</span>
         </article>
         {null}
       </div>
@@ -6340,7 +6371,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         {detailTab === 'overview' && (
           <div className="fd203-overview-panel">
             <section className="fd203-profile-card">
-              <div className="detail-hero-line"><span className="record-id">{project.id}</span><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.health} /></div>
+              <div className="detail-hero-line"><span className="record-id">{project.id}</span><span className="fd204189-project-drive-chip">{getProjectDriveStatusV204189(project)}</span><span className={`fd203-priority-chip ${priorityMeta.tone}`}>優先 {priorityMeta.label} · {priorityMeta.score}</span><Badge value={project.health} /></div>
               <h3>{project.name}</h3>
               <p>{project.next || '尚未設定下一步'}</p>
               <div className="flow-progress big"><span style={{ width: `${project.progress}%` }} /></div>
@@ -6369,6 +6400,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <article><span>開始</span><strong>{project.startDate}</strong></article>
                 <article><span>結束</span><strong>{project.endDate}</strong></article>
                 <article><span>階段</span><strong>{project.phase || '規劃中'}</strong></article>
+                <article><span>推進狀態</span><strong>{getProjectDriveStatusV204189(project)}</strong></article>
                 <article><span>健康度</span><strong>{project.health || '待確認'}</strong></article>
                 <article><span>優先</span><strong>{project.priority || '中'}</strong></article>
                 <article><span>下一步</span><strong>{project.next || '尚未設定'}</strong></article>
@@ -6425,6 +6457,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   <label>階段<select value={project.phase || '規劃中'} onChange={(event) => updateProject(project.id, { phase: event.target.value }, '更新專案階段。')}>{mergeOptionList(PROJECT_PHASE_OPTIONS, project.phase).map((phase) => <option key={phase} value={phase}>{phase}</option>)}</select></label>
                   <label>健康度<select value={project.health || '待確認'} onChange={(event) => updateProject(project.id, { health: event.target.value }, '更新健康度。')}>{mergeOptionList(PROJECT_HEALTH_OPTIONS, project.health).map((health) => <option key={health} value={health}>{health}</option>)}</select></label>
                   <label>專案優先<select value={project.priority || '中'} onChange={(event) => updateProject(project.id, { priority: event.target.value }, `更新專案優先為 ${event.target.value}。`)}>{mergeOptionList(PROJECT_PRIORITY_OPTIONS, project.priority).map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label>
+                  <label className="fd204189-project-drive-field">推進狀態<select value={getProjectDriveStatusV204189(project)} onChange={(event) => updateProject(project.id, { driveStatus: event.target.value }, `更新推進狀態為 ${event.target.value}。`)}>{PROJECT_DRIVE_STATUS_OPTIONS_V204189.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
                   <label>負責人<ChineseTextField value={project.owner} onCommit={(value) => updateProject(project.id, { owner: value || '未指定' })} commitOnBlur /></label>
                 </div>
               </section>
@@ -6604,6 +6637,23 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <button type="button" className={projectCaseFilter === '全部' ? 'active' : ''} onClick={() => setProjectCaseFilter('全部')}>全部 <small>{projectCaseCounts.all}</small></button>
       </section>
 
+      <section className="fd204189-drive-filter-bar" aria-label="專案推進狀態篩選">
+        {projectDriveOptions.map((status) => (
+          <button
+            key={status}
+            type="button"
+            className={projectDriveFilter === status ? 'active' : ''}
+            onClick={() => {
+              setProjectDriveFilter(status)
+              setProjectPage(1)
+            }}
+          >
+            {status}
+            <small>{status === '全部' ? projectDriveCounts.all : (projectDriveCounts[status] || 0)}</small>
+          </button>
+        ))}
+      </section>
+
       <section className="fd20464-project-command-board">
         <div className="fd20464-command-main">
           <div className="fd20464-command-headline">
@@ -6657,6 +6707,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
         <select value={projectPhaseFilter} onChange={(event) => setProjectPhaseFilter(event.target.value)}>{projectPhaseOptions.map((phase) => <option key={phase} value={phase}>{phase === '全部' ? '全部階段' : phase}</option>)}</select>
         <select value={projectHealthFilter} onChange={(event) => setProjectHealthFilter(event.target.value)}>{projectHealthOptions.map((health) => <option key={health} value={health}>{health === '全部' ? '全部健康度' : health}</option>)}</select>
         <select value={projectPriorityFilter} onChange={(event) => setProjectPriorityFilter(event.target.value)}>{projectPriorityOptions.map((priority) => <option key={priority} value={priority}>{priority === '全部' ? '全部優先' : `優先 ${priority}`}</option>)}</select>
+        <select value={projectDriveFilter} onChange={(event) => setProjectDriveFilter(event.target.value)}>{projectDriveOptions.map((status) => <option key={status} value={status}>{status === '全部' ? '全部推進狀態' : status}</option>)}</select>
         <select value={projectSortMode} onChange={(event) => setProjectSortMode(event.target.value)} aria-label="排序方式">{PROJECT_SORT_OPTIONS.map((mode) => <option key={mode} value={mode}>排序：{mode}</option>)}</select>
         <select value={projectPageSize} onChange={(event) => setProjectPageSize(Number(event.target.value))} aria-label="每頁筆數">
           {[5, 10, 20, 30, 40, 50].map((size) => <option key={size} value={size}>每頁 {size} 筆</option>)}
@@ -6744,6 +6795,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               <article><span>負責人</span><strong>{projectCreateForm.owner || '未指定'}</strong></article>
               <article><span>期間</span><strong>{projectCreateForm.startDate} → {projectCreateForm.endDate}</strong></article>
               <article><span>優先</span><strong>{projectCreateForm.priority || '中'}</strong></article>
+              <article><span>推進狀態</span><strong>{projectCreateForm.driveStatus || '追蹤'}</strong></article>
             </div>
 
             <div className="fd392-project-create-grid">
@@ -12702,3 +12754,5 @@ export default App
 // FLOWDESK_V20_4_187_PROJECT_NOTE_SAVE_EXPERIENCE
 
 // FLOWDESK_V20_4_188_PROJECT_NOTE_DEDUPE
+
+// FLOWDESK_V20_4_189_PROJECT_DRIVE_STATUS
