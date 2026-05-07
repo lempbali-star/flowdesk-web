@@ -37347,6 +37347,8 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   width: 100%;
 }
 
-/* FLOWDESK_V20_4_190_PROJECT_LIST_WHITE_FIX */
 
-/* FLOWDESK_V20_4_191_PROJECT_LIST_DRIVE_STATUS_FIX */
+/* FLOWDESK_V20_4_192_COMPLETION_ARCHIVE_LOGIC */
+.fd204192-completion-date-chip {
+  color: #047857;
+}

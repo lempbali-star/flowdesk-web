@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.191'
+const FLOWDESK_APP_VERSION = '20.4.192'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -2753,6 +2753,8 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     if (doneStages.includes(status)) {
       if ((row.arrivalStatus || '未到貨') !== '已到貨') patch.arrivalStatus = '已到貨'
       if ((row.acceptanceStatus || '未驗收') !== '已驗收') patch.acceptanceStatus = '已驗收'
+      if (!patch.completedDate && !row.completedDate) patch.completedDate = todayDate()
+      if (!patch.completedAt && !row.completedAt) patch.completedAt = new Date().toISOString()
     }
 
     const next = normalizePurchase({ ...row, ...patch })
@@ -3802,6 +3804,28 @@ function isPurchaseOrderedStageV171(status) {
   return ['已下單', '下單完成', '已送單', '已採購', '訂購完成'].includes(text) || text.includes('已下單') || text.includes('下單完成')
 }
 
+
+function isTaskCompletedStatusV204192(value = '') {
+  const text = String(value || '').trim()
+  return text === '已收斂' || text === '已完成' || text === '完成'
+}
+
+function isPurchaseCompletedStatusV204192(value = '') {
+  const text = String(value || '').trim()
+  if (!text || text.includes('未完成') || text.includes('未驗收')) return false
+  return text.includes('已完成') || text.includes('完成') || text.includes('結案') || text.includes('已驗收')
+}
+
+function isProjectCompletedStatusV204192(value = '') {
+  const text = String(value || '').trim()
+  return text === '已完成' || text === '完成' || text === '結案'
+}
+
+function isProjectCancelledStatusV204192(value = '') {
+  const text = String(value || '').trim()
+  return text === '已取消' || text === '取消' || text === '暫緩'
+}
+
 function isPurchaseArrivedStageV204184(value = '') {
   const text = String(value || '').trim()
   if (!text || text.includes('未到貨')) return false
@@ -3830,6 +3854,11 @@ function buildPurchaseOrderDatePatchV171(current = {}, patch = {}) {
   if (isPurchaseArrivedStageV204184(nextStatus) || isPurchaseArrivalStatusDoneV204184(nextArrivalStatus)) {
     if (!next.arrivalStatus) next.arrivalStatus = '已到貨'
     if (!next.arrivalDate && !current.arrivalDate) next.arrivalDate = todayDate()
+  }
+
+  if (isPurchaseCompletedStatusV204192(nextStatus)) {
+    if (!next.completedDate && !current.completedDate) next.completedDate = todayDate()
+    if (!next.completedAt && !current.completedAt) next.completedAt = new Date().toISOString()
   }
 
   return next
@@ -3887,6 +3916,8 @@ function normalizeTask(row = {}) {
     relatedVendor: row.relatedVendor || '',
     relatedProject: row.relatedProject || '',
     tags,
+    completedDate: row.completedDate || row.finishDate || row.doneDate || '',
+    completedAt: row.completedAt || row.finishedAt || '',
     records: Array.isArray(row.records) && row.records.length ? row.records : ['建立任務。'],
   }
 }
@@ -3976,7 +4007,12 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
 
   function updateTaskStatus(id, status) {
     const target = tasks.find((task) => task.id === id)
-    updateTask(id, { status, progress: status === '已收斂' ? 100 : status === '跟進中' ? Math.max(target?.progress || 0, 35) : target?.progress }, `狀態改為「${status}」。`)
+    const patch = { status, progress: status === '已收斂' ? 100 : status === '跟進中' ? Math.max(target?.progress || 0, 35) : target?.progress }
+    if (isTaskCompletedStatusV204192(status)) {
+      if (!target?.completedDate) patch.completedDate = todayDate()
+      if (!target?.completedAt) patch.completedAt = new Date().toISOString()
+    }
+    updateTask(id, patch, `狀態改為「${status}」。`)
   }
 
   function addTask(form) {
@@ -3988,6 +4024,8 @@ function TaskTrackingPage({ tasks: sourceTasks }) {
 
   function saveTask(form) {
     const next = normalizeTask(form)
+    if (isTaskCompletedStatusV204192(next.status) && !next.completedDate) next.completedDate = todayDate()
+    if (isTaskCompletedStatusV204192(next.status) && !next.completedAt) next.completedAt = new Date().toISOString()
     setTasks((current) => current.map((task) => task.id === next.id ? { ...next, records: [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜更新任務內容。`, ...(task.records || [])].slice(0, 20) } : task))
     setSelectedId(next.id)
     setEditingTask(null)
@@ -4549,6 +4587,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       health: project.health || '待確認',
       priority: PROJECT_PRIORITY_OPTIONS.includes(project.priority) ? project.priority : '中',
       driveStatus: getProjectDriveStatusV204189(project),
+      completedDate: project.completedDate || project.finishDate || project.doneDate || '',
+      completedAt: project.completedAt || project.finishedAt || '',
       next: project.next || '',
       tone: project.tone || 'blue',
       progress: clampPercent(project.progress),
@@ -4671,7 +4711,17 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     if (projectId && newProjectDraftId === projectId) setNewProjectDraftId(null)
     setProjects((rows) => rows.map((project) => {
       if (project.id !== projectId) return project
-      const next = normalizeProject({ ...project, ...patch })
+      const safePatch = { ...patch }
+      const nextDriveStatus = safePatch.driveStatus ?? project.driveStatus
+      const nextPhase = safePatch.phase ?? project.phase
+      if ((isProjectCompletedStatusV204192(nextDriveStatus) || isProjectCompletedStatusV204192(nextPhase)) && !project.completedDate && !safePatch.completedDate) {
+        safePatch.completedDate = todayDate()
+        safePatch.completedAt = new Date().toISOString()
+      }
+      if (isProjectCancelledStatusV204192(nextDriveStatus) && !project.cancelledDate && !safePatch.cancelledDate) {
+        safePatch.cancelledDate = todayDate()
+      }
+      const next = normalizeProject({ ...project, ...safePatch })
       if (recordText) next.records = [`${new Date().toLocaleString('zh-TW', { hour12: false })}｜${recordText}`, ...(project.records || [])].slice(0, 30)
       return next
     }))
@@ -6402,6 +6452,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <article><span>結束</span><strong>{project.endDate}</strong></article>
                 <article><span>階段</span><strong>{project.phase || '規劃中'}</strong></article>
                 <article><span>推進狀態</span><strong>{getProjectDriveStatusV204189(project)}</strong></article>
+                <article><span>完成日</span><strong className="fd204192-completion-date-chip">{project.completedDate || '—'}</strong></article>
                 <article><span>健康度</span><strong>{project.health || '待確認'}</strong></article>
                 <article><span>優先</span><strong>{project.priority || '中'}</strong></article>
                 <article><span>下一步</span><strong>{project.next || '尚未設定'}</strong></article>
@@ -10989,6 +11040,8 @@ function normalizePurchase(row) {
     paymentStatus: row.paymentStatus || '未付款',
     arrivalStatus: row.arrivalStatus || '未到貨',
     acceptanceStatus: row.acceptanceStatus || '未驗收',
+    completedDate: row.completedDate || row.finishDate || row.doneDate || '',
+    completedAt: row.completedAt || row.finishedAt || '',
   }
 }
 
@@ -12758,6 +12811,4 @@ export default App
 
 // FLOWDESK_V20_4_189_PROJECT_DRIVE_STATUS
 
-// FLOWDESK_V20_4_190_PROJECT_LIST_WHITE_FIX
-
-// FLOWDESK_V20_4_191_PROJECT_LIST_DRIVE_STATUS_FIX
+// FLOWDESK_V20_4_192_COMPLETION_ARCHIVE_LOGIC
