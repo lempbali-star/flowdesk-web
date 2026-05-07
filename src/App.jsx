@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.192'
+const FLOWDESK_APP_VERSION = '20.4.194'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -6183,7 +6183,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             {safeWeekTicks.map((tick) => (
               <span key={tick.key} className="fd203-week-head fd20457-week-head">
                 <b>{formatWeekRange(tick.start, tick.end)}</b>
-                <small className="fd20466-week-head-meta"><span>{tick.days} 天</span><em>{formatGanttWeekSpanByStart(ganttWeekStartDay)}</em></small>
+                <small className="fd20466-week-head-meta"><span>{tick.days} 天</span><em>{formatWeekSpanLabel(tick.start, tick.end)}</em></small>
               </span>
             ))}
           </div>
@@ -12812,3 +12812,5 @@ export default App
 // FLOWDESK_V20_4_189_PROJECT_DRIVE_STATUS
 
 // FLOWDESK_V20_4_192_COMPLETION_ARCHIVE_LOGIC
+
+// FLOWDESK_V20_4_194_GANTT_WEEK_START_SYNC_FIX
