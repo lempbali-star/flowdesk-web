@@ -37375,3 +37375,22 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   background-position: 0 0 !important;
   background-size: auto !important;
 }
+
+/* FLOWDESK_V20_4_197_GANTT_BAR_ENDPOINT_HANDLE_ALIGN_FIX */
+.fd203-gantt-bar .gantt-resize-handle.start {
+  left: 0 !important;
+}
+
+.fd203-gantt-bar .gantt-resize-handle.end {
+  right: 0 !important;
+}
+
+.fd203-gantt-bar .gantt-resize-handle {
+  width: 12px !important;
+  height: 26px !important;
+}
+
+.fd203-gantt-bar.task .gantt-resize-handle.end,
+.fd203-gantt-bar.subtask .gantt-resize-handle.end {
+  transform: translateY(-50%) !important;
+}
