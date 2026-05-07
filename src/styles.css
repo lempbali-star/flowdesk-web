@@ -37266,3 +37266,22 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   line-height: 1.6;
   resize: vertical;
 }
+ /* FLOWDESK_V20_4_187_PROJECT_NOTE_SAVE_EXPERIENCE */
+.fd204187-project-note-save-hint {
+  display: inline-flex;
+  margin-left: 8px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fd204187-project-edit-note-field textarea,
+.fd204187-project-edit-note-field input {
+  min-height: 112px;
+  line-height: 1.6;
+}
+
+.fd204186-project-overview-note textarea {
+  min-height: 120px;
+  line-height: 1.6;
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.186'
+const FLOWDESK_APP_VERSION = '20.4.187'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -6374,10 +6374,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <article><span>下一步</span><strong>{project.next || '尚未設定'}</strong></article>
               </div>
               <div className="fd203-focus-note fd204186-project-overview-note">
-                <strong>專案備註</strong>
+                <strong>專案備註</strong><small className="fd204187-project-note-save-hint">離開欄位後自動儲存</small>
                 <textarea
-                  value={project.note || ''}
-                  onChange={(event) => updateProject(project.id, { note: event.target.value }, '更新專案備註。')}
+                  key={`project-note-${project.id}`}
+                  defaultValue={project.note || ''}
+                  onBlur={(event) => {
+                    const nextNote = event.target.value
+                    if (nextNote !== (project.note || '')) {
+                      updateProject(project.id, { note: nextNote }, '更新專案備註。')
+                    }
+                  }}
                   placeholder="可記錄專案背景、補充說明、風險、討論紀錄或臨時備忘"
                 />
               </div>
@@ -6443,6 +6449,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <div className="project-section-head compact"><div><p className="eyebrow">NEXT STEP</p><h3>下一步與說明</h3></div><small>這裡可放近期安排、待確認事項與備註</small></div>
                 <div className="project-editor-grid fd203-editor-grid fd203-edit-grid">
                   <label className="wide-field">下一步<ChineseTextField multiline value={project.next} onCommit={(value) => updateProject(project.id, { next: value })} commitOnBlur placeholder="例如：追廠商回覆、確認預算、安排驗收..." /></label>
+                  <label className="wide-field fd204187-project-edit-note-field">專案備註
+                    <ChineseTextField
+                      multiline
+                      value={project.note || ''}
+                      onCommit={(value) => updateProject(project.id, { note: value }, '更新專案備註。')}
+                      commitOnBlur
+                      placeholder="可記錄專案背景、補充說明、風險、討論紀錄或臨時備忘"
+                    />
+                  </label>
                   <label className="wide-field fd204185-project-edit-note-field">專案備註
                     <ChineseTextField
                       multiline
@@ -12691,3 +12706,5 @@ export default App
 // FLOWDESK_V20_4_185_PROJECT_NOTE_POLISH
 
 // FLOWDESK_V20_4_186_PROJECT_NOTE_RESTORE
+
+// FLOWDESK_V20_4_187_PROJECT_NOTE_SAVE_EXPERIENCE
