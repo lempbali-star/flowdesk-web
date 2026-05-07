@@ -37394,3 +37394,22 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 .fd203-gantt-bar.subtask .gantt-resize-handle.end {
   transform: translateY(-50%) !important;
 }
+
+
+/* FLOWDESK_V20_4_198_GANTT_WORKDAY_SCHEDULE_FIX */
+.fd204198-workday-mode-control select:disabled {
+  opacity: .82;
+  cursor: not-allowed;
+  background: rgba(248, 250, 252, .96);
+}
+
+.fd203-gantt-track,
+.fd203-gantt-track.soft,
+.fd203-gantt-track.subtask,
+.fd203-gantt-track.subtask-collapsed-note-track {
+  background-image:
+    linear-gradient(90deg, rgba(148, 163, 184, .42) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(203, 213, 225, .72) 0 1px, transparent 1px) !important;
+  background-size: calc(var(--fd203-week-width, 140px) / 5) 100%, var(--fd203-week-width, 140px) 100% !important;
+  background-position: 0 0, 0 0 !important;
+}

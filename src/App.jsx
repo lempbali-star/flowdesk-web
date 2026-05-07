@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.197'
+const FLOWDESK_APP_VERSION = '20.4.198'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -4809,27 +4809,28 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function taskDurationOffset(task = {}) {
-    const start = task.start || todayDate()
-    const end = task.end || start
-    return Math.max(0, Math.round((parseDate(end) - parseDate(start)) / 86400000))
+    const start = normalizeToWorkdayV204198(task.start || todayDate(), 'next')
+    const end = normalizeToWorkdayV204198(task.end || start, 'previous')
+    return workdayDurationOffsetV204198(start, end)
   }
 
   function shiftTaskWithSubtasks(task = {}, nextStart) {
-    const previousStart = task.start || nextStart
+    const previousStart = normalizeToWorkdayV204198(task.start || nextStart, 'next')
+    const safeNextStart = normalizeToWorkdayV204198(nextStart, 'next')
     const durationOffset = taskDurationOffset(task)
-    const deltaDays = Math.round((parseDate(nextStart) - parseDate(previousStart)) / 86400000)
-    const nextEnd = addDaysToDateValue(nextStart, durationOffset)
+    const deltaDays = workdayDiffV204198(previousStart, safeNextStart)
+    const nextEnd = addWorkdaysToDateValueV204198(safeNextStart, durationOffset)
     return {
       ...task,
-      start: nextStart,
+      start: safeNextStart,
       end: nextEnd,
       subtasks: (task.subtasks || []).map((subtask) => {
-        const subStart = addDaysToDateValue(subtask.start || previousStart, deltaDays)
-        const subEnd = addDaysToDateValue(subtask.end || subtask.start || previousStart, deltaDays)
+        const subStart = addWorkdaysToDateValueV204198(subtask.start || previousStart, deltaDays)
+        const subEnd = addWorkdaysToDateValueV204198(subtask.end || subtask.start || previousStart, deltaDays)
         return {
           ...subtask,
-          start: clampIsoDate(subStart, nextStart, nextEnd),
-          end: clampIsoDate(subEnd, subStart, nextEnd),
+          start: clampIsoDate(normalizeToWorkdayV204198(subStart, 'next'), safeNextStart, nextEnd),
+          end: clampIsoDate(normalizeToWorkdayV204198(subEnd, 'previous'), safeNextStart, nextEnd),
         }
       }),
     }
@@ -4882,7 +4883,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           passChanged = true
           return { ...task, dependsOnTaskId: '' }
         }
-        const nextStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
+        const nextStart = nextWorkdayAfterDateValueV204198(getTaskDependencyFinishDate(predecessor))
         const currentStart = task.start || project.startDate
         if (currentStart === nextStart) return task
         changed = true
@@ -4949,15 +4950,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     if (targetIndex < 0) return { project: safeProject, appliedDelta: 0, changedTaskName: '未命名任務', scheduledChanged: false }
     const targetTask = tasks[targetIndex]
     const taskStart = targetTask.start || safeProject.startDate || todayDate()
-    let nextStart = addDaysToDateValue(taskStart, safeDelta)
+    let nextStart = addWorkdaysToDateValueV204198(taskStart, safeDelta)
     if (targetTask.dependsOnTaskId) {
       const predecessor = tasks.find((item) => item.id === targetTask.dependsOnTaskId)
       if (predecessor) {
-        const minStart = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
+        const minStart = nextWorkdayAfterDateValueV204198(getTaskDependencyFinishDate(predecessor))
         if (nextStart < minStart) nextStart = minStart
       }
     }
-    const appliedDelta = Math.round((parseDate(nextStart) - parseDate(taskStart)) / 86400000)
+    const appliedDelta = workdayDiffV204198(taskStart, nextStart)
     if (!appliedDelta) {
       const scheduled = resolveProjectTaskDependencies({ ...safeProject, tasks })
       return { project: normalizeProject(scheduled.project), appliedDelta: 0, changedTaskName: targetTask.name || '未命名任務', scheduledChanged: scheduled.changed }
@@ -4974,7 +4975,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const predecessor = (project.tasks || []).find((item) => item.id === task.dependsOnTaskId)
     if (!predecessor) return { hasDependency: false }
     const predecessorDone = Boolean(predecessor.done) || clampPercent(predecessor.progress) >= 100
-    const startAfter = addDaysToDateValue(getTaskDependencyFinishDate(predecessor), 1)
+    const startAfter = nextWorkdayAfterDateValueV204198(getTaskDependencyFinishDate(predecessor))
     return {
       hasDependency: true,
       predecessor,
@@ -5629,7 +5630,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
   }
 
   function dateRangeLabel(start, end) {
-    return `${formatMonthDayWeekday(start)} → ${formatMonthDayWeekday(end)}｜共 ${daysBetween(start, end) + 1} 天`
+    return `${formatMonthDayWeekday(start)} → ${formatMonthDayWeekday(end)}｜共 ${workdaysBetweenInclusiveV204198(start, end)} 個工作日`
   }
 
   function updateGanttDragPreview(projectId, scope, taskIndex, subtaskIndex, start, end, edge) {
@@ -5703,20 +5704,20 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const displayStart = dragTimelineRange.start
     const displayEnd = dragTimelineRange.end
     setGanttDragRange({ projectId: safeProject.id, start: displayStart, end: displayEnd })
-    const rangeDays = Math.max(1, daysBetween(displayStart, displayEnd))
+    const rangeDays = Math.max(1, workdaysBetweenInclusiveV204198(displayStart, displayEnd))
     const pixelsPerDay = Math.max(2, trackWidth / rangeDays)
     const startX = event.clientX
-    const originalProjectStart = safeProject.startDate
-    const originalProjectEnd = safeProject.endDate
-    const originalProjectDuration = Math.max(0, Math.round((parseDate(originalProjectEnd) - parseDate(originalProjectStart)) / 86400000))
+    const originalProjectStart = normalizeToWorkdayV204198(safeProject.startDate, 'next')
+    const originalProjectEnd = normalizeToWorkdayV204198(safeProject.endDate, 'previous')
+    const originalProjectDuration = workdayDurationOffsetV204198(originalProjectStart, originalProjectEnd)
     const originalTask = scope === 'task' || scope === 'subtask' ? (safeProject.tasks || [])[taskIndex] : null
-    const originalTaskStart = originalTask?.start || originalProjectStart
-    const originalTaskEnd = originalTask?.end || originalProjectEnd
-    const originalTaskDuration = Math.max(0, Math.round((parseDate(originalTaskEnd) - parseDate(originalTaskStart)) / 86400000))
+    const originalTaskStart = normalizeToWorkdayV204198(originalTask?.start || originalProjectStart, 'next')
+    const originalTaskEnd = normalizeToWorkdayV204198(originalTask?.end || originalProjectEnd, 'previous')
+    const originalTaskDuration = workdayDurationOffsetV204198(originalTaskStart, originalTaskEnd)
     const originalSubtask = scope === 'subtask' ? (originalTask?.subtasks || [])[subtaskIndex] : null
-    const originalSubtaskStart = originalSubtask?.start || originalTaskStart
-    const originalSubtaskEnd = originalSubtask?.end || originalTaskEnd
-    const originalSubtaskDuration = Math.max(0, Math.round((parseDate(originalSubtaskEnd) - parseDate(originalSubtaskStart)) / 86400000))
+    const originalSubtaskStart = normalizeToWorkdayV204198(originalSubtask?.start || originalTaskStart, 'next')
+    const originalSubtaskEnd = normalizeToWorkdayV204198(originalSubtask?.end || originalTaskEnd, 'previous')
+    const originalSubtaskDuration = workdayDurationOffsetV204198(originalSubtaskStart, originalSubtaskEnd)
 
     updateGanttDragPreview(
       safeProject.id,
@@ -5730,14 +5731,14 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     document.body.classList.add('gantt-date-dragging')
 
     const clampTaskMoveDelta = (deltaDays) => {
-      const earliestDelta = Math.round((parseDate(originalProjectStart) - parseDate(originalTaskStart)) / 86400000)
-      const latestDelta = Math.round((parseDate(originalProjectEnd) - parseDate(originalTaskEnd)) / 86400000)
+      const earliestDelta = workdayDiffV204198(originalTaskStart, originalProjectStart)
+      const latestDelta = workdayDiffV204198(originalTaskEnd, originalProjectEnd)
       return Math.max(earliestDelta, Math.min(latestDelta, deltaDays))
     }
 
     const clampSubtaskMoveDelta = (deltaDays) => {
-      const earliestDelta = Math.round((parseDate(originalTaskStart) - parseDate(originalSubtaskStart)) / 86400000)
-      const latestDelta = Math.round((parseDate(originalTaskEnd) - parseDate(originalSubtaskEnd)) / 86400000)
+      const earliestDelta = workdayDiffV204198(originalSubtaskStart, originalTaskStart)
+      const latestDelta = workdayDiffV204198(originalSubtaskEnd, originalTaskEnd)
       return Math.max(earliestDelta, Math.min(latestDelta, deltaDays))
     }
 
@@ -5745,27 +5746,27 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       const deltaDays = Math.round((moveEvent.clientX - startX) / pixelsPerDay)
       if (scope === 'project') {
         if (edge === 'move') {
-          const nextStart = addDaysToDateValue(originalProjectStart, deltaDays)
-          const nextEnd = addDaysToDateValue(nextStart, originalProjectDuration)
+          const nextStart = addWorkdaysToDateValueV204198(originalProjectStart, deltaDays)
+          const nextEnd = addWorkdaysToDateValueV204198(nextStart, originalProjectDuration)
           const shiftedTasks = (safeProject.tasks || []).map((task) => ({
             ...task,
-            start: addDaysToDateValue(task.start || originalProjectStart, deltaDays),
-            end: addDaysToDateValue(task.end || originalProjectEnd, deltaDays),
+            start: addWorkdaysToDateValueV204198(task.start || originalProjectStart, deltaDays),
+            end: addWorkdaysToDateValueV204198(task.end || originalProjectEnd, deltaDays),
             subtasks: (task.subtasks || []).map((subtask) => ({
               ...subtask,
-              start: addDaysToDateValue(subtask.start || task.start || originalProjectStart, deltaDays),
-              end: addDaysToDateValue(subtask.end || task.end || originalProjectEnd, deltaDays),
+              start: addWorkdaysToDateValueV204198(subtask.start || task.start || originalProjectStart, deltaDays),
+              end: addWorkdaysToDateValueV204198(subtask.end || task.end || originalProjectEnd, deltaDays),
             })),
           }))
-          const shiftedMilestones = (safeProject.milestones || []).map((milestone) => ({ ...milestone, date: addDaysToDateValue(milestone.date || originalProjectEnd, deltaDays) }))
+          const shiftedMilestones = (safeProject.milestones || []).map((milestone) => ({ ...milestone, date: addWorkdaysToDateValueV204198(milestone.date || originalProjectEnd, deltaDays) }))
           updateGanttDragPreview(safeProject.id, 'project', null, null, nextStart, nextEnd, edge)
           updateProject(safeProject.id, { startDate: nextStart, endDate: nextEnd, tasks: shiftedTasks, milestones: shiftedMilestones })
         } else if (edge === 'start') {
-          const nextStart = minIsoDate(addDaysToDateValue(originalProjectStart, deltaDays), originalProjectEnd)
+          const nextStart = minIsoDate(addWorkdaysToDateValueV204198(originalProjectStart, deltaDays), originalProjectEnd)
           updateGanttDragPreview(safeProject.id, 'project', null, null, nextStart, originalProjectEnd, edge)
           updateProject(safeProject.id, { startDate: nextStart })
         } else {
-          const nextEnd = maxIsoDate(addDaysToDateValue(originalProjectEnd, deltaDays), originalProjectStart)
+          const nextEnd = maxIsoDate(addWorkdaysToDateValueV204198(originalProjectEnd, deltaDays), originalProjectStart)
           updateGanttDragPreview(safeProject.id, 'project', null, null, originalProjectStart, nextEnd, edge)
           updateProject(safeProject.id, { endDate: nextEnd })
         }
@@ -5780,11 +5781,11 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, previewTask.start || originalTaskStart, previewTask.end || originalTaskEnd, edge)
           updateProject(safeProject.id, { startDate: shifted.project.startDate, endDate: shifted.project.endDate, tasks: shifted.project.tasks })
         } else if (edge === 'start') {
-          const nextStart = clampIsoDate(addDaysToDateValue(originalTaskStart, deltaDays), originalProjectStart, originalTaskEnd)
+          const nextStart = clampIsoDate(addWorkdaysToDateValueV204198(originalTaskStart, deltaDays), originalProjectStart, originalTaskEnd)
           updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, nextStart, originalTaskEnd, edge)
           updateProjectTask(safeProject.id, taskIndex, { start: nextStart })
         } else {
-          const nextEnd = clampIsoDate(addDaysToDateValue(originalTaskEnd, deltaDays), originalTaskStart, originalProjectEnd)
+          const nextEnd = clampIsoDate(addWorkdaysToDateValueV204198(originalTaskEnd, deltaDays), originalTaskStart, originalProjectEnd)
           updateGanttDragPreview(safeProject.id, 'task', taskIndex, null, originalTaskStart, nextEnd, edge)
           updateProjectTask(safeProject.id, taskIndex, { end: nextEnd })
         }
@@ -5794,16 +5795,16 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
       if (scope === 'subtask' && originalSubtask) {
         if (edge === 'move') {
           const safeDelta = clampSubtaskMoveDelta(deltaDays)
-          const nextStart = addDaysToDateValue(originalSubtaskStart, safeDelta)
-          const nextEnd = addDaysToDateValue(nextStart, originalSubtaskDuration)
+          const nextStart = addWorkdaysToDateValueV204198(originalSubtaskStart, safeDelta)
+          const nextEnd = addWorkdaysToDateValueV204198(nextStart, originalSubtaskDuration)
           updateGanttDragPreview(safeProject.id, 'subtask', taskIndex, subtaskIndex, nextStart, nextEnd, edge)
           updateProjectSubtask(safeProject.id, taskIndex, subtaskIndex, { start: nextStart, end: nextEnd })
         } else if (edge === 'start') {
-          const nextStart = clampIsoDate(addDaysToDateValue(originalSubtaskStart, deltaDays), originalTaskStart, originalSubtaskEnd)
+          const nextStart = clampIsoDate(addWorkdaysToDateValueV204198(originalSubtaskStart, deltaDays), originalTaskStart, originalSubtaskEnd)
           updateGanttDragPreview(safeProject.id, 'subtask', taskIndex, subtaskIndex, nextStart, originalSubtaskEnd, edge)
           updateProjectSubtask(safeProject.id, taskIndex, subtaskIndex, { start: nextStart })
         } else {
-          const nextEnd = clampIsoDate(addDaysToDateValue(originalSubtaskEnd, deltaDays), originalSubtaskStart, originalTaskEnd)
+          const nextEnd = clampIsoDate(addWorkdaysToDateValueV204198(originalSubtaskEnd, deltaDays), originalSubtaskStart, originalTaskEnd)
           updateGanttDragPreview(safeProject.id, 'subtask', taskIndex, subtaskIndex, originalSubtaskStart, nextEnd, edge)
           updateProjectSubtask(safeProject.id, taskIndex, subtaskIndex, { end: nextEnd })
         }
@@ -6156,7 +6157,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
           <div>
             <p className="eyebrow">PROJECT GANTT</p>
             <h3>{project.name}</h3>
-            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 甘特圖依實際起迄顯示，最後一週會包含結束日；中間保留每日刻度{fitMode !== 'normal' && !compact ? ' · 已自動縮小顯示' : ''}{showToday ? ` · 今日：${formatMonthDayWeekday(todayValue)}` : ''}</small>
+            <small>{formatMonthDayWeekday(project.startDate)} → {formatMonthDayWeekday(project.endDate)} · 甘特圖以工作日週一～週五排程；週六、週日不納入主要格線{fitMode !== 'normal' && !compact ? ' · 已自動縮小顯示' : ''}{showToday ? ` · 今日：${formatMonthDayWeekday(todayValue)}` : ''}</small>
           </div>
           <div className="fd203-gantt-actions">
             {!compact && (
@@ -6165,12 +6166,10 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <input type="range" min="0" max="100" value={project.progress} onChange={(event) => updateProject(project.id, { progress: clampPercent(event.target.value) })} />
               </label>
             )}
-            <label className="fd20466-gantt-week-start-control">
-              <span>週起始日</span>
-              <select value={ganttWeekStartDay} onChange={(event) => setGanttWeekStartDay(normalizeGanttWeekStartDay(event.target.value))}>
-                {FLOWDESK_GANTT_WEEK_START_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}起｜{option.span}</option>
-                ))}
+            <label className="fd20466-gantt-week-start-control fd204198-workday-mode-control">
+              <span>工作週期</span>
+              <select value="workdays" disabled>
+                <option value="workdays">週一～週五｜排除六日</option>
               </select>
             </label>
             <span className="fd20426-gantt-stability-pill">凍結表頭 / 左欄</span>
@@ -6185,7 +6184,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
             {safeWeekTicks.map((tick) => (
               <span key={tick.key} className="fd203-week-head fd20457-week-head">
                 <b>{formatWeekRange(tick.start, tick.end)}</b>
-                <small className="fd20466-week-head-meta"><span>{tick.days} 天</span><em>{formatWeekSpanLabel(tick.start, tick.end)}</em></small>
+                <small className="fd20466-week-head-meta"><span>{tick.days} 個工作日</span><em>{formatWeekSpanLabel(tick.start, tick.end)}</em></small>
               </span>
             ))}
           </div>
@@ -6920,6 +6919,96 @@ function addDaysToDateValue(value, days) {
   return formatLocalDateValue(date)
 }
 
+function isWeekendDateV204198(value) {
+  const date = value instanceof Date ? value : parseDate(value)
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+
+function normalizeToWorkdayV204198(value, direction = 'next') {
+  const date = parseDate(value)
+  if (Number.isNaN(date.getTime())) return todayDate()
+  const step = direction === 'previous' ? -1 : 1
+  while (isWeekendDateV204198(date)) date.setDate(date.getDate() + step)
+  return formatLocalDateValue(date)
+}
+
+function nextWorkdayAfterDateValueV204198(value) {
+  const date = parseDate(value)
+  date.setDate(date.getDate() + 1)
+  while (isWeekendDateV204198(date)) date.setDate(date.getDate() + 1)
+  return formatLocalDateValue(date)
+}
+
+function previousWorkdayBeforeDateValueV204198(value) {
+  const date = parseDate(value)
+  date.setDate(date.getDate() - 1)
+  while (isWeekendDateV204198(date)) date.setDate(date.getDate() - 1)
+  return formatLocalDateValue(date)
+}
+
+function addWorkdaysToDateValueV204198(value, days) {
+  const amount = Number(days) || 0
+  if (!amount) return normalizeToWorkdayV204198(value, 'next')
+  const date = parseDate(normalizeToWorkdayV204198(value, amount >= 0 ? 'next' : 'previous'))
+  const step = amount >= 0 ? 1 : -1
+  let remaining = Math.abs(Math.round(amount))
+  while (remaining > 0) {
+    date.setDate(date.getDate() + step)
+    if (!isWeekendDateV204198(date)) remaining -= 1
+  }
+  return formatLocalDateValue(date)
+}
+
+function workdaysBetweenInclusiveV204198(start, end) {
+  let cursor = parseDate(normalizeToWorkdayV204198(start, 'next'))
+  const finalDate = parseDate(normalizeToWorkdayV204198(end, 'previous'))
+  if (cursor > finalDate) return 1
+  let count = 0
+  while (cursor <= finalDate) {
+    if (!isWeekendDateV204198(cursor)) count += 1
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return Math.max(1, count)
+}
+
+function workdayOffsetV204198(value, start, end) {
+  const safeStart = normalizeToWorkdayV204198(start, 'next')
+  const safeEnd = normalizeToWorkdayV204198(end, 'previous')
+  let safeValue = value
+  if (safeValue < safeStart) safeValue = safeStart
+  if (safeValue > safeEnd) safeValue = safeEnd
+  safeValue = normalizeToWorkdayV204198(safeValue, 'next')
+  if (safeValue > safeEnd) safeValue = safeEnd
+  let cursor = parseDate(safeStart)
+  const finalDate = parseDate(safeValue)
+  let offset = 0
+  while (cursor < finalDate) {
+    cursor.setDate(cursor.getDate() + 1)
+    if (!isWeekendDateV204198(cursor)) offset += 1
+  }
+  return Math.max(0, offset)
+}
+
+function workdayDiffV204198(start, end) {
+  const safeStart = normalizeToWorkdayV204198(start, 'next')
+  const safeEnd = normalizeToWorkdayV204198(end, 'next')
+  if (safeStart === safeEnd) return 0
+  const step = safeEnd > safeStart ? 1 : -1
+  let cursor = safeStart
+  let diff = 0
+  while (cursor !== safeEnd) {
+    cursor = addWorkdaysToDateValueV204198(cursor, step)
+    diff += step
+    if (Math.abs(diff) > 2000) break
+  }
+  return diff
+}
+
+function workdayDurationOffsetV204198(start, end) {
+  return Math.max(0, workdaysBetweenInclusiveV204198(start, end) - 1)
+}
+
 function minIsoDate(value, maxValue) {
   if (!value) return maxValue
   if (!maxValue) return value
@@ -6941,12 +7030,12 @@ function daysBetween(start, end) {
 }
 
 function ganttTotalDaysV204196(start, end) {
-  return Math.max(1, Math.round((parseDate(end) - parseDate(start)) / 86400000) + 1)
+  return workdaysBetweenInclusiveV204198(start, end)
 }
 
 function ganttDayOffsetV204196(date, start, end) {
   const totalDays = ganttTotalDaysV204196(start, end)
-  const offset = Math.round((parseDate(date) - parseDate(start)) / 86400000)
+  const offset = workdayOffsetV204198(date, start, end)
   return Math.max(0, Math.min(totalDays, offset))
 }
 
@@ -6967,13 +7056,13 @@ function ganttStyle(start, end, rangeStart, rangeEnd) {
 
 function buildGanttTicks(start, end) {
   const ticks = []
-  let cursor = parseDate(start)
-  const finalDate = parseDate(end)
+  let cursor = parseDate(normalizeToWorkdayV204198(start, 'next'))
+  const finalDate = parseDate(normalizeToWorkdayV204198(end, 'previous'))
   while (cursor <= finalDate) {
-    ticks.push(formatLocalDateValue(cursor))
-    cursor = new Date(cursor.getTime() + 86400000)
+    if (!isWeekendDateV204198(cursor)) ticks.push(formatLocalDateValue(cursor))
+    cursor.setDate(cursor.getDate() + 1)
   }
-  if (!ticks.length || ticks[ticks.length - 1] !== end) ticks.push(end)
+  if (!ticks.length) ticks.push(normalizeToWorkdayV204198(start, 'next'))
   return ticks
 }
 
@@ -7006,20 +7095,19 @@ function getProjectGanttRange(project = {}) {
 
 function buildGanttWeekTicks(start, end, weekStartDay = 1) {
   const ticks = []
-  let cursor = parseDate(alignDateToGanttWeekStart(start, weekStartDay))
-  const finalDate = parseDate(alignDateToGanttWeekEnd(end, weekStartDay))
+  let cursor = parseDate(alignDateToGanttWeekStart(start, 1))
+  const finalDate = parseDate(alignDateToGanttWeekEnd(end, 1))
   while (cursor <= finalDate) {
     const weekStart = formatLocalDateValue(cursor)
-    const weekEndDate = new Date(cursor.getTime() + (6 * 86400000))
-    const normalizedWeekEnd = weekEndDate > finalDate ? finalDate : weekEndDate
-    const weekEnd = formatLocalDateValue(normalizedWeekEnd)
+    const weekEndDate = new Date(cursor.getTime() + (4 * 86400000))
+    const weekEnd = formatLocalDateValue(weekEndDate)
     ticks.push({
       key: `${weekStart}_${weekEnd}`,
       start: weekStart,
       end: weekEnd,
-      days: Math.round((normalizedWeekEnd - cursor) / 86400000) + 1,
+      days: workdaysBetweenInclusiveV204198(weekStart, weekEnd),
     })
-    cursor = new Date(normalizedWeekEnd.getTime() + 86400000)
+    cursor = new Date(cursor.getTime() + (7 * 86400000))
   }
   return ticks
 }
@@ -7080,14 +7168,13 @@ function normalizeGanttWeekStartDay(value) {
 
 function alignDateToGanttWeekStart(value, weekStartDay = 1) {
   const date = parseDate(value)
-  const startDay = normalizeGanttWeekStartDay(weekStartDay)
-  const diff = (date.getDay() - startDay + 7) % 7
+  const diff = (date.getDay() - 1 + 7) % 7
   date.setDate(date.getDate() - diff)
   return formatLocalDateValue(date)
 }
 
 function alignDateToGanttWeekEnd(value, weekStartDay = 1) {
-  return addDaysToDateValue(alignDateToGanttWeekStart(value, weekStartDay), 6)
+  return addDaysToDateValue(alignDateToGanttWeekStart(value, 1), 4)
 }
 
 function formatGanttWeekSpanByStart(weekStartDay = 1) {
@@ -12835,3 +12922,5 @@ export default App
 // FLOWDESK_V20_4_196_GANTT_TIMELINE_GRID_ALIGN_FIX
 
 // FLOWDESK_V20_4_197_GANTT_BAR_ENDPOINT_HANDLE_ALIGN_FIX
+
+// FLOWDESK_V20_4_198_GANTT_WORKDAY_SCHEDULE_FIX
