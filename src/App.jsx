@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.189'
+const FLOWDESK_APP_VERSION = '20.4.190'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -12756,3 +12756,5 @@ export default App
 // FLOWDESK_V20_4_188_PROJECT_NOTE_DEDUPE
 
 // FLOWDESK_V20_4_189_PROJECT_DRIVE_STATUS
+
+// FLOWDESK_V20_4_190_PROJECT_LIST_WHITE_FIX
