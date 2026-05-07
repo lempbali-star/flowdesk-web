@@ -37249,3 +37249,20 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   min-height: 112px;
   line-height: 1.6;
 }
+ /* FLOWDESK_V20_4_186_PROJECT_NOTE_RESTORE */
+.fd204186-project-overview-note {
+  display: grid;
+  gap: 8px;
+}
+
+.fd204186-project-overview-note textarea {
+  width: 100%;
+  min-height: 120px;
+  border-radius: 14px;
+  border: 1px solid rgba(203, 213, 225, .95);
+  background: rgba(255,255,255,.96);
+  color: #172033;
+  padding: 10px 12px;
+  line-height: 1.6;
+  resize: vertical;
+}

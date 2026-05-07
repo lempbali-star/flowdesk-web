@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.185'
+const FLOWDESK_APP_VERSION = '20.4.186'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -6373,6 +6373,15 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                 <article><span>優先</span><strong>{project.priority || '中'}</strong></article>
                 <article><span>下一步</span><strong>{project.next || '尚未設定'}</strong></article>
               </div>
+              <div className="fd203-focus-note fd204186-project-overview-note">
+                <strong>專案備註</strong>
+                <textarea
+                  value={project.note || ''}
+                  onChange={(event) => updateProject(project.id, { note: event.target.value }, '更新專案備註。')}
+                  placeholder="可記錄專案背景、補充說明、風險、討論紀錄或臨時備忘"
+                />
+              </div>
+
               <div className="fd203-focus-note">
                 <strong>編輯說明</strong>
                 <span>目前總覽只顯示重點摘要；若要修改專案資料，請切換到「編輯」分頁，使用獨立編輯畫面。</span>
@@ -12680,3 +12689,5 @@ export default App
 // FLOWDESK_V20_4_184_PURCHASE_ARRIVAL_DATE_AUTO_FIX
 
 // FLOWDESK_V20_4_185_PROJECT_NOTE_POLISH
+
+// FLOWDESK_V20_4_186_PROJECT_NOTE_RESTORE
