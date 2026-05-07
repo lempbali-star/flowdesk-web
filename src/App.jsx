@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.174'
+const FLOWDESK_APP_VERSION = '20.4.184'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -3786,14 +3786,38 @@ function isPurchaseOrderedStageV171(status) {
   return ['已下單', '下單完成', '已送單', '已採購', '訂購完成'].includes(text) || text.includes('已下單') || text.includes('下單完成')
 }
 
-function buildPurchaseOrderDatePatchV171(current = {}, patch = {}) {
-  const nextStatus = patch.status ?? current.status
-  if (isPurchaseOrderedStageV171(nextStatus) && !patch.orderDate && !current.orderDate) {
-    return { ...patch, orderDate: todayDate() }
-  }
-  return patch
+function isPurchaseArrivedStageV204184(value = '') {
+  const text = String(value || '').trim()
+  if (!text || text.includes('未到貨')) return false
+  return (
+    text.includes('已到貨') ||
+    text.includes('到貨完成') ||
+    text.includes('驗收') ||
+    text.includes('完成')
+  )
 }
 
+function isPurchaseArrivalStatusDoneV204184(value = '') {
+  const text = String(value || '').trim()
+  return text === '已到貨' || text.includes('已到貨') || text.includes('到貨完成')
+}
+
+function buildPurchaseOrderDatePatchV171(current = {}, patch = {}) {
+  const nextStatus = patch.status ?? current.status
+  const nextArrivalStatus = patch.arrivalStatus ?? current.arrivalStatus
+  const next = { ...patch }
+
+  if (isPurchaseOrderedStageV171(nextStatus) && !next.orderDate && !current.orderDate) {
+    next.orderDate = todayDate()
+  }
+
+  if (isPurchaseArrivedStageV204184(nextStatus) || isPurchaseArrivalStatusDoneV204184(nextArrivalStatus)) {
+    if (!next.arrivalStatus) next.arrivalStatus = '已到貨'
+    if (!next.arrivalDate && !current.arrivalDate) next.arrivalDate = todayDate()
+  }
+
+  return next
+}
 function addDaysDate(days) {
   const date = new Date()
   date.setDate(date.getDate() + days)
@@ -12642,3 +12666,5 @@ export default App
 // FLOWDESK_V20_4_173_VENDOR_CARD_QUICK_INPUT
 
 // FLOWDESK_V20_4_174_VENDOR_VIEW_PAGINATION_FIX
+
+// FLOWDESK_V20_4_184_PURCHASE_ARRIVAL_DATE_AUTO_FIX
