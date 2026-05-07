@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.190'
+const FLOWDESK_APP_VERSION = '20.4.191'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -5988,6 +5988,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const estimated = estimateProjectProgress(project)
     const listInfo = getProjectListInfo(project)
     const priorityMeta = getProjectPriorityMeta(project)
+        const driveStatus = getProjectDriveStatusV204189(project)
     return (
       <div key={project.id} className="fd203-project-entry fd203-project-entry-row">
         <article
@@ -12758,3 +12759,5 @@ export default App
 // FLOWDESK_V20_4_189_PROJECT_DRIVE_STATUS
 
 // FLOWDESK_V20_4_190_PROJECT_LIST_WHITE_FIX
+
+// FLOWDESK_V20_4_191_PROJECT_LIST_DRIVE_STATUS_FIX
