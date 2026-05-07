@@ -37242,3 +37242,10 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* END_FLOWDESK_V20_4_174_VENDOR_VIEW_PAGINATION_FIX */
 
 /* FLOWDESK_V20_4_184_PURCHASE_ARRIVAL_DATE_AUTO_FIX */
+
+ /* FLOWDESK_V20_4_185_PROJECT_NOTE_POLISH */
+.fd204185-project-edit-note-field textarea,
+.fd204185-project-edit-note-field input {
+  min-height: 112px;
+  line-height: 1.6;
+}
