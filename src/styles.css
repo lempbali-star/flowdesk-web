@@ -37356,3 +37356,22 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
 /* FLOWDESK_V20_4_194_GANTT_WEEK_START_SYNC_FIX */
 
 /* FLOWDESK_V20_4_195_GANTT_WEEK_START_TZ_FIX */
+
+
+/* FLOWDESK_V20_4_196_GANTT_TIMELINE_GRID_ALIGN_FIX */
+.fd203-gantt-grid.fd203-gantt-row > .fd203-gantt-track,
+.fd203-gantt-grid.fd203-gantt-row.subtask-collapsed-note > .fd203-gantt-track.subtask-collapsed-note-track,
+.fd20435-gantt-project-row > .fd203-gantt-track,
+.fd203-gantt-row.task .fd203-gantt-track,
+.fd203-gantt-row.subtask .fd203-gantt-track {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.fd203-gantt-track,
+.fd203-gantt-track.soft,
+.fd203-gantt-track.subtask,
+.fd203-gantt-track.subtask-collapsed-note-track {
+  background-position: 0 0 !important;
+  background-size: auto !important;
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.195'
+const FLOWDESK_APP_VERSION = '20.4.196'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -6138,6 +6138,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const displayEnd = frozenRange?.end || timelineRange.end
     const weekTicks = buildGanttWeekTicks(displayStart, displayEnd, ganttWeekStartDay)
     const safeWeekTicks = weekTicks.length ? weekTicks : [{ key: `${displayStart}_${displayEnd}`, start: displayStart, end: displayEnd, days: 1 }]
+    const timelineScaleStart = safeWeekTicks[0]?.start || displayStart
+    const timelineScaleEnd = safeWeekTicks[safeWeekTicks.length - 1]?.end || displayEnd
     const weekCount = safeWeekTicks.length
     const fitMode = compact ? 'compact' : weekCount >= 12 ? 'dense' : weekCount >= 9 ? 'fit' : weekCount >= 7 ? 'soft-fit' : 'normal'
     const weekCellWidth = compact ? 124 : weekCount >= 12 ? 96 : weekCount >= 9 ? 108 : weekCount >= 7 ? 118 : 140
@@ -6145,8 +6147,8 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
     const ganttGridWidth = labelColumnWidth + (safeWeekTicks.length * weekCellWidth)
     const gridColumns = `${labelColumnWidth}px repeat(${safeWeekTicks.length}, minmax(${weekCellWidth}px, ${weekCellWidth}px))`
     const todayValue = todayDate()
-    const showToday = todayValue >= displayStart && todayValue <= displayEnd
-    const todayPoint = showToday ? ganttPoint(todayValue, displayStart, displayEnd) : 0
+    const showToday = todayValue >= timelineScaleStart && todayValue <= timelineScaleEnd
+    const todayPoint = showToday ? ganttPoint(todayValue, timelineScaleStart, timelineScaleEnd) : 0
     const todayLeft = showToday ? `${todayPoint}%` : null
     return (
       <div className={`fd203-gantt-panel fd203-gantt-fit-${fitMode}${embedded ? ' embedded' : ''}${compact ? ' compact' : ''}`} data-week-count={weekCount} data-fit-mode={fitMode} style={{ '--fd20426-gantt-grid-width': `${ganttGridWidth}px`, '--fd20426-gantt-label-width': `${labelColumnWidth}px` }}>
@@ -6201,13 +6203,13 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
               ) : null}
               <span
                 className={`fd203-gantt-bar project fd20457-project-readonly-bar fd20459-project-readonly-bar ${project.tone || 'blue'}`.trim()}
-                style={ganttStyle(project.startDate, project.endDate, displayStart, displayEnd)}
+                style={ganttStyle(project.startDate, project.endDate, timelineScaleStart, timelineScaleEnd)}
                 aria-label={`專案進度 ${project.progress}%`}
               >
                 <span className="fd20457-project-progress-text">{project.progress}%</span>
               </span>
               {(project.milestones || []).map((milestone, index) => (
-                <i key={milestone.id || index} className={milestone.done ? 'milestone-dot done' : 'milestone-dot'} style={{ left: `${ganttPoint(milestone.date, displayStart, displayEnd)}%` }} title={`${milestone.name}｜${formatMonthDayWeekday(milestone.date)}`} />
+                <i key={milestone.id || index} className={milestone.done ? 'milestone-dot done' : 'milestone-dot'} style={{ left: `${ganttPoint(milestone.date, timelineScaleStart, timelineScaleEnd)}%` }} title={`${milestone.name}｜${formatMonthDayWeekday(milestone.date)}`} />
               ))}
             </div>
           </div>
@@ -6285,7 +6287,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                   <div className="fd203-gantt-track soft" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                     {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
                     {renderGanttDependencyConnector({ project, task, taskIndex: index, taskStart, displayStart, displayEnd })}
-                    {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart, displayEnd, progress, label: task.name || '任務進度', className: 'task' })}
+                    {renderGanttBar({ project, task, taskIndex: index, scope: 'task', start: taskStart, end: taskEnd, displayStart: timelineScaleStart, displayEnd: timelineScaleEnd, progress, label: task.name || '任務進度', className: 'task' })}
                   </div>
                 </div>
                 {!subtasksOpen && subtaskCount > 0 ? (
@@ -6348,7 +6350,7 @@ function ProjectManagementPage({ projects: initialProjectRows = [], onCreateWork
                       </div>
                       <div className="fd203-gantt-track subtask" style={{ gridColumn: `2 / span ${safeWeekTicks.length}`, '--fd203-week-width': `${weekCellWidth}px` }}>
                         {showToday ? <span className="fd203-gantt-today-line subtle" style={{ left: todayLeft }} /> : null}
-                        {renderGanttBar({ project, task, taskIndex: index, subtask, subtaskIndex: subIndex, scope: 'subtask', start: subStart, end: subEnd, displayStart, displayEnd, progress: subProgress, label: subtask.name || '子任務進度', className: 'subtask' })}
+                        {renderGanttBar({ project, task, taskIndex: index, subtask, subtaskIndex: subIndex, scope: 'subtask', start: subStart, end: subEnd, displayStart: timelineScaleStart, displayEnd: timelineScaleEnd, progress: subProgress, label: subtask.name || '子任務進度', className: 'subtask' })}
                       </div>
                     </div>
                   )
@@ -6938,15 +6940,28 @@ function daysBetween(start, end) {
   return Math.max(1, Math.round((parseDate(end) - parseDate(start)) / 86400000))
 }
 
+function ganttTotalDaysV204196(start, end) {
+  return Math.max(1, Math.round((parseDate(end) - parseDate(start)) / 86400000) + 1)
+}
+
+function ganttDayOffsetV204196(date, start, end) {
+  const totalDays = ganttTotalDaysV204196(start, end)
+  const offset = Math.round((parseDate(date) - parseDate(start)) / 86400000)
+  return Math.max(0, Math.min(totalDays, offset))
+}
+
 function ganttPoint(date, start, end) {
-  const total = daysBetween(start, end)
-  const current = Math.max(0, Math.min(total, Math.round((parseDate(date) - parseDate(start)) / 86400000)))
-  return (current / total) * 100
+  const totalDays = ganttTotalDaysV204196(start, end)
+  const offset = ganttDayOffsetV204196(date, start, end)
+  return (offset / totalDays) * 100
 }
 
 function ganttStyle(start, end, rangeStart, rangeEnd) {
-  const left = ganttPoint(start, rangeStart, rangeEnd)
-  const right = ganttPoint(end, rangeStart, rangeEnd)
+  const totalDays = ganttTotalDaysV204196(rangeStart, rangeEnd)
+  const leftOffset = ganttDayOffsetV204196(start, rangeStart, rangeEnd)
+  const rightOffset = Math.min(totalDays, ganttDayOffsetV204196(end, rangeStart, rangeEnd) + 1)
+  const left = (leftOffset / totalDays) * 100
+  const right = (rightOffset / totalDays) * 100
   return { left: left + '%', width: Math.max(3, right - left) + '%' }
 }
 
@@ -12816,3 +12831,5 @@ export default App
 // FLOWDESK_V20_4_194_GANTT_WEEK_START_SYNC_FIX
 
 // FLOWDESK_V20_4_195_GANTT_WEEK_START_TZ_FIX
+
+// FLOWDESK_V20_4_196_GANTT_TIMELINE_GRID_ALIGN_FIX
