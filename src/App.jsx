@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.201'
+const FLOWDESK_APP_VERSION = '20.4.202'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -520,6 +520,41 @@ const purchasePageSizeOptions = [5, 10, 20, 40]
 const purchasePaymentStatusOptions = ['未付款', '請款中', '已付款']
 const purchaseArrivalStatusOptions = ['未到貨', '部分到貨', '已到貨']
 const purchaseAcceptanceStatusOptions = ['未驗收', '驗收中', '已驗收']
+
+const purchaseCompanyOptionsV204202 = ['南僑投資控股', '南僑油脂', '南僑食品', '南僑化工', '皇家可口', '水晶肥皂', '南僑行銷', '其他']
+const purchaseDepartmentOptionsV204202 = ['資訊處', '人資', '財會', '總務', '採購', '桃園廠', '台南廠', '高雄營業所', '中央廚房', '蛋糕中心', '皇家可口桃園二廠', '皇家可口台南廠', '南僑油脂', '其他']
+const purchaseItemCategoryOptionsV204202 = ['筆電', '桌上型電腦 / 主機', '螢幕 / 顯示設備', '網路設備', '儲存 / 備份', '軟體 / 授權', '周邊配件', '印表 / 耗材', '通訊 / 會議設備', '辦公設備', '其他採購']
+
+function normalizePurchaseCategoryV204202(value = '', itemName = '') {
+  const text = String(value || '').trim()
+  if (purchaseItemCategoryOptionsV204202.includes(text)) return text
+  const guessed = guessPurchaseItemCategory(itemName)
+  const aliasMap = {
+    '電腦 / 筆電': '筆電',
+    '螢幕 / 顯示設備': '螢幕 / 顯示設備',
+    '網路設備': '網路設備',
+    '儲存 / 備份': '儲存 / 備份',
+    '軟體 / 授權': '軟體 / 授權',
+    '周邊配件': '周邊配件',
+    '印表 / 耗材': '印表 / 耗材',
+    '通訊 / 會議': '通訊 / 會議設備',
+    '其他採購': '其他採購',
+  }
+  return aliasMap[guessed] || guessed || '其他採購'
+}
+
+function getPurchaseVendorOptionsV204202() {
+  const fallback = ['欣南資訊', '昌達科技', '凌群電腦', '月達科技', '其他']
+  if (typeof window === 'undefined') return fallback
+  try {
+    const vendors = JSON.parse(window.localStorage.getItem('flowdesk-vendors-v204172') || window.localStorage.getItem('flowdesk-vendors-v204173') || '[]')
+    const names = Array.isArray(vendors) ? vendors.map((vendor) => vendor.name).filter(Boolean) : []
+    return Array.from(new Set([...names, ...fallback]))
+  } catch {
+    return fallback
+  }
+}
+
 const purchasePriorityOptions = [
   { id: '緊急', label: '緊急', tone: 'red', weight: 0, hint: '停線、設備故障、主管急件，需優先插隊處理。' },
   { id: '高', label: '高', tone: 'orange', weight: 1, hint: '有明確期限，會影響部門作業或使用者進度。' },
@@ -8694,6 +8729,7 @@ function InsightPage({ metrics, records, tickets }) {
         purchaseId: row.id || '',
         purchaseTitle: purchaseTitleLocal(row),
         date: cleanDate(item.requestDate || item.orderDate || purchaseDate),
+        company: row.company || row.companyName || '',
         department: row.department || row.usedDepartment || row.applyDepartment || '',
         requester: row.requester || '',
         user: row.user || row.usedBy || '',
@@ -8708,7 +8744,7 @@ function InsightPage({ metrics, records, tickets }) {
         arrivalDate: cleanDate(item.arrivalDate || row.arrivalDate),
         orderDate: cleanDate(item.orderDate || row.orderDate),
         amount: getItemAmount(row, item),
-        category: guessPurchaseItemCategory(item.name || item.item || row.itemName || ''),
+        category: normalizePurchaseCategoryV204202(item.category || item.type, item.name || item.item || row.itemName || ''),
         archiveStatus: typeof purchaseArchiveStatusV72 === 'function' ? purchaseArchiveStatusV72(row) : '',
         poNumber: row.poNumber || row.poNo || row.purchaseNo || '',
         quoteNo: row.quoteNo || row.quotationNo || '',
@@ -8753,6 +8789,11 @@ function InsightPage({ metrics, records, tickets }) {
       })
       .sort((a, b) => String(a.expectedArrival || a.arrivalDate || '').localeCompare(String(b.expectedArrival || b.arrivalDate || '')))
 
+    const purchaseCompanyRows = rankRows(scoped.purchaseItems, (item) => item.company || '未設定公司別', (item) => item.amount).map((row) => {
+      const items = scoped.purchaseItems.filter((item) => safeText(item.company || '未設定公司別') === row.label)
+      return { ...row, itemCount: sumBy(items, (item) => item.quantity), purchaseCount: new Set(items.map((item) => item.purchaseId)).size }
+    })
+
     const purchaseDepartmentRows = rankRows(scoped.purchaseItems, (item) => item.department || '未設定單位', (item) => item.amount).map((row) => {
       const items = scoped.purchaseItems.filter((item) => safeText(item.department || '未設定單位') === row.label)
       const topCategories = rankRows(items, (item) => item.category).slice(0, 3).map((item) => item.label).join('、')
@@ -8793,6 +8834,7 @@ function InsightPage({ metrics, records, tickets }) {
       purchaseVendorRows,
       purchaseCategoryRows,
       purchaseArrivalRows,
+      purchaseCompanyRows,
       purchaseDepartmentRows,
       purchaseUserRows,
       purchaseMissingRows,
@@ -8825,7 +8867,7 @@ function InsightPage({ metrics, records, tickets }) {
   function exportReportCsv() {
     let rows = []
     if (reportTab === '採購報表') {
-      rows = reportData.scoped.purchaseItems.map((item) => ({ 查詢期間: reportRangeLabel, 採購單: item.purchaseId, 採購名稱: item.purchaseTitle, 日期: item.date, 單位: item.department, 申請人: item.requester, 使用人: item.user, 品項: item.itemName, 類別: item.category, 數量: item.quantity, 單價: item.unitPrice, 廠商: item.vendor, 主檔廠商: item.purchaseVendor, 採購狀態: item.purchaseStatus, 品項到貨狀態: item.status, 預計到貨: item.expectedArrival, 到貨日: item.arrivalDate, 歸檔狀態: item.archiveStatus, PO: item.poNumber, 報價單: item.quoteNo, 金額: item.amount }))
+      rows = reportData.scoped.purchaseItems.map((item) => ({ 查詢期間: reportRangeLabel, 採購單: item.purchaseId, 採購名稱: item.purchaseTitle, 日期: item.date, 公司別: item.company || '', 單位: item.department, 申請人: item.requester, 使用人: item.user, 品項: item.itemName, 類別: item.category, 數量: item.quantity, 單價: item.unitPrice, 廠商: item.vendor, 主檔廠商: item.purchaseVendor, 採購狀態: item.purchaseStatus, 品項到貨狀態: item.status, 預計到貨: item.expectedArrival, 到貨日: item.arrivalDate, 歸檔狀態: item.archiveStatus, PO: item.poNumber, 報價單: item.quoteNo, 金額: item.amount }))
     } else if (reportTab === '專案報表') {
       rows = reportData.scoped.projects.map((project) => ({ 月份: reportRangeLabel, 專案: project.name || '', 推進狀態: project.driveStatus || project.pushStatus || '', 階段: project.phase || '', 負責人: project.owner || '', 進度: project.progress || 0, 健康度: project.health || '', 起日: project.startDate || '', 迄日: project.endDate || '', 下一步: project.next || '', 備註: project.note || '' }))
     } else if (reportTab === '工作事項') {
@@ -8975,6 +9017,7 @@ function InsightPage({ metrics, records, tickets }) {
               { key: 'issue', label: '問題' },
               { key: 'purchaseId', label: '採購單' },
               { key: 'date', label: '日期' },
+              { key: 'company', label: '公司別' },
               { key: 'department', label: '單位' },
               { key: 'itemName', label: '品項' },
               { key: 'vendor', label: '廠商' },
@@ -8986,6 +9029,7 @@ function InsightPage({ metrics, records, tickets }) {
             {renderRankTable(reportData.scoped.purchaseItems, [
               { key: 'purchaseId', label: '採購單' },
               { key: 'date', label: '日期' },
+              { key: 'company', label: '公司別' },
               { key: 'department', label: '單位' },
               { key: 'requester', label: '申請人' },
               { key: 'user', label: '使用人' },
@@ -10842,7 +10886,8 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
     id: initial?.id,
     _purchaseKey: initial?._purchaseKey || initial?.uid || initial?.key,
     item: initial ? (initial?.summary || initial?.customTitle || initial?.item || purchaseTitle(initial)) : '',
-    items: initial ? getPurchaseItems(initial) : [{ id: `line-${Date.now()}`, name: '', vendor: '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
+    items: initial ? getPurchaseItems(initial) : [{ id: `line-${Date.now()}`, name: '', category: '其他採購', vendor: '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
+    company: initial?.company || initial?.companyName || '',
     department: initial?.department || '',
     requester: initial?.requester || '',
     user: initial?.user || initial?.usedBy || initial?.requester || '',
@@ -10891,6 +10936,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
   const validationBlockers = validationIssues.filter((issue) => issue.type === 'block')
   const validationWarnings = validationIssues.filter((issue) => issue.type === 'warn')
   const validationVisible = saveAttempted || validationIssues.length > 0
+  const vendorOptionsV204202 = getPurchaseVendorOptionsV204202()
 
   function update(field, value) {
     setForm((current) => {
@@ -10911,7 +10957,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
   function addItem() {
     setForm((current) => ({
       ...current,
-      items: [...current.items, { id: `line-${Date.now()}`, name: '', vendor: '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
+      items: [...current.items, { id: `line-${Date.now()}`, name: '', category: '其他採購', vendor: '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
     }))
   }
 
@@ -10950,6 +10996,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
       .map((item) => ({
         ...item,
         name: String(item.name || '').trim(),
+        category: normalizePurchaseCategoryV204202(item.category || item.type, item.name),
         vendor: String(item.vendor || item.supplier || '').trim(),
         quantity: Number(item.quantity || 0),
         unitPrice: Number(item.unitPrice || 0),
@@ -10974,7 +11021,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
       note: purchaseNote,
       remark: purchaseNote,
       memo: purchaseNote,
-      items: cleanItems.length ? cleanItems : [{ id: `line-${Date.now()}`, name: cleanSummary || form.item || '未命名品項', vendor: form.vendor || '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
+      items: cleanItems.length ? cleanItems : [{ id: `line-${Date.now()}`, name: cleanSummary || form.item || '未命名品項', category: normalizePurchaseCategoryV204202('', cleanSummary || form.item), vendor: form.vendor || '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
       item: cleanSummary || fallbackTitle,
       summary: cleanSummary || fallbackTitle,
       customTitle: cleanSummary || fallbackTitle,
@@ -10995,9 +11042,13 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
         </div>
 
         <div className="purchase-modal-body fd20387-purchase-modal-body">
-          <section className="purchase-form-summary-strip" aria-label="採購表單摘要">
+          <datalist id="purchase-vendor-options-v204202">
+            {vendorOptionsV204202.map((vendor) => <option key={vendor} value={vendor} />)}
+          </datalist>
+                    <section className="purchase-form-summary-strip" aria-label="採購表單摘要">
             <article className="fd171-summary-edit"><span>採購摘要</span><input value={form.item || ''} onChange={(event) => update('item', event.target.value)} placeholder="例如 Cisco 7821 IP話機" /></article>
-            <article className="fd171-summary-edit"><span>使用單位</span><input value={form.department || ''} onChange={(event) => update('department', event.target.value)} placeholder="例如 皇家可口" /></article>
+            <article className="fd171-summary-edit"><span>公司別</span><select value={form.company || ''} onChange={(event) => update('company', event.target.value)}><option value="">未指定</option>{mergeOptionList(purchaseCompanyOptionsV204202, form.company).map((company) => <option key={company} value={company}>{company}</option>)}</select></article>
+            <article className="fd171-summary-edit"><span>使用單位</span><select value={form.department || ''} onChange={(event) => update('department', event.target.value)}><option value="">未指定</option>{mergeOptionList(purchaseDepartmentOptionsV204202, form.department).map((department) => <option key={department} value={department}>{department}</option>)}</select></article>
             <article><span>優先等級</span><strong><PurchasePriorityBadge value={form.priority} compact /></strong></article>
             <article><span>含稅總額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
           </section>
@@ -11023,7 +11074,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
             <div className="form-grid fd20387-basic-grid">
               <label>流程狀態<select value={form.status} onChange={(event) => update('status', event.target.value)}>{(stages || initialPurchaseStages).map((stage) => <option key={stage.id} value={stage.name}>{stage.name}</option>)}</select></label>
               <label>優先等級<select value={form.priority} onChange={(event) => update('priority', event.target.value)}>{purchasePriorityOptions.map((priority) => <option key={priority.id} value={priority.id}>{priority.label}</option>)}</select></label>
-              <label>廠商<input value={form.vendor} onChange={(event) => update('vendor', event.target.value)} placeholder="例如 月達 / 昌達" /></label>
+              <label>主檔廠商<input list="purchase-vendor-options-v204202" value={form.vendor} onChange={(event) => update('vendor', event.target.value)} placeholder="可從廠商資料帶入，或手動輸入" /></label>
               <label>申請日<input type="date" value={form.requestDate} onChange={(event) => update('requestDate', event.target.value)} /></label>
             </div>
             <div className="purchase-priority-editor" aria-label="採購優先等級說明">
@@ -11041,7 +11092,8 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
               <div><p className="eyebrow">使用與申請資訊</p><h3>讓後續追蹤知道誰申請、誰使用、哪個單位要用</h3></div>
             </div>
             <div className="form-grid fd20387-people-grid">
-              <label>使用單位<input value={form.department} onChange={(event) => update('department', event.target.value)} placeholder="例如 高雄營業所" /></label>
+              <label>公司別<select value={form.company || ''} onChange={(event) => update('company', event.target.value)}><option value="">未指定</option>{mergeOptionList(purchaseCompanyOptionsV204202, form.company).map((company) => <option key={company} value={company}>{company}</option>)}</select></label>
+              <label>使用單位<select value={form.department || ''} onChange={(event) => update('department', event.target.value)}><option value="">未指定</option>{mergeOptionList(purchaseDepartmentOptionsV204202, form.department).map((department) => <option key={department} value={department}>{department}</option>)}</select></label>
               <label>申請人<input value={form.requester} onChange={(event) => update('requester', event.target.value)} /></label>
               <label>使用人<input value={form.user || ''} onChange={(event) => update('user', event.target.value)} placeholder="實際使用人 / 部門" /></label>
             </div>
@@ -11064,8 +11116,9 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
                   return (
                     <article className="purchase-item-row fd204199-purchase-item-row" key={item.id}>
                       <div className="item-index">{index + 1}</div>
-                      <label className="item-name">品項<input value={item.name} onChange={(event) => updateItem(item.id, 'name', event.target.value)} placeholder="例如 Wi‑Fi AP" /></label>
-                      <label className="fd204199-item-vendor">品項廠商<input value={item.vendor || ''} onChange={(event) => updateItem(item.id, 'vendor', event.target.value)} placeholder="可與主廠商不同" /></label>
+                      <label className="item-name">品項名稱<input value={item.name} onChange={(event) => updateItem(item.id, 'name', event.target.value)} placeholder="例如 Lenovo E14 / 24吋螢幕" /></label>
+                      <label className="fd204202-item-category">品項類別<select value={normalizePurchaseCategoryV204202(item.category, item.name)} onChange={(event) => updateItem(item.id, 'category', event.target.value)}>{purchaseItemCategoryOptionsV204202.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+                      <label className="fd204199-item-vendor">品項廠商<input list="purchase-vendor-options-v204202" value={item.vendor || ''} onChange={(event) => updateItem(item.id, 'vendor', event.target.value)} placeholder="可與主廠商不同" /></label>
                       <label>數量<input type="number" min="0" value={item.quantity} onChange={(event) => updateItem(item.id, 'quantity', event.target.value)} /></label>
                       <label>單價<input type="number" min="0" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', event.target.value)} /></label>
                       <label className="fd204199-item-arrival-status">到貨<select value={item.arrivalStatus || '未到貨'} onChange={(event) => updateItem(item.id, 'arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
@@ -11192,6 +11245,7 @@ function normalizePurchase(row) {
     priority: normalizePurchasePriority(row.priority),
     user: row.user || row.usedBy || row.requester || '未指定',
     usedBy: row.user || row.usedBy || row.requester || '未指定',
+    company: row.company || row.companyName || '',
     attachments: normalizeAttachmentList(row.attachments),
     archiveFolder: normalizeArchiveFolderV67(row.archiveFolder, { type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate }),
     note: String(row.note ?? row.remark ?? row.memo ?? '').trim(),
@@ -11225,6 +11279,7 @@ function getPurchaseItems(row = {}) {
   return source.map((item, index) => ({
     id: item.id || `line-${index + 1}`,
     name: item.name || item.item || '',
+    category: normalizePurchaseCategoryV204202(item.category || item.type, item.name || item.item || ''),
     vendor: item.vendor || item.supplier || '',
     quantity: Number(item.quantity || 0),
     unitPrice: Number(item.unitPrice || 0),
@@ -13025,3 +13080,5 @@ export default App
 // FLOWDESK_V20_4_200_SYSTEM_REPORT_CENTER
 
 // FLOWDESK_V20_4_201_REPORT_MONTH_MULTI_PURCHASE_DETAIL
+
+// FLOWDESK_V20_4_202_PURCHASE_FIELD_STANDARDIZATION
