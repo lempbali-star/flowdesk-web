@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.202'
+const FLOWDESK_APP_VERSION = '20.4.203'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -552,6 +552,93 @@ function getPurchaseVendorOptionsV204202() {
     return Array.from(new Set([...names, ...fallback]))
   } catch {
     return fallback
+  }
+}
+
+
+function firstLegacyValueV204203(...values) {
+  for (const value of values) {
+    if (value === 0) return 0
+    if (Array.isArray(value) && value.length) return value
+    const text = String(value ?? '').trim()
+    if (text && !['undefined', 'null', 'NaN'].includes(text)) return value
+  }
+  return ''
+}
+
+function legacyDateValueV204203(...values) {
+  const value = firstLegacyValueV204203(...values)
+  return String(value || '').slice(0, 10)
+}
+
+function purchaseCompanyValueV204203(row = {}) {
+  return String(firstLegacyValueV204203(row.company, row.companyName, row.corporation, row.org, row.businessUnit, row.factory, row.site, row.departmentCompany) || '').trim()
+}
+
+function purchaseDepartmentValueV204203(row = {}) {
+  return String(firstLegacyValueV204203(row.department, row.unit, row.dept, row.usedDepartment, row.applyDepartment, row.requesterDept, row.requestDepartment, row.userDepartment, row.ownerDepartment, row.departmentName) || '').trim()
+}
+
+function purchaseRequesterValueV204203(row = {}) {
+  return String(firstLegacyValueV204203(row.requester, row.applicant, row.requestBy, row.applyUser, row.createdBy, row.owner) || '').trim()
+}
+
+function purchaseUserValueV204203(row = {}) {
+  return String(firstLegacyValueV204203(row.user, row.usedBy, row.usageUser, row.useUser, row.endUser, row.receiver, row.requester, row.applicant) || '').trim()
+}
+
+function purchaseVendorValueV204203(row = {}) {
+  return String(firstLegacyValueV204203(row.vendor, row.vendorName, row.supplier, row.supplierName, row.manufacturer, row.provider, row.dealer) || '').trim()
+}
+
+function purchaseItemNameValueV204203(item = {}, row = {}) {
+  return String(firstLegacyValueV204203(item.name, item.itemName, item.title, item.item, item.product, item.productName, item.description, item.spec, row.itemName, row.item, row.summary, row.customTitle) || '').trim()
+}
+
+function purchaseItemVendorValueV204203(item = {}, row = {}) {
+  return String(firstLegacyValueV204203(item.vendor, item.itemVendor, item.vendorName, item.supplier, item.supplierName, item.provider, item.dealer, row.vendor, row.vendorName, row.supplier, row.supplierName) || '').trim()
+}
+
+function purchaseItemQuantityValueV204203(item = {}) {
+  const value = firstLegacyValueV204203(item.quantity, item.qty, item.count, item.amountQty, item.number)
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 1
+}
+
+function purchaseItemUnitPriceValueV204203(item = {}) {
+  const value = firstLegacyValueV204203(item.unitPrice, item.price, item.unitAmount, item.unitCost, item.cost, item.amount)
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+function purchaseItemCategoryValueV204203(item = {}, row = {}) {
+  const name = purchaseItemNameValueV204203(item, row)
+  return normalizePurchaseCategoryV204202(firstLegacyValueV204203(item.category, item.type, item.itemType, item.folder, row.category, row.type), name)
+}
+
+function purchaseItemArrivalStatusValueV204203(item = {}, row = {}) {
+  return String(firstLegacyValueV204203(item.arrivalStatus, item.status, item.deliveryStatus, row.arrivalStatus, row.status, '未到貨') || '未到貨').trim()
+}
+
+function purchaseItemExpectedArrivalValueV204203(item = {}, row = {}) {
+  return legacyDateValueV204203(item.expectedArrivalDate, item.expectedArrival, item.arrivalDueDate, item.dueDate, row.expectedArrivalDate, row.expectedArrival, row.arrivalDueDate)
+}
+
+function purchaseItemArrivalDateValueV204203(item = {}, row = {}) {
+  return legacyDateValueV204203(item.arrivalDate, item.deliveryDate, item.receivedDate, row.arrivalDate, row.deliveryDate, row.receivedDate)
+}
+
+function purchaseItemNoteValueV204203(item = {}) {
+  return String(firstLegacyValueV204203(item.note, item.remark, item.memo, item.description) || '').trim()
+}
+
+function purchaseDisplaySummaryV204203(row = {}) {
+  return {
+    company: purchaseCompanyValueV204203(row),
+    department: purchaseDepartmentValueV204203(row),
+    requester: purchaseRequesterValueV204203(row),
+    user: purchaseUserValueV204203(row),
+    vendor: purchaseVendorValueV204203(row),
   }
 }
 
@@ -1631,7 +1718,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
         id: `purchase-${row.id}`,
         type: '採購',
         title: safePurchaseTitle(row),
-        meta: `${row.vendor || '未指定廠商'} · ${row.status || '待確認'} · ${localMoney(safePurchaseAmount(row))}`,
+        meta: `${purchaseVendorValueV204203(row) || '未指定廠商'} · ${row.status || '待確認'} · ${localMoney(safePurchaseAmount(row))}`,
         tone: 'violet',
         target: 'base',
       })),
@@ -1658,7 +1745,7 @@ function HomePage({ metrics, items, reminders, setActive, setSelected }) {
     .slice(0, 8)
 
   const purchaseLeaders = Array.from(purchases.reduce((map, row) => {
-    const vendor = row.vendor || '未指定廠商'
+    const vendor = purchaseVendorValueV204203(row) || '未指定廠商'
     const current = map.get(vendor) || { vendor, amount: 0, count: 0 }
     current.amount += safePurchaseAmount(row)
     current.count += 1
@@ -2490,7 +2577,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     .filter((row) => (row.requestDate || '').startsWith(currentMonthKey))
     .reduce((sum, row) => sum + calculatePurchase(row).taxedTotal, 0)
   const vendorSpendRanking = Array.from(purchases.reduce((map, row) => {
-    const vendor = row.vendor || '未指定廠商'
+    const vendor = purchaseVendorValueV204203(row) || '未指定廠商'
     const current = map.get(vendor) || { vendor, amount: 0, count: 0 }
     current.amount += calculatePurchase(row).taxedTotal
     current.count += 1
@@ -2840,7 +2927,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       requester: row.requester || '未指定',
       owner: 'Kyle',
       due: row.arrivalDueDate || row.paymentDueDate || addDaysDate(3),
-      note: `${row.department || '未指定單位'} / ${row.vendor || '未指定廠商'} / ${formatMoney(amount.taxedTotal)}`,
+      note: `${purchaseDepartmentValueV204203(row) || '未指定單位'} / ${purchaseVendorValueV204203(row) || '未指定廠商'} / ${formatMoney(amount.taxedTotal)}`,
       tags: ['採購', row.paymentStatus || '未付款', row.arrivalStatus || '未到貨'].filter(Boolean),
     })
   }
@@ -2861,7 +2948,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       dueDate,
       sourceType: '採購管理',
       sourceTitle: `${row.id} ${purchaseTitle(row)}`,
-      note: `${row.department || '未指定單位'} / ${row.requester || '未指定申請人'} / ${row.vendor || '未指定廠商'}`,
+      note: `${purchaseDepartmentValueV204203(row) || '未指定單位'} / ${row.requester || '未指定申請人'} / ${purchaseVendorValueV204203(row) || '未指定廠商'}`,
     })
   }
 
@@ -3139,7 +3226,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
               <div className="purchase-action-list">
                 {purchaseActionRows.length ? purchaseActionRows.map((item) => (
                   <button type="button" key={getPurchaseKey(item.row)} onClick={() => openPurchaseDetailDialogV78(item.row)}>
-                    <div><strong>{purchaseTitle(item.row)}</strong><small><PurchasePriorityBadge value={item.row.priority} compact /> {item.row.vendor || '未指定廠商'} · {item.reasons.join(' / ')}</small></div>
+                    <div><strong>{purchaseTitle(item.row)}</strong><small><PurchasePriorityBadge value={item.row.priority} compact /> {item.purchaseVendorValueV204203(row) || '未指定廠商'} · {item.reasons.join(' / ')}</small></div>
                     <b>{formatMoney(item.amount)}</b>
                   </button>
                 )) : <span className="purchase-action-empty">目前沒有需要優先追蹤的採購。</span>}
@@ -3228,15 +3315,15 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                           </div>
                           <strong>{purchaseCardTitle(row)}</strong>
                           <div className="fd74-purchase-context">
-                            <span>主廠商：{row.vendor || '未指定'}</span>
+                            <span>主廠商：{purchaseVendorValueV204203(row) || '未指定'}</span>
                             <span>品項廠商：{getPurchaseItemVendorSummaryV204199(row)}</span>
                             <span>品項到貨：{getPurchaseItemArrivalSummaryV204199(row)}</span>
                             <span>日期：{row.requestDate || '未填日期'}</span>
                           </div>
                           <div className="purchase-list-extra-line" aria-label="採購清單重點資訊">
-                            <span><b>單位</b>{row.department || '未指定'}</span>
-                            <span><b>申請</b>{row.requester || '—'}</span>
-                            <span><b>使用</b>{row.user || row.usedBy || row.requester || '—'}</span>
+                            <span><b>單位</b>{purchaseDepartmentValueV204203(row) || '未指定'}</span>
+                            <span><b>申請</b>{purchaseRequesterValueV204203(row) || '—'}</span>
+                            <span><b>使用</b>{row.user || row.usedBy || purchaseRequesterValueV204203(row) || '—'}</span>
                             <span><b>付款</b>{row.paymentStatus || '未付款'}</span>
                             <span><b>到貨</b>{row.arrivalStatus || '未到貨'}</span>
                             <span><b>驗收</b>{row.acceptanceStatus || '未驗收'}</span>
@@ -8553,7 +8640,7 @@ function buildCompletedCaseRows(data = {}) {
     .map((row) => ({ id: row.id || '', type: '任務追蹤', title: row.title || '未命名任務', status: row.status || '已收斂', owner: row.owner || '未指定', date: getCaseCompletionDate(row), meta: [row.category, row.relatedPurchase, row.relatedVendor].filter(Boolean).join('｜') }))
   const purchaseRows = (data.purchases || [])
     .filter((row) => isClosedCaseStatus(row.status) || purchaseArchiveStatusV72(row) === '已歸檔')
-    .map((row) => ({ id: row.id || '', type: '採購', title: purchaseTitle(row), status: purchaseArchiveStatusV72(row) === '已歸檔' ? '已歸檔' : (row.status || '已完成'), owner: row.requester || row.department || '未指定', date: getCaseCompletionDate(row), amount: calculatePurchase(row).taxedTotal, meta: [row.vendor, row.department, row.user || row.usedBy].filter(Boolean).join('｜') }))
+    .map((row) => ({ id: row.id || '', type: '採購', title: purchaseTitle(row), status: purchaseArchiveStatusV72(row) === '已歸檔' ? '已歸檔' : (row.status || '已完成'), owner: purchaseRequesterValueV204203(row) || purchaseDepartmentValueV204203(row) || '未指定', date: getCaseCompletionDate(row), amount: calculatePurchase(row).taxedTotal, meta: [row.vendor, row.department, row.user || row.usedBy].filter(Boolean).join('｜') }))
   const projectRows = (data.projects || [])
     .filter((row) => isClosedCaseStatus(row.phase) || Number(row.progress || 0) >= 100)
     .map((row) => ({ id: row.id || '', type: '專案', title: row.name || '未命名專案', status: row.phase || '已完成', owner: row.owner || '未指定', date: getCaseCompletionDate(row), progress: row.progress || 100, meta: [row.health, row.priority].filter(Boolean).join('｜') }))
@@ -8729,22 +8816,22 @@ function InsightPage({ metrics, records, tickets }) {
         purchaseId: row.id || '',
         purchaseTitle: purchaseTitleLocal(row),
         date: cleanDate(item.requestDate || item.orderDate || purchaseDate),
-        company: row.company || row.companyName || '',
-        department: row.department || row.usedDepartment || row.applyDepartment || '',
-        requester: row.requester || '',
-        user: row.user || row.usedBy || '',
-        itemName: item.name || item.item || row.itemName || '未命名品項',
-        quantity: safeNumber(item.quantity || item.qty || 1, 1),
-        unitPrice: safeNumber(item.unitPrice || item.price || item.amount, 0),
-        vendor: item.vendor || item.itemVendor || row.vendor || '未指定廠商',
-        purchaseVendor: row.vendor || '',
-        status: item.arrivalStatus || row.arrivalStatus || row.status || '未設定',
+        company: purchaseCompanyValueV204203(row),
+        department: purchaseDepartmentValueV204203(row),
+        requester: purchaseRequesterValueV204203(row),
+        user: purchaseUserValueV204203(row),
+        itemName: purchaseItemNameValueV204203(item, row) || '未命名品項',
+        quantity: safeNumber(purchaseItemQuantityValueV204203(item), 1),
+        unitPrice: safeNumber(purchaseItemUnitPriceValueV204203(item), 0),
+        vendor: purchaseItemVendorValueV204203(item, row) || '未指定廠商',
+        purchaseVendor: purchaseVendorValueV204203(row),
+        status: purchaseItemArrivalStatusValueV204203(item, row) || '未設定',
         purchaseStatus: row.status || '',
-        expectedArrival: cleanDate(item.expectedArrivalDate || item.expectedArrival || row.expectedArrivalDate || row.expectedArrival),
-        arrivalDate: cleanDate(item.arrivalDate || row.arrivalDate),
+        expectedArrival: cleanDate(purchaseItemExpectedArrivalValueV204203(item, row)),
+        arrivalDate: cleanDate(purchaseItemArrivalDateValueV204203(item, row)),
         orderDate: cleanDate(item.orderDate || row.orderDate),
         amount: getItemAmount(row, item),
-        category: normalizePurchaseCategoryV204202(item.category || item.type, item.name || item.item || row.itemName || ''),
+        category: purchaseItemCategoryValueV204203(item, row),
         archiveStatus: typeof purchaseArchiveStatusV72 === 'function' ? purchaseArchiveStatusV72(row) : '',
         poNumber: row.poNumber || row.poNo || row.purchaseNo || '',
         quoteNo: row.quoteNo || row.quotationNo || '',
@@ -8765,7 +8852,7 @@ function InsightPage({ metrics, records, tickets }) {
 
     const completedRows = [
       ...workItems.filter((item) => isDoneStatus(item.lane || item.status)).map((item) => ({ module: '工作事項', title: item.title || '未命名工作', status: item.lane || item.status || '已完成', owner: item.owner || item.requester || '未指定', date: cleanDate(item.completedDate || item.completedAt || item.updatedAt || item.due), meta: [item.priority, item.type, item.category].filter(Boolean).join('｜') })),
-      ...purchases.filter((row) => isDoneStatus(row.status) || isDoneStatus(row.acceptanceStatus)).map((row) => ({ module: '採購', title: purchaseTitleLocal(row), status: row.status || row.acceptanceStatus || '已完成', owner: row.requester || row.department || '未指定', date: cleanDate(row.completedDate || row.completedAt || row.acceptanceDate || row.arrivalDate || getPurchaseDate(row)), amount: getPurchaseAmount(row), meta: [row.vendor, row.department].filter(Boolean).join('｜') })),
+      ...purchases.filter((row) => isDoneStatus(row.status) || isDoneStatus(row.acceptanceStatus)).map((row) => ({ module: '採購', title: purchaseTitleLocal(row), status: row.status || row.acceptanceStatus || '已完成', owner: purchaseRequesterValueV204203(row) || purchaseDepartmentValueV204203(row) || '未指定', date: cleanDate(row.completedDate || row.completedAt || row.acceptanceDate || row.arrivalDate || getPurchaseDate(row)), amount: getPurchaseAmount(row), meta: [purchaseVendorValueV204203(row), purchaseDepartmentValueV204203(row)].filter(Boolean).join('｜') })),
       ...projects.filter((project) => isDoneStatus(project.driveStatus || project.phase || project.status) || safeNumber(project.progress) >= 100).map((project) => ({ module: '專案', title: project.name || '未命名專案', status: project.driveStatus || project.phase || '已完成', owner: project.owner || '未指定', date: cleanDate(project.completedDate || project.completedAt || project.endDate || project.updatedAt), meta: [project.health, project.priority].filter(Boolean).join('｜') })),
       ...reminders.filter((item) => isDoneStatus(item.status)).map((item) => ({ module: '提醒', title: item.title || '未命名提醒', status: item.status || '已完成', owner: item.sourceType || '一般', date: cleanDate(item.completedDate || item.completedAt || item.updatedAt || item.dueDate), meta: [item.type, item.priority].filter(Boolean).join('｜') })),
     ].filter((row) => isInReportMonth(row.date)).filter(includesKeyword).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
@@ -9181,7 +9268,7 @@ function buildPurchaseMonthlyTrend(purchases = []) {
 
 function buildVendorRanking(purchases = []) {
   return Array.from(purchases.reduce((map, row) => {
-    const vendor = row.vendor || '未指定廠商'
+    const vendor = purchaseVendorValueV204203(row) || '未指定廠商'
     const current = map.get(vendor) || { vendor, amount: 0, count: 0 }
     current.amount += calculatePurchase(row).taxedTotal
     current.count += 1
@@ -9205,7 +9292,7 @@ function buildReportTableRows(tab, data) {
       const items = getPurchaseItems(row)
       return {
         csv: { 編號: row.id, 採購內容: purchaseTitle(row), 優先等級: normalizePurchasePriority(row.priority), 使用單位: row.department || '', 申請人: row.requester || '', 使用人: row.user || row.usedBy || '', 廠商: row.vendor || '', 狀態: row.status || '', 含稅金額: amount, 付款: row.paymentStatus || '未付款', 到貨: row.arrivalStatus || '未到貨', 驗收: row.acceptanceStatus || '未驗收', 歸檔: purchaseArchiveStatusV72(row), 品項數: items.length },
-        cells: [row.id, purchaseTitle(row), normalizePurchasePriority(row.priority), row.department || '未指定', row.vendor || '未指定', row.status || '未設定', formatMoney(amount), row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', purchaseArchiveStatusV72(row)],
+        cells: [row.id, purchaseTitle(row), normalizePurchasePriority(row.priority), purchaseDepartmentValueV204203(row) || '未指定', purchaseVendorValueV204203(row) || '未指定', row.status || '未設定', formatMoney(amount), row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', purchaseArchiveStatusV72(row)],
       }
     })
     return { headers: ['編號', '採購內容', '優先', '使用單位', '廠商', '狀態', '金額', '付款', '到貨', '歸檔'], rows: rows.map((row) => row.cells), csv: rows.map((row) => row.csv) }
@@ -10887,8 +10974,8 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
     _purchaseKey: initial?._purchaseKey || initial?.uid || initial?.key,
     item: initial ? (initial?.summary || initial?.customTitle || initial?.item || purchaseTitle(initial)) : '',
     items: initial ? getPurchaseItems(initial) : [{ id: `line-${Date.now()}`, name: '', category: '其他採購', vendor: '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
-    company: initial?.company || initial?.companyName || '',
-    department: initial?.department || '',
+    company: purchaseCompanyValueV204203(initial || {}) || '',
+    department: purchaseDepartmentValueV204203(initial || {}) || '',
     requester: initial?.requester || '',
     user: initial?.user || initial?.usedBy || initial?.requester || '',
     attachments: normalizeAttachmentList(initial?.attachments),
@@ -10996,7 +11083,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
       .map((item) => ({
         ...item,
         name: String(item.name || '').trim(),
-        category: normalizePurchaseCategoryV204202(item.category || item.type, item.name),
+        category: purchaseItemCategoryValueV204203(item, form),
         vendor: String(item.vendor || item.supplier || '').trim(),
         quantity: Number(item.quantity || 0),
         unitPrice: Number(item.unitPrice || 0),
@@ -11117,8 +11204,8 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
                     <article className="purchase-item-row fd204199-purchase-item-row" key={item.id}>
                       <div className="item-index">{index + 1}</div>
                       <label className="item-name">品項名稱<input value={item.name} onChange={(event) => updateItem(item.id, 'name', event.target.value)} placeholder="例如 Lenovo E14 / 24吋螢幕" /></label>
-                      <label className="fd204202-item-category">品項類別<select value={normalizePurchaseCategoryV204202(item.category, item.name)} onChange={(event) => updateItem(item.id, 'category', event.target.value)}>{purchaseItemCategoryOptionsV204202.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
-                      <label className="fd204199-item-vendor">品項廠商<input list="purchase-vendor-options-v204202" value={item.vendor || ''} onChange={(event) => updateItem(item.id, 'vendor', event.target.value)} placeholder="可與主廠商不同" /></label>
+                      <label className="fd204202-item-category">品項類別<select value={purchaseItemCategoryValueV204203(item, form)} onChange={(event) => updateItem(item.id, 'category', event.target.value)}>{purchaseItemCategoryOptionsV204202.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+                      <label className="fd204199-item-vendor">品項廠商<input list="purchase-vendor-options-v204202" value={purchaseItemVendorValueV204203(item, form) || ''} onChange={(event) => updateItem(item.id, 'vendor', event.target.value)} placeholder="可與主廠商不同" /></label>
                       <label>數量<input type="number" min="0" value={item.quantity} onChange={(event) => updateItem(item.id, 'quantity', event.target.value)} /></label>
                       <label>單價<input type="number" min="0" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', event.target.value)} /></label>
                       <label className="fd204199-item-arrival-status">到貨<select value={item.arrivalStatus || '未到貨'} onChange={(event) => updateItem(item.id, 'arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
@@ -11243,11 +11330,15 @@ function normalizePurchase(row) {
     customTitle: String(row.summary || row.customTitle || row.item || title).trim() || title,
     items,
     priority: normalizePurchasePriority(row.priority),
-    user: row.user || row.usedBy || row.requester || '未指定',
-    usedBy: row.user || row.usedBy || row.requester || '未指定',
-    company: row.company || row.companyName || '',
+    user: purchaseUserValueV204203(row) || '未指定',
+    usedBy: purchaseUserValueV204203(row) || '未指定',
+    requester: purchaseRequesterValueV204203(row) || row.requester || '',
+    department: purchaseDepartmentValueV204203(row) || row.department || '',
+    unit: purchaseDepartmentValueV204203(row) || row.unit || '',
+    company: purchaseCompanyValueV204203(row) || row.company || row.companyName || '',
+    vendor: purchaseVendorValueV204203(row) || row.vendor || '',
     attachments: normalizeAttachmentList(row.attachments),
-    archiveFolder: normalizeArchiveFolderV67(row.archiveFolder, { type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate }),
+    archiveFolder: normalizeArchiveFolderV67(row.archiveFolder, { type: '採購', id: row.id, title: purchaseTitle(row), department: purchaseDepartmentValueV204203(row), date: row.requestDate }),
     note: String(row.note ?? row.remark ?? row.memo ?? '').trim(),
     remark: String(row.note ?? row.remark ?? row.memo ?? '').trim(),
     memo: String(row.note ?? row.remark ?? row.memo ?? '').trim(),
@@ -11274,25 +11365,36 @@ function normalizePurchase(row) {
 function getPurchaseItems(row = {}) {
   const source = Array.isArray(row.items) && row.items.length
     ? row.items
-    : [{ id: 'line-legacy', name: row.item || '', quantity: row.quantity || 1, unitPrice: row.unitPrice || 0, note: row.note || '' }]
+    : Array.isArray(row.purchaseItems) && row.purchaseItems.length
+      ? row.purchaseItems
+      : Array.isArray(row.lineItems) && row.lineItems.length
+        ? row.lineItems
+        : Array.isArray(row.products) && row.products.length
+          ? row.products
+          : [{ id: 'line-legacy', name: row.item || row.itemName || row.title || row.summary || '', quantity: row.quantity || row.qty || 1, unitPrice: row.unitPrice || row.price || 0, vendor: row.vendor || row.vendorName || row.supplier || '', note: row.note || row.remark || row.memo || '' }]
 
   return source.map((item, index) => ({
-    id: item.id || `line-${index + 1}`,
-    name: item.name || item.item || '',
-    category: normalizePurchaseCategoryV204202(item.category || item.type, item.name || item.item || ''),
-    vendor: item.vendor || item.supplier || '',
-    quantity: Number(item.quantity || 0),
-    unitPrice: Number(item.unitPrice || 0),
-    arrivalStatus: item.arrivalStatus || '未到貨',
-    arrivalDueDate: item.arrivalDueDate || '',
-    arrivalDate: item.arrivalDate || '',
-    note: item.note || '',
+    ...item,
+    id: item.id || item.uid || item.key || `line-${index + 1}`,
+    name: purchaseItemNameValueV204203(item, row),
+    itemName: purchaseItemNameValueV204203(item, row),
+    category: purchaseItemCategoryValueV204203(item, row),
+    vendor: purchaseItemVendorValueV204203(item, row),
+    itemVendor: purchaseItemVendorValueV204203(item, row),
+    quantity: purchaseItemQuantityValueV204203(item),
+    unitPrice: purchaseItemUnitPriceValueV204203(item),
+    arrivalStatus: purchaseItemArrivalStatusValueV204203(item, row),
+    arrivalDueDate: purchaseItemExpectedArrivalValueV204203(item, row),
+    expectedArrival: purchaseItemExpectedArrivalValueV204203(item, row),
+    expectedArrivalDate: purchaseItemExpectedArrivalValueV204203(item, row),
+    arrivalDate: purchaseItemArrivalDateValueV204203(item, row),
+    note: purchaseItemNoteValueV204203(item),
   }))
 }
 
 function getPurchaseItemVendorSummaryV204199(row = {}) {
   const vendors = Array.from(new Set(getPurchaseItems(row).map((item) => String(item.vendor || '').trim()).filter(Boolean)))
-  if (!vendors.length) return row.vendor || '未指定廠商'
+  if (!vendors.length) return purchaseVendorValueV204203(row) || '未指定廠商'
   if (vendors.length === 1) return vendors[0]
   return `多廠商 ${vendors.length} 家：${vendors.slice(0, 3).join('、')}${vendors.length > 3 ? '…' : ''}`
 }
@@ -11307,7 +11409,7 @@ function getPurchaseItemArrivalSummaryV204199(row = {}) {
 }
 
 function purchaseCardTitle(row = {}) {
-  return row.department || row.usedDepartment || row.applyDepartment || row.requester || purchaseTitle(row)
+  return purchaseDepartmentValueV204203(row) || purchaseRequesterValueV204203(row) || purchaseTitle(row)
 }
 
 function purchaseTitle(row = {}) {
@@ -11403,7 +11505,7 @@ function PurchaseDetailModalV76({
           <div>
             <p className="eyebrow">採購明細</p>
             <h3>{row.id} · {purchaseTitle(row)}</h3>
-            <span>{row.department || '未指定單位'} · 申請人：{row.requester || '—'} · 使用人：{row.user || row.usedBy || row.requester || '—'} · 優先：{normalizePurchasePriority(row.priority)}</span>
+            <span>{purchaseDepartmentValueV204203(row) || '未指定單位'} · 申請人：{purchaseRequesterValueV204203(row) || '—'} · 使用人：{row.user || row.usedBy || purchaseRequesterValueV204203(row) || '—'} · 優先：{normalizePurchasePriority(row.priority)}</span>
           </div>
           <button
             type="button"
@@ -11423,8 +11525,8 @@ function PurchaseDetailModalV76({
         </header>
 
         <section className="fd79-purchase-modal-summary" aria-label="採購重點摘要">
-          <article><span>使用單位</span><strong>{row.department || '未指定'}</strong></article>
-          <article><span>申請人 / 使用人</span><strong>{row.requester || '—'} / {row.user || row.usedBy || row.requester || '—'}</strong></article>
+          <article><span>使用單位</span><strong>{purchaseDepartmentValueV204203(row) || '未指定'}</strong></article>
+          <article><span>申請人 / 使用人</span><strong>{purchaseRequesterValueV204203(row) || '—'} / {row.user || row.usedBy || purchaseRequesterValueV204203(row) || '—'}</strong></article>
           <article><span>目前狀態</span><strong>{row.status || '未設定'}</strong></article>
           <article><span>優先等級</span><strong><PurchasePriorityBadge value={row.priority} /></strong></article>
           <article><span>品項</span><strong>{items.length} 項</strong></article>
@@ -11513,7 +11615,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
   const budgetAmount = Number(row.budgetAmount || 0)
   const budgetDiff = budgetAmount ? amount.taxedTotal - budgetAmount : 0
   const archiveStatus = purchaseArchiveStatusV72(row)
-  const suggestedArchiveName = buildArchiveFolderNameV67({ type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate })
+  const suggestedArchiveName = buildArchiveFolderNameV67({ type: '採購', id: row.id, title: purchaseTitle(row), department: purchaseDepartmentValueV204203(row), date: row.requestDate })
 
   const moneySummary = (
     <div className="detail-money-summary fd79-money-summary">
@@ -11543,7 +11645,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
       <span>報價單號<b>{row.quoteNo || '—'}</b></span>
       <span>PO 單號<b>{row.poNo || '—'}</b></span>
       <span>發票號碼<b>{row.invoiceNo || '—'}</b></span>
-      <span>採購主廠商<b>{row.vendor || '—'}</b></span>
+      <span>採購主廠商<b>{purchaseVendorValueV204203(row) || '—'}</b></span>
       <span>品項廠商<b>{getPurchaseItemVendorSummaryV204199(row)}</b></span>
       <span>品項到貨<b>{getPurchaseItemArrivalSummaryV204199(row)}</b></span>
       <span>品項數<b>{items.length} 項 / {totalQuantity} 件</b></span>
@@ -11585,7 +11687,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
       <div className="line-detail-head"><strong>相關任務與下一步</strong><span>{relatedTasks.length} 筆</span></div>
       {relatedTasks.length ? relatedTasks.map((task) => (
         <article key={task.id}>
-          <div><b>{task.title}</b><small>{task.status} · {task.relatedVendor || row.vendor || '未指定廠商'}</small></div>
+          <div><b>{task.title}</b><small>{task.status} · {task.relatedVendor || purchaseVendorValueV204203(row) || '未指定廠商'}</small></div>
           <p>{task.next}</p>
         </article>
       )) : <p>目前沒有關聯任務，可於工作事項建立採購、廠商或專案關聯。</p>}
@@ -11609,9 +11711,9 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
       <div className="detail-status-strip fd79-status-strip">
         <StageBadge value={row.status} stages={stages} />
         <PurchasePriorityBadge value={row.priority} compact />
-        <span>{row.department || '未填部門'}</span>
+        <span>{purchaseDepartmentValueV204203(row) || '未填部門'}</span>
         <span>{row.requester || '未填申請人'}</span>
-        <span>使用人：{row.user || row.usedBy || row.requester || '未指定'}</span>
+        <span>使用人：{purchaseUserValueV204203(row) || '未指定'}</span>
         <span>{row.paymentStatus || '未付款'}</span>
         <span>{row.arrivalStatus || '未到貨'}</span>
         <span>{row.acceptanceStatus || '未驗收'}</span>
@@ -11621,7 +11723,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
           <span>目前選取</span>
           <strong>{row.id} · {purchaseTitle(row)}</strong>
         </div>
-        <small>{getPurchaseItemVendorSummaryV204199(row)} · 品項到貨：{getPurchaseItemArrivalSummaryV204199(row)} · 優先：{normalizePurchasePriority(row.priority)} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
+        <small>{getPurchaseItemVendorSummaryV204199(row)} · 品項到貨：{getPurchaseItemArrivalSummaryV204199(row)} · 優先：{normalizePurchasePriority(row.priority)} · 使用人：{purchaseUserValueV204203(row) || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
       </div>
 
       <div className="fd205-purchase-direct-status-edit">
@@ -11960,7 +12062,7 @@ function normalizeArchiveFolderV67(value = {}, fallback = {}) {
 }
 
 function purchaseArchiveStatusV72(row = {}) {
-  const folder = normalizeArchiveFolderV67(row.archiveFolder, { type: '採購', id: row.id, title: purchaseTitle(row), department: row.department, date: row.requestDate })
+  const folder = normalizeArchiveFolderV67(row.archiveFolder, { type: '採購', id: row.id, title: purchaseTitle(row), department: purchaseDepartmentValueV204203(row), date: row.requestDate })
   if (folder.status === '已歸檔') return '已歸檔'
   if (folder.url) return folder.status && folder.status !== '未建立' ? folder.status : '已建立'
   return '未建立'
@@ -12017,15 +12119,15 @@ function PurchaseCardFocusMetaV74({ row, amount }) {
     <div className="fd74-purchase-focus">
       <div className="fd74-purchase-unit">
         <span>使用單位</span>
-        <strong>{row.department || '未指定單位'}</strong>
+        <strong>{purchaseDepartmentValueV204203(row) || '未指定單位'}</strong>
       </div>
       <div className="fd74-purchase-person">
         <span>申請人</span>
-        <strong>{row.requester || '—'}</strong>
+        <strong>{purchaseRequesterValueV204203(row) || '—'}</strong>
       </div>
       <div className="fd74-purchase-person">
         <span>使用人</span>
-        <strong>{row.user || row.usedBy || row.requester || '—'}</strong>
+        <strong>{row.user || row.usedBy || purchaseRequesterValueV204203(row) || '—'}</strong>
       </div>
       <div className="fd74-purchase-state">
         <span>目前狀態</span>
@@ -13082,3 +13184,5 @@ export default App
 // FLOWDESK_V20_4_201_REPORT_MONTH_MULTI_PURCHASE_DETAIL
 
 // FLOWDESK_V20_4_202_PURCHASE_FIELD_STANDARDIZATION
+
+// FLOWDESK_V20_4_203_DATA_COMPATIBILITY_GUARD
