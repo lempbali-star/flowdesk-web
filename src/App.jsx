@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.200'
+const FLOWDESK_APP_VERSION = '20.4.201'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -8532,8 +8532,12 @@ function InsightPage({ metrics, records, tickets }) {
   const currentYear = Number(todayDate().slice(0, 4))
   const currentMonth = todayDate().slice(5, 7)
   const [reportTab, setReportTab] = useState('總覽')
+  const [reportMode, setReportMode] = useState('單月')
   const [reportYear, setReportYear] = useState(String(currentYear))
   const [reportMonth, setReportMonth] = useState(currentMonth)
+  const [reportMonths, setReportMonths] = useState([currentMonth])
+  const [reportStartDate, setReportStartDate] = useState(`${currentYear}-01-01`)
+  const [reportEndDate, setReportEndDate] = useState(todayDate())
   const [reportKeyword, setReportKeyword] = useState('')
 
   function safeArray(value) {
@@ -8560,11 +8564,43 @@ function InsightPage({ metrics, records, tickets }) {
     return date ? date.slice(0, 7) : ''
   }
 
+  function normalizeReportMonthsV204201(months = []) {
+    const list = Array.isArray(months) ? months : []
+    const clean = list.map((month) => String(month).padStart(2, '0')).filter((month) => /^\d{2}$/.test(month))
+    return clean.length ? Array.from(new Set(clean)).sort() : [reportMonth]
+  }
+
   function isInReportMonth(value) {
     const date = cleanDate(value)
     if (!date) return false
-    if (reportMonth === '全部') return date.startsWith(`${reportYear}-`)
-    return date.startsWith(`${reportYear}-${reportMonth}`)
+    const year = date.slice(0, 4)
+    const month = date.slice(5, 7)
+
+    if (reportMode === '全年') return year === String(reportYear)
+
+    if (reportMode === '日期區間') {
+      const start = cleanDate(reportStartDate)
+      const end = cleanDate(reportEndDate)
+      if (start && date < start) return false
+      if (end && date > end) return false
+      return true
+    }
+
+    if (reportMode === '多選月份') {
+      return year === String(reportYear) && normalizeReportMonthsV204201(reportMonths).includes(month)
+    }
+
+    if (reportMonth === '全部') return year === String(reportYear)
+    return year === String(reportYear) && month === String(reportMonth).padStart(2, '0')
+  }
+
+  function toggleReportMonthV204201(month) {
+    const value = String(month).padStart(2, '0')
+    setReportMonths((current) => {
+      const exists = current.includes(value)
+      const next = exists ? current.filter((item) => item !== value) : [...current, value]
+      return next.length ? next.sort() : [value]
+    })
   }
 
   function dateDiffFromToday(value) {
@@ -8663,12 +8699,19 @@ function InsightPage({ metrics, records, tickets }) {
         user: row.user || row.usedBy || '',
         itemName: item.name || item.item || row.itemName || '未命名品項',
         quantity: safeNumber(item.quantity || item.qty || 1, 1),
+        unitPrice: safeNumber(item.unitPrice || item.price || item.amount, 0),
         vendor: item.vendor || item.itemVendor || row.vendor || '未指定廠商',
+        purchaseVendor: row.vendor || '',
         status: item.arrivalStatus || row.arrivalStatus || row.status || '未設定',
+        purchaseStatus: row.status || '',
         expectedArrival: cleanDate(item.expectedArrivalDate || item.expectedArrival || row.expectedArrivalDate || row.expectedArrival),
         arrivalDate: cleanDate(item.arrivalDate || row.arrivalDate),
+        orderDate: cleanDate(item.orderDate || row.orderDate),
         amount: getItemAmount(row, item),
         category: guessPurchaseItemCategory(item.name || item.item || row.itemName || ''),
+        archiveStatus: typeof purchaseArchiveStatusV72 === 'function' ? purchaseArchiveStatusV72(row) : '',
+        poNumber: row.poNumber || row.poNo || row.purchaseNo || '',
+        quoteNo: row.quoteNo || row.quotationNo || '',
         row,
         index,
       }))
@@ -8701,7 +8744,35 @@ function InsightPage({ metrics, records, tickets }) {
       return { ...row, itemCount: sumBy(items, (item) => item.quantity), purchaseCount: new Set(items.map((item) => item.purchaseId)).size }
     })
 
-    const purchaseArrivalRows = scoped.purchaseItems.filter((item) => item.expectedArrival || item.arrivalDate || String(item.status || '').includes('到貨')).sort((a, b) => String(a.expectedArrival || a.arrivalDate || '').localeCompare(String(b.expectedArrival || b.arrivalDate || '')))
+    const purchaseArrivalRows = scoped.purchaseItems
+      .filter((item) => item.expectedArrival || item.arrivalDate || String(item.status || '').includes('到貨'))
+      .map((item) => {
+        const dueDiff = item.expectedArrival && !item.arrivalDate ? dateDiffFromToday(item.expectedArrival) : null
+        const arrived = Boolean(item.arrivalDate) || String(item.status || '').includes('已到貨')
+        return { ...item, arrived, overdueDays: dueDiff !== null && dueDiff < 0 ? Math.abs(dueDiff) : 0, trackingStatus: arrived ? '已到貨' : (dueDiff !== null && dueDiff < 0 ? '逾期未到' : '未到貨') }
+      })
+      .sort((a, b) => String(a.expectedArrival || a.arrivalDate || '').localeCompare(String(b.expectedArrival || b.arrivalDate || '')))
+
+    const purchaseDepartmentRows = rankRows(scoped.purchaseItems, (item) => item.department || '未設定單位', (item) => item.amount).map((row) => {
+      const items = scoped.purchaseItems.filter((item) => safeText(item.department || '未設定單位') === row.label)
+      const topCategories = rankRows(items, (item) => item.category).slice(0, 3).map((item) => item.label).join('、')
+      return { ...row, itemCount: sumBy(items, (item) => item.quantity), purchaseCount: new Set(items.map((item) => item.purchaseId)).size, topCategories: topCategories || '—' }
+    })
+
+    const purchaseUserRows = rankRows(scoped.purchaseItems, (item) => item.user || item.requester || '未指定使用人', (item) => item.amount).map((row) => {
+      const items = scoped.purchaseItems.filter((item) => safeText(item.user || item.requester || '未指定使用人') === row.label)
+      return { ...row, itemCount: sumBy(items, (item) => item.quantity), purchaseCount: new Set(items.map((item) => item.purchaseId)).size }
+    })
+
+    const purchaseMissingRows = scoped.purchaseItems.flatMap((item) => {
+      const issues = []
+      if (!item.vendor || item.vendor === '未指定廠商') issues.push('未填品項廠商')
+      if (!item.amount) issues.push('未填金額')
+      if (!item.expectedArrival && !item.arrivalDate && !String(item.status || '').includes('已到貨')) issues.push('未填預計到貨')
+      if ((String(item.status || '').includes('已到貨') || String(item.status || '').includes('驗收')) && !item.arrivalDate) issues.push('已到貨但未填到貨日')
+      if (item.archiveStatus && item.archiveStatus !== '已歸檔') issues.push('未歸檔')
+      return issues.map((issue) => ({ ...item, issue }))
+    })
 
     const projectStatusRows = rankRows(scoped.projects, (project) => project.driveStatus || project.pushStatus || project.phase || '追蹤')
     const workStatusRows = rankRows(scoped.work, (item) => item.lane || item.status || '未設定')
@@ -8722,29 +8793,39 @@ function InsightPage({ metrics, records, tickets }) {
       purchaseVendorRows,
       purchaseCategoryRows,
       purchaseArrivalRows,
+      purchaseDepartmentRows,
+      purchaseUserRows,
+      purchaseMissingRows,
       projectStatusRows,
       workStatusRows,
       reminderStatusRows,
       docTypeRows,
       kpis: [
         { label: '工作事項', value: scoped.work.length, detail: `${scoped.work.filter((item) => isDoneStatus(item.lane || item.status)).length} 已完成 / ${overdueWork} 逾期`, tone: overdueWork ? 'red' : 'blue' },
-        { label: '採購筆數', value: scoped.purchases.length, detail: `${scoped.purchaseItems.length} 品項 / ${formatReportMoney(purchaseAmount || purchaseItemAmount)}`, tone: 'green' },
+        { label: '採購筆數', value: scoped.purchases.length, detail: `${scoped.purchaseItems.length} 品項 / ${formatReportMoney(purchaseAmount || purchaseItemAmount)} / ${purchaseArrivalRows.filter((item) => item.trackingStatus === '逾期未到').length} 逾期未到`, tone: purchaseArrivalRows.some((item) => item.trackingStatus === '逾期未到') ? 'red' : 'green' },
         { label: '涉及廠商', value: purchaseVendorCount, detail: `${purchaseVendorRows.length} 家有採購統計`, tone: 'violet' },
         { label: '專案', value: scoped.projects.length, detail: `${projectStatusRows.find((row) => row.label === '主推')?.count || 0} 主推 / ${overdueProjects} 逾期`, tone: overdueProjects ? 'red' : 'amber' },
         { label: '提醒', value: scoped.reminders.length, detail: `${overdueReminders} 逾期 / ${scoped.reminders.filter((item) => isDoneStatus(item.status)).length} 已完成`, tone: overdueReminders ? 'red' : 'blue' },
         { label: '完成紀錄', value: completedRows.length, detail: '工作、採購、專案、提醒合併', tone: 'slate' },
       ],
     }
-  }, [reportYear, reportMonth, reportKeyword])
+  }, [reportMode, reportYear, reportMonth, reportMonths, reportStartDate, reportEndDate, reportKeyword])
 
   const reportTabs = ['總覽', '工作事項', '採購報表', '專案報表', '廠商報表', '文件報表', '完成紀錄']
-  const reportRangeLabel = reportMonth === '全部' ? `${reportYear} 全年` : `${reportYear}/${reportMonth}`
+  const selectedReportMonthsV204201 = normalizeReportMonthsV204201(reportMonths)
+  const reportRangeLabel = reportMode === '全年'
+    ? `${reportYear} 全年`
+    : reportMode === '日期區間'
+      ? `${reportStartDate || '未設定'} 至 ${reportEndDate || '未設定'}`
+      : reportMode === '多選月份'
+        ? `${reportYear} 年 ${selectedReportMonthsV204201.map((month) => `${Number(month)}月`).join('、')}`
+        : `${reportYear}/${reportMonth}`
   const availableYears = Array.from(new Set([currentYear - 1, currentYear, currentYear + 1, ...Object.values(reportData.raw).flat().map((row) => Number(String(row.requestDate || row.orderDate || row.createdAt || row.startDate || row.dueDate || row.updatedAt || '').slice(0, 4))).filter(Boolean)])).sort((a, b) => b - a)
 
   function exportReportCsv() {
     let rows = []
     if (reportTab === '採購報表') {
-      rows = reportData.scoped.purchaseItems.map((item) => ({ 月份: reportRangeLabel, 採購單: item.purchaseId, 日期: item.date, 單位: item.department, 申請人: item.requester, 使用人: item.user, 品項: item.itemName, 類別: item.category, 數量: item.quantity, 廠商: item.vendor, 狀態: item.status, 預計到貨: item.expectedArrival, 到貨日: item.arrivalDate, 金額: item.amount }))
+      rows = reportData.scoped.purchaseItems.map((item) => ({ 查詢期間: reportRangeLabel, 採購單: item.purchaseId, 採購名稱: item.purchaseTitle, 日期: item.date, 單位: item.department, 申請人: item.requester, 使用人: item.user, 品項: item.itemName, 類別: item.category, 數量: item.quantity, 單價: item.unitPrice, 廠商: item.vendor, 主檔廠商: item.purchaseVendor, 採購狀態: item.purchaseStatus, 品項到貨狀態: item.status, 預計到貨: item.expectedArrival, 到貨日: item.arrivalDate, 歸檔狀態: item.archiveStatus, PO: item.poNumber, 報價單: item.quoteNo, 金額: item.amount }))
     } else if (reportTab === '專案報表') {
       rows = reportData.scoped.projects.map((project) => ({ 月份: reportRangeLabel, 專案: project.name || '', 推進狀態: project.driveStatus || project.pushStatus || '', 階段: project.phase || '', 負責人: project.owner || '', 進度: project.progress || 0, 健康度: project.health || '', 起日: project.startDate || '', 迄日: project.endDate || '', 下一步: project.next || '', 備註: project.note || '' }))
     } else if (reportTab === '工作事項') {
@@ -8786,16 +8867,38 @@ function InsightPage({ metrics, records, tickets }) {
           <h2>全系統報表中心</h2>
           <span>依月份彙整工作事項、採購、專案、廠商、文件與完成紀錄；可查詢、統計與匯出。</span>
         </div>
-        <div className="record-actions fd20500-report-actions">
-          <select value={reportYear} onChange={(event) => setReportYear(event.target.value)}>{availableYears.map((year) => <option key={year} value={String(year)}>{year} 年</option>)}</select>
-          <select value={reportMonth} onChange={(event) => setReportMonth(event.target.value)}>
-            <option value="全部">全年</option>
-            {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map((month) => <option key={month} value={month}>{month} 月</option>)}
+        <div className="record-actions fd20500-report-actions fd20501-report-actions">
+          <select value={reportMode} onChange={(event) => setReportMode(event.target.value)}>
+            <option value="單月">單月</option>
+            <option value="多選月份">多選月份</option>
+            <option value="日期區間">日期區間</option>
+            <option value="全年">全年</option>
           </select>
+          <select value={reportYear} onChange={(event) => setReportYear(event.target.value)}>{availableYears.map((year) => <option key={year} value={String(year)}>{year} 年</option>)}</select>
+          {reportMode === '單月' && (
+            <select value={reportMonth} onChange={(event) => setReportMonth(event.target.value)}>
+              {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map((month) => <option key={month} value={month}>{month} 月</option>)}
+            </select>
+          )}
+          {reportMode === '日期區間' && (
+            <div className="fd20501-date-range-control">
+              <input type="date" value={reportStartDate} onChange={(event) => setReportStartDate(event.target.value)} />
+              <span>至</span>
+              <input type="date" value={reportEndDate} onChange={(event) => setReportEndDate(event.target.value)} />
+            </div>
+          )}
           <input value={reportKeyword} onChange={(event) => setReportKeyword(event.target.value)} placeholder="搜尋報表資料..." />
           <button type="button" className="primary-btn" onClick={exportReportCsv}>匯出 CSV</button>
         </div>
       </section>
+
+      {reportMode === '多選月份' && (
+        <section className="fd20501-month-picker">
+          {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map((month) => (
+            <button key={month} type="button" className={selectedReportMonthsV204201.includes(month) ? 'active' : ''} onClick={() => toggleReportMonthV204201(month)}>{Number(month)} 月</button>
+          ))}
+        </section>
+      )}
 
       <section className="fd20500-report-tabs">
         {reportTabs.map((tab) => <button key={tab} type="button" className={reportTab === tab ? 'active' : ''} onClick={() => setReportTab(tab)}>{tab}</button>)}
@@ -8837,25 +8940,60 @@ function InsightPage({ metrics, records, tickets }) {
       )}
 
       {reportTab === '採購報表' && (
-        <section className="fd20500-dashboard-grid">
+        <section className="fd20500-dashboard-grid fd20501-purchase-report-grid">
           <article className="fd20500-panel wide">
-            <div className="fd20500-panel-head"><div><p className="eyebrow">CATEGORY</p><h3>設備 / 品項分類統計</h3></div></div>
+            <div className="fd20500-panel-head"><div><p className="eyebrow">CATEGORY</p><h3>設備 / 品項分類統計</h3></div><small>{reportRangeLabel}</small></div>
             {renderRankTable(reportData.purchaseCategoryRows, [{ key: 'label', label: '分類' }, { key: 'itemCount', label: '數量' }, { key: 'purchaseCount', label: '採購筆數' }, { key: 'amount', label: '金額', render: (row) => formatReportMoney(row.amount) }])}
           </article>
           <article className="fd20500-panel wide">
-            <div className="fd20500-panel-head"><div><p className="eyebrow">VENDOR</p><h3>廠商採購統計</h3></div></div>
+            <div className="fd20500-panel-head"><div><p className="eyebrow">VENDOR</p><h3>廠商採購統計</h3></div><small>以品項廠商優先計算</small></div>
             {renderRankTable(reportData.purchaseVendorRows, [{ key: 'label', label: '廠商' }, { key: 'count', label: '採購品項筆數' }, { key: 'itemCount', label: '品項數量' }, { key: 'amount', label: '金額', render: (row) => formatReportMoney(row.amount) }, { key: 'lastDate', label: '最近採購' }])}
           </article>
+          <article className="fd20500-panel wide">
+            <div className="fd20500-panel-head"><div><p className="eyebrow">DEPARTMENT</p><h3>部門 / 單位統計</h3></div></div>
+            {renderRankTable(reportData.purchaseDepartmentRows, [{ key: 'label', label: '單位' }, { key: 'purchaseCount', label: '採購筆數' }, { key: 'itemCount', label: '品項數量' }, { key: 'amount', label: '金額', render: (row) => formatReportMoney(row.amount) }, { key: 'topCategories', label: '主要類別' }])}
+          </article>
+          <article className="fd20500-panel wide">
+            <div className="fd20500-panel-head"><div><p className="eyebrow">USER</p><h3>使用人 / 申請人統計</h3></div></div>
+            {renderRankTable(reportData.purchaseUserRows, [{ key: 'label', label: '使用人 / 申請人' }, { key: 'purchaseCount', label: '採購筆數' }, { key: 'itemCount', label: '品項數量' }, { key: 'amount', label: '金額', render: (row) => formatReportMoney(row.amount) }])}
+          </article>
           <article className="fd20500-panel full">
-            <div className="fd20500-panel-head"><div><p className="eyebrow">DETAIL</p><h3>採購品項明細</h3></div></div>
-            {renderRankTable(reportData.scoped.purchaseItems, [
+            <div className="fd20500-panel-head"><div><p className="eyebrow">ARRIVAL</p><h3>品項到貨追蹤</h3></div><small>支援同採購單不同廠商 / 不同到貨日</small></div>
+            {renderRankTable(reportData.purchaseArrivalRows, [
+              { key: 'purchaseId', label: '採購單' },
+              { key: 'itemName', label: '品項' },
+              { key: 'vendor', label: '廠商' },
+              { key: 'expectedArrival', label: '預計到貨' },
+              { key: 'arrivalDate', label: '到貨日' },
+              { key: 'trackingStatus', label: '追蹤狀態' },
+              { key: 'overdueDays', label: '逾期天數' },
+            ])}
+          </article>
+          <article className="fd20500-panel full">
+            <div className="fd20500-panel-head"><div><p className="eyebrow">QUALITY</p><h3>缺資料 / 未歸檔檢查</h3></div><small>協助補齊月報資料</small></div>
+            {renderRankTable(reportData.purchaseMissingRows, [
+              { key: 'issue', label: '問題' },
               { key: 'purchaseId', label: '採購單' },
               { key: 'date', label: '日期' },
               { key: 'department', label: '單位' },
               { key: 'itemName', label: '品項' },
+              { key: 'vendor', label: '廠商' },
+              { key: 'amount', label: '金額', render: (row) => formatReportMoney(row.amount) },
+            ], '目前沒有明顯缺資料項目')}
+          </article>
+          <article className="fd20500-panel full">
+            <div className="fd20500-panel-head"><div><p className="eyebrow">DETAIL</p><h3>採購品項明細</h3></div><small>{reportData.scoped.purchaseItems.length} 筆品項</small></div>
+            {renderRankTable(reportData.scoped.purchaseItems, [
+              { key: 'purchaseId', label: '採購單' },
+              { key: 'date', label: '日期' },
+              { key: 'department', label: '單位' },
+              { key: 'requester', label: '申請人' },
+              { key: 'user', label: '使用人' },
+              { key: 'itemName', label: '品項' },
+              { key: 'category', label: '類別' },
               { key: 'quantity', label: '數量' },
               { key: 'vendor', label: '廠商' },
-              { key: 'status', label: '狀態' },
+              { key: 'status', label: '到貨狀態' },
               { key: 'expectedArrival', label: '預計到貨' },
               { key: 'arrivalDate', label: '到貨日' },
               { key: 'amount', label: '金額', render: (row) => formatReportMoney(row.amount) },
@@ -12885,3 +13023,5 @@ export default App
 // FLOWDESK_V20_4_199_PURCHASE_ITEM_VENDOR_ARRIVAL_FIX
 
 // FLOWDESK_V20_4_200_SYSTEM_REPORT_CENTER
+
+// FLOWDESK_V20_4_201_REPORT_MONTH_MULTI_PURCHASE_DETAIL

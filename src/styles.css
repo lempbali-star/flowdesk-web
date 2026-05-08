@@ -37689,3 +37689,52 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
     width: 100%;
   }
 }
+
+
+/* FLOWDESK_V20_4_201_REPORT_MONTH_MULTI_PURCHASE_DETAIL */
+.fd20501-report-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.fd20501-date-range-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fd20501-date-range-control input {
+  min-width: 142px;
+}
+
+.fd20501-month-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, .9);
+  background: rgba(248, 250, 252, .9);
+}
+
+.fd20501-month-picker button {
+  min-height: 32px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, .9);
+  background: rgba(255, 255, 255, .96);
+  color: #334155;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.fd20501-month-picker button.active {
+  color: #1d4ed8;
+  border-color: rgba(96, 165, 250, .85);
+  background: linear-gradient(135deg, rgba(239,246,255,.98), rgba(255,255,255,.98));
+  box-shadow: 0 8px 18px rgba(59, 130, 246, .12);
+}
+
+.fd20501-purchase-report-grid .fd20500-report-table-wrap {
+  max-height: 420px;
+}
