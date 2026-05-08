@@ -37413,3 +37413,49 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   background-size: calc(var(--fd203-week-width, 140px) / 5) 100%, var(--fd203-week-width, 140px) 100% !important;
   background-position: 0 0, 0 0 !important;
 }
+
+
+/* FLOWDESK_V20_4_199_PURCHASE_ITEM_VENDOR_ARRIVAL_FIX */
+.fd204199-purchase-item-row {
+  grid-template-columns: 36px minmax(180px, 1.3fr) minmax(150px, 1fr) 78px 110px minmax(110px, .85fr) minmax(126px, .95fr) minmax(126px, .95fr) minmax(150px, 1fr) 116px 94px !important;
+  align-items: end;
+}
+.fd204199-purchase-item-row select {
+  width: 100%;
+  border: 1px solid #dfe6f2;
+  border-radius: 13px;
+  padding: 10px 11px;
+  outline: none;
+  background: #fff;
+  color: #172033;
+}
+.fd204199-purchase-item-row .item-note {
+  min-width: 150px;
+}
+.fd204199-item-vendor input,
+.fd204199-item-arrival-date input {
+  min-width: 0;
+}
+@media (max-width: 1280px) {
+  .fd204199-purchase-item-row {
+    grid-template-columns: 32px repeat(4, minmax(120px, 1fr)) !important;
+  }
+  .fd204199-purchase-item-row .item-name,
+  .fd204199-purchase-item-row .item-note,
+  .line-total,
+  .line-actions {
+    grid-column: 2 / -1;
+  }
+}
+@media (max-width: 720px) {
+  .fd204199-purchase-item-row {
+    grid-template-columns: 1fr !important;
+  }
+  .fd204199-purchase-item-row .item-index,
+  .fd204199-purchase-item-row .item-name,
+  .fd204199-purchase-item-row .item-note,
+  .fd204199-purchase-item-row .line-total,
+  .fd204199-purchase-item-row .line-actions {
+    grid-column: auto;
+  }
+}

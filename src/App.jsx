@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.198'
+const FLOWDESK_APP_VERSION = '20.4.199'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -2376,7 +2376,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
       row.arrivalStatus,
       row.acceptanceStatus,
       row.note,
-      ...getPurchaseItems(row).flatMap((item) => [item.name, item.note]),
+      ...getPurchaseItems(row).flatMap((item) => [item.name, item.vendor, item.arrivalStatus, item.arrivalDueDate, item.arrivalDate, item.note]),
     ].join(' ').toLowerCase()
     const byKeyword = !keyword || searchText.includes(keyword)
     const rowStatusText = String(row.status || '')
@@ -2918,7 +2918,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     const headers = ['編號', '品項', '優先等級', '廠商', '部門', '申請人', '使用人', '流程狀態', '付款狀態', '到貨狀態', '驗收狀態', '報價單號', 'PO單號', '發票號碼', '申請日', '下單日', '預計到貨', '到貨日', '付款期限', '驗收日', '預算', '報價金額', '未稅', '稅額', '含稅', '預算差異', '品項明細', '備註']
     const rows = filteredPurchases.map((row) => {
       const amount = calculatePurchase(row)
-      const itemsText = getPurchaseItems(row).map((item) => `${item.name || '未命名'} x ${item.quantity || 0} @ ${item.unitPrice || 0}`).join('；')
+      const itemsText = getPurchaseItems(row).map((item) => `${item.name || '未命名'} x ${item.quantity || 0} @ ${item.unitPrice || 0}${item.vendor ? `｜廠商:${item.vendor}` : ''}${item.arrivalDueDate ? `｜預計:${item.arrivalDueDate}` : ''}${item.arrivalDate ? `｜到貨:${item.arrivalDate}` : ''}`).join('；')
       return [row.id, purchaseTitle(row), normalizePurchasePriority(row.priority), row.vendor, row.department, row.requester, row.user || row.usedBy, row.status, row.paymentStatus || '未付款', row.arrivalStatus || '未到貨', row.acceptanceStatus || '未驗收', row.quoteNo, row.poNo, row.invoiceNo, row.requestDate, row.orderDate, row.arrivalDueDate, row.arrivalDate, row.paymentDueDate, row.acceptanceDate, row.budgetAmount || 0, row.quoteAmount || 0, amount.untaxedAmount, amount.taxAmount, amount.taxedTotal, Number(row.budgetAmount || 0) ? amount.taxedTotal - Number(row.budgetAmount || 0) : '', itemsText, row.note]
     })
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')
@@ -3193,7 +3193,9 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                           </div>
                           <strong>{purchaseCardTitle(row)}</strong>
                           <div className="fd74-purchase-context">
-                            <span>廠商：{row.vendor || '未指定'}</span>
+                            <span>主廠商：{row.vendor || '未指定'}</span>
+                            <span>品項廠商：{getPurchaseItemVendorSummaryV204199(row)}</span>
+                            <span>品項到貨：{getPurchaseItemArrivalSummaryV204199(row)}</span>
                             <span>日期：{row.requestDate || '未填日期'}</span>
                           </div>
                           <div className="purchase-list-extra-line" aria-label="採購清單重點資訊">
@@ -3208,7 +3210,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
                           <PurchaseCardFocusMetaV74 row={row} amount={amount} />
                           <div className="purchase-item-preview">
                             {getPurchaseItems(row).slice(0, 3).map((item) => (
-                              <span key={item.id}>{item.name || '未命名'} × {item.quantity}</span>
+                              <span key={item.id}>{item.name || '未命名'} × {item.quantity}{item.vendor ? `｜${item.vendor}` : ''}</span>
                             ))}
                             {getPurchaseItems(row).length > 3 && <span>+{getPurchaseItems(row).length - 3}</span>}
                           </div>
@@ -10780,7 +10782,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
     id: initial?.id,
     _purchaseKey: initial?._purchaseKey || initial?.uid || initial?.key,
     item: initial ? (initial?.summary || initial?.customTitle || initial?.item || purchaseTitle(initial)) : '',
-    items: initial ? getPurchaseItems(initial) : [{ id: `line-${Date.now()}`, name: '', quantity: 1, unitPrice: 0, note: '' }],
+    items: initial ? getPurchaseItems(initial) : [{ id: `line-${Date.now()}`, name: '', vendor: '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
     department: initial?.department || '',
     requester: initial?.requester || '',
     user: initial?.user || initial?.usedBy || initial?.requester || '',
@@ -10849,7 +10851,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
   function addItem() {
     setForm((current) => ({
       ...current,
-      items: [...current.items, { id: `line-${Date.now()}`, name: '', quantity: 1, unitPrice: 0, note: '' }],
+      items: [...current.items, { id: `line-${Date.now()}`, name: '', vendor: '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
     }))
   }
 
@@ -10888,8 +10890,12 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
       .map((item) => ({
         ...item,
         name: String(item.name || '').trim(),
+        vendor: String(item.vendor || item.supplier || '').trim(),
         quantity: Number(item.quantity || 0),
         unitPrice: Number(item.unitPrice || 0),
+        arrivalStatus: item.arrivalStatus || '未到貨',
+        arrivalDueDate: item.arrivalDueDate || '',
+        arrivalDate: item.arrivalDate || '',
         note: String(item.note || '').trim(),
       }))
       .filter((item) => item.name || item.quantity || item.unitPrice)
@@ -10908,7 +10914,7 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
       note: purchaseNote,
       remark: purchaseNote,
       memo: purchaseNote,
-      items: cleanItems.length ? cleanItems : [{ id: `line-${Date.now()}`, name: cleanSummary || form.item || '未命名品項', quantity: 1, unitPrice: 0, note: '' }],
+      items: cleanItems.length ? cleanItems : [{ id: `line-${Date.now()}`, name: cleanSummary || form.item || '未命名品項', vendor: form.vendor || '', quantity: 1, unitPrice: 0, arrivalStatus: '未到貨', arrivalDueDate: '', arrivalDate: '', note: '' }],
       item: cleanSummary || fallbackTitle,
       summary: cleanSummary || fallbackTitle,
       customTitle: cleanSummary || fallbackTitle,
@@ -10996,11 +11002,15 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
                 {form.items.map((item, index) => {
                   const lineTotal = Number(item.quantity || 0) * Number(item.unitPrice || 0)
                   return (
-                    <article className="purchase-item-row" key={item.id}>
+                    <article className="purchase-item-row fd204199-purchase-item-row" key={item.id}>
                       <div className="item-index">{index + 1}</div>
                       <label className="item-name">品項<input value={item.name} onChange={(event) => updateItem(item.id, 'name', event.target.value)} placeholder="例如 Wi‑Fi AP" /></label>
+                      <label className="fd204199-item-vendor">品項廠商<input value={item.vendor || ''} onChange={(event) => updateItem(item.id, 'vendor', event.target.value)} placeholder="可與主廠商不同" /></label>
                       <label>數量<input type="number" min="0" value={item.quantity} onChange={(event) => updateItem(item.id, 'quantity', event.target.value)} /></label>
                       <label>單價<input type="number" min="0" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', event.target.value)} /></label>
+                      <label className="fd204199-item-arrival-status">到貨<select value={item.arrivalStatus || '未到貨'} onChange={(event) => updateItem(item.id, 'arrivalStatus', event.target.value)}>{purchaseArrivalStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+                      <label className="fd204199-item-arrival-date">預計到貨<input type="date" value={item.arrivalDueDate || ''} onChange={(event) => updateItem(item.id, 'arrivalDueDate', event.target.value)} /></label>
+                      <label className="fd204199-item-arrival-date">到貨日<input type="date" value={item.arrivalDate || ''} onChange={(event) => updateItem(item.id, 'arrivalDate', event.target.value)} /></label>
                       <label className="item-note">備註<input value={item.note || ''} onChange={(event) => updateItem(item.id, 'note', event.target.value)} placeholder="規格 / 用途" /></label>
                       <div className="line-total"><span>小計</span><strong>{formatMoney(lineTotal)}</strong></div>
                       <div className="line-actions">
@@ -11155,10 +11165,30 @@ function getPurchaseItems(row = {}) {
   return source.map((item, index) => ({
     id: item.id || `line-${index + 1}`,
     name: item.name || item.item || '',
+    vendor: item.vendor || item.supplier || '',
     quantity: Number(item.quantity || 0),
     unitPrice: Number(item.unitPrice || 0),
+    arrivalStatus: item.arrivalStatus || '未到貨',
+    arrivalDueDate: item.arrivalDueDate || '',
+    arrivalDate: item.arrivalDate || '',
     note: item.note || '',
   }))
+}
+
+function getPurchaseItemVendorSummaryV204199(row = {}) {
+  const vendors = Array.from(new Set(getPurchaseItems(row).map((item) => String(item.vendor || '').trim()).filter(Boolean)))
+  if (!vendors.length) return row.vendor || '未指定廠商'
+  if (vendors.length === 1) return vendors[0]
+  return `多廠商 ${vendors.length} 家：${vendors.slice(0, 3).join('、')}${vendors.length > 3 ? '…' : ''}`
+}
+
+function getPurchaseItemArrivalSummaryV204199(row = {}) {
+  const items = getPurchaseItems(row)
+  if (!items.length) return row.arrivalStatus || '未到貨'
+  const arrived = items.filter((item) => String(item.arrivalStatus || '').includes('已到貨')).length
+  const dates = items.map((item) => item.arrivalDate || item.arrivalDueDate).filter(Boolean).sort()
+  const dateText = dates.length ? `｜${dates[0]}${dates.length > 1 ? `～${dates[dates.length - 1]}` : ''}` : ''
+  return `${arrived}/${items.length} 已到貨${dateText}`
 }
 
 function purchaseCardTitle(row = {}) {
@@ -11398,7 +11428,9 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
       <span>報價單號<b>{row.quoteNo || '—'}</b></span>
       <span>PO 單號<b>{row.poNo || '—'}</b></span>
       <span>發票號碼<b>{row.invoiceNo || '—'}</b></span>
-      <span>廠商<b>{row.vendor || '—'}</b></span>
+      <span>採購主廠商<b>{row.vendor || '—'}</b></span>
+      <span>品項廠商<b>{getPurchaseItemVendorSummaryV204199(row)}</b></span>
+      <span>品項到貨<b>{getPurchaseItemArrivalSummaryV204199(row)}</b></span>
       <span>品項數<b>{items.length} 項 / {totalQuantity} 件</b></span>
       <span>稅別<b>{row.taxMode || '未稅'} / {Number(row.taxRate || 0)}%</b></span>
       <span>優先等級<b>{normalizePurchasePriority(row.priority)}</b></span>
@@ -11421,7 +11453,10 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
       {items.map((item, index) => (
         <article key={item.id}>
           <span>{index + 1}</span>
-          <div><b>{item.name || '未命名品項'}</b><small>{item.note || '—'}</small></div>
+          <div>
+            <b>{item.name || '未命名品項'}</b>
+            <small>{[item.vendor ? `廠商：${item.vendor}` : '未指定品項廠商', item.arrivalStatus || '未到貨', item.arrivalDueDate ? `預計：${item.arrivalDueDate}` : '', item.arrivalDate ? `到貨：${item.arrivalDate}` : '', item.note || ''].filter(Boolean).join('｜')}</small>
+          </div>
           <em>{item.quantity} × {formatMoney(item.unitPrice)}</em>
           <strong>{formatMoney(Number(item.quantity || 0) * Number(item.unitPrice || 0))}</strong>
         </article>
@@ -11471,7 +11506,7 @@ function PurchaseDetail({ row, stages, relatedTasks = [], history = [], activeTa
           <span>目前選取</span>
           <strong>{row.id} · {purchaseTitle(row)}</strong>
         </div>
-        <small>{row.vendor || '未指定廠商'} · 優先：{normalizePurchasePriority(row.priority)} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
+        <small>{getPurchaseItemVendorSummaryV204199(row)} · 品項到貨：{getPurchaseItemArrivalSummaryV204199(row)} · 優先：{normalizePurchasePriority(row.priority)} · 使用人：{row.user || row.usedBy || row.requester || '未指定'} · {items.length} 項 · {formatMoney(amount.taxedTotal)}</small>
       </div>
 
       <div className="fd205-purchase-direct-status-edit">
@@ -12924,3 +12959,5 @@ export default App
 // FLOWDESK_V20_4_197_GANTT_BAR_ENDPOINT_HANDLE_ALIGN_FIX
 
 // FLOWDESK_V20_4_198_GANTT_WORKDAY_SCHEDULE_FIX
+
+// FLOWDESK_V20_4_199_PURCHASE_ITEM_VENDOR_ARRIVAL_FIX
