@@ -37753,4 +37753,43 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   }
 }
 
-/* FLOWDESK_V20_4_203_DATA_COMPATIBILITY_GUARD */
+
+/* FLOWDESK_V20_4_204_DATA_INTEGRITY_CHECK_TOOL */
+.fd20504-data-check-grid .fd20500-panel {
+  overflow: hidden;
+}
+
+.fd20504-data-check-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.fd20504-data-check-summary article {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, .92);
+  background: rgba(248, 250, 252, .92);
+}
+
+.fd20504-data-check-summary span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+  margin-bottom: 4px;
+}
+
+.fd20504-data-check-summary strong {
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 950;
+}
+
+@media (max-width: 760px) {
+  .fd20504-data-check-summary {
+    grid-template-columns: 1fr;
+  }
+}
+/* END_FLOWDESK_V20_4_204_DATA_INTEGRITY_CHECK_TOOL */
