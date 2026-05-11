@@ -37793,3 +37793,65 @@ html[data-flowdesk-appearance="dark"] .fd20387-save-hint span {
   }
 }
 /* END_FLOWDESK_V20_4_204_DATA_INTEGRITY_CHECK_TOOL */
+
+
+/* FLOWDESK_V20_4_205_PURCHASE_DOC_ARCHIVE_COMPLETION_FIX */
+.fd20387-purchase-modal {
+  width: min(1560px, calc(100vw - 24px)) !important;
+  max-height: calc(100vh - 24px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.fd20387-purchase-modal-body {
+  max-height: calc(100vh - 190px) !important;
+  overflow: auto !important;
+}
+
+.fd20387-purchase-modal .purchase-form-section,
+.fd20387-purchase-modal .purchase-form-summary-strip {
+  min-width: 0;
+}
+
+.fd20387-purchase-items-editor {
+  overflow-x: auto !important;
+  padding-bottom: 18px !important;
+}
+
+.fd20387-purchase-items-editor .purchase-item-rows {
+  min-width: 1520px !important;
+}
+
+@media (min-width: 900px) {
+  .purchase-item-row.fd204199-purchase-item-row {
+    grid-template-columns: 42px minmax(220px, 1.6fr) minmax(150px, .9fr) minmax(180px, 1fr) 86px 110px minmax(120px, .8fr) minmax(138px, .9fr) minmax(138px, .9fr) minmax(170px, 1fr) 104px 96px !important;
+  }
+}
+
+.fd20387-purchase-modal input[list] {
+  width: 100%;
+  border: 1px solid #dfe6f2;
+  border-radius: 13px;
+  padding: 10px 11px;
+  outline: none;
+  background: #fff;
+  color: #172033;
+}
+
+.fd20387-purchase-modal input[list]:focus {
+  border-color: rgba(53,107,255,.5);
+  box-shadow: 0 0 0 4px rgba(53,107,255,.08);
+}
+
+.fd20505-doc-sync {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, .85);
+  font-size: 12px;
+  font-weight: 900;
+}
+.fd20505-doc-sync.online { color: #047857; background: rgba(209, 250, 229, .78); border-color: rgba(16, 185, 129, .28); }
+.fd20505-doc-sync.local { color: #92400e; background: rgba(254, 243, 199, .78); border-color: rgba(245, 158, 11, .28); }

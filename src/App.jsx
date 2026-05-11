@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.204'
+const FLOWDESK_APP_VERSION = '20.4.205'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -2415,7 +2415,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
     ].join(' ').toLowerCase()
     const byKeyword = !keyword || searchText.includes(keyword)
     const rowStatusText = String(row.status || '')
-    const rowIsDone = doneStages.includes(row.status) || rowStatusText.includes('完成')
+    const rowIsDone = doneStages.includes(row.status) || isPurchaseCompletedStatusV204192(row.status)
     const rowIsCanceled = rowStatusText.includes('取消')
     const rowArchiveStatus = purchaseArchiveStatusV72(row)
     const explicitStatusOrArchive = statusFilter !== '全部' || archiveFilter !== '全部'
@@ -2443,7 +2443,7 @@ function BasePage({ tables, records, activeTable, onCreateWorkItem, onCreateRemi
   const purchaseCaseCounts = useMemo(() => {
     return purchases.reduce((summary, row) => {
       const status = String(row.status || '')
-      const isDone = doneStages.includes(row.status) || status.includes('完成')
+      const isDone = doneStages.includes(row.status) || isPurchaseCompletedStatusV204192(row.status)
       const isCanceled = status.includes('取消')
       const archiveStatus = purchaseArchiveStatusV72(row)
       if (!isDone && !isCanceled) summary.open += 1
@@ -3849,8 +3849,8 @@ function isTaskCompletedStatusV204192(value = '') {
 
 function isPurchaseCompletedStatusV204192(value = '') {
   const text = String(value || '').trim()
-  if (!text || text.includes('未完成') || text.includes('未驗收')) return false
-  return text.includes('已完成') || text.includes('完成') || text.includes('結案') || text.includes('已驗收')
+  if (!text || text.includes('未完成') || text.includes('未驗收') || text.includes('待發票') || text.includes('待請款')) return false
+  return text === '已完成' || text === '完成' || text === '結案' || text.includes('已完成') || text.includes('結案')
 }
 
 function isProjectCompletedStatusV204192(value = '') {
@@ -7377,6 +7377,8 @@ function DocsPage({ docs = [] }) {
       return docs?.length ? docs.map(normalizeDocItem) : seedDocs
     }
   })
+  const [docsCloudReady, setDocsCloudReady] = useState(!flowdeskCloud)
+  const docsCloudSaveTimer = useRef(null)
   const [docView, setDocView] = useState(() => {
     if (typeof window === 'undefined') return '卡片'
     return window.localStorage.getItem('flowdesk-doc-view-v20481') || '卡片'
@@ -7391,9 +7393,39 @@ function DocsPage({ docs = [] }) {
   const [editingDoc, setEditingDoc] = useState(null)
 
   useEffect(() => {
+    let cancelled = false
+    async function loadDocsCloudDataV20505() {
+      if (!flowdeskCloud) {
+        setDocsCloudReady(true)
+        return
+      }
+      try {
+        const { data } = await flowdeskCloud.getWorkspaceData('docs')
+        if (!cancelled && Array.isArray(data) && data.length) setDocItems(data.map(normalizeDocItem))
+      } catch {
+        // 保留本機資料，不讓雲端讀取失敗造成文件備忘空白
+      } finally {
+        if (!cancelled) setDocsCloudReady(true)
+      }
+    }
+    loadDocsCloudDataV20505()
+    return () => {
+      cancelled = true
+      if (docsCloudSaveTimer.current) clearTimeout(docsCloudSaveTimer.current)
+    }
+  }, [])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
     window.localStorage.setItem('flowdesk-docs-v20481', JSON.stringify(docItems))
-  }, [docItems])
+    if (!docsCloudReady || !flowdeskCloud) return
+    if (docsCloudSaveTimer.current) clearTimeout(docsCloudSaveTimer.current)
+    docsCloudSaveTimer.current = window.setTimeout(() => {
+      flowdeskCloud.setWorkspaceData('docs', docItems)
+        .then(() => window.localStorage.setItem('flowdesk-last-cloud-sync', new Date().toLocaleString('zh-TW', { hour12: false })))
+        .catch(() => null)
+    }, 700)
+  }, [docItems, docsCloudReady])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -7607,6 +7639,7 @@ function DocsPage({ docs = [] }) {
           <span>整理 SOP、設定筆記、會議紀錄、Mail 範本與檢查表；支援釘選、分類、狀態追蹤、檢查清單與快速套版。</span>
         </div>
         <div className="record-actions fd20481-docs-actions">
+          <span className={flowdeskCloud ? 'fd20505-doc-sync online' : 'fd20505-doc-sync local'}>{flowdeskCloud ? (docsCloudReady ? '雲端同步' : '同步中') : '本機備援'}</span>
           <button className="ghost-btn" type="button" onClick={exportDocs}>匯出 CSV</button>
           <button className="primary-btn" type="button" onClick={openNewDoc}>新增文件</button>
         </div>
@@ -8648,8 +8681,9 @@ function InsightPage({ metrics, records, tickets }) {
   }
 
   function isDoneStatus(value) {
-    const text = String(value || '')
-    return text.includes('已完成') || text.includes('完成') || text.includes('結案') || text.includes('已驗收') || text.includes('已取消') || text.includes('取消') || text.includes('已收斂')
+    const text = String(value || '').trim()
+    if (!text || text.includes('待發票') || text.includes('待請款') || text.includes('未完成') || text.includes('未驗收')) return false
+    return text === '完成' || text === '已完成' || text === '結案' || text === '已收斂' || text.includes('已完成') || text.includes('結案') || text.includes('已取消') || text.includes('取消')
   }
 
   function isOpenStatus(value) {
@@ -11118,13 +11152,16 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
         </div>
 
         <div className="purchase-modal-body fd20387-purchase-modal-body">
+
+          <datalist id="purchase-company-options-v20505">{mergeOptionList(purchaseCompanyOptionsV204202, form.company).map((company) => <option key={company} value={company} />)}</datalist>
+          <datalist id="purchase-department-options-v20505">{mergeOptionList(purchaseDepartmentOptionsV204202, form.department).map((department) => <option key={department} value={department} />)}</datalist>
           <datalist id="purchase-vendor-options-v204202">
             {vendorOptionsV204202.map((vendor) => <option key={vendor} value={vendor} />)}
           </datalist>
                     <section className="purchase-form-summary-strip" aria-label="採購表單摘要">
             <article className="fd171-summary-edit"><span>採購摘要</span><input value={form.item || ''} onChange={(event) => update('item', event.target.value)} placeholder="例如 Cisco 7821 IP話機" /></article>
-            <article className="fd171-summary-edit"><span>公司別</span><select value={form.company || ''} onChange={(event) => update('company', event.target.value)}><option value="">未指定</option>{mergeOptionList(purchaseCompanyOptionsV204202, form.company).map((company) => <option key={company} value={company}>{company}</option>)}</select></article>
-            <article className="fd171-summary-edit"><span>使用單位</span><select value={form.department || ''} onChange={(event) => update('department', event.target.value)}><option value="">未指定</option>{mergeOptionList(purchaseDepartmentOptionsV204202, form.department).map((department) => <option key={department} value={department}>{department}</option>)}</select></article>
+            <article className="fd171-summary-edit"><span>公司別</span><input list="purchase-company-options-v20505" value={form.company || ''} onChange={(event) => update('company', event.target.value)} placeholder="可選或手動輸入" /></article>
+            <article className="fd171-summary-edit"><span>使用單位</span><input list="purchase-department-options-v20505" value={form.department || ''} onChange={(event) => update('department', event.target.value)} placeholder="可選或手動輸入" /></article>
             <article><span>優先等級</span><strong><PurchasePriorityBadge value={form.priority} compact /></strong></article>
             <article><span>含稅總額</span><strong>{formatMoney(amount.taxedTotal)}</strong></article>
           </section>
@@ -11168,8 +11205,8 @@ function PurchaseModal({ onClose, onSubmit, onArchiveSave, stages, initial, mode
               <div><p className="eyebrow">使用與申請資訊</p><h3>讓後續追蹤知道誰申請、誰使用、哪個單位要用</h3></div>
             </div>
             <div className="form-grid fd20387-people-grid">
-              <label>公司別<select value={form.company || ''} onChange={(event) => update('company', event.target.value)}><option value="">未指定</option>{mergeOptionList(purchaseCompanyOptionsV204202, form.company).map((company) => <option key={company} value={company}>{company}</option>)}</select></label>
-              <label>使用單位<select value={form.department || ''} onChange={(event) => update('department', event.target.value)}><option value="">未指定</option>{mergeOptionList(purchaseDepartmentOptionsV204202, form.department).map((department) => <option key={department} value={department}>{department}</option>)}</select></label>
+              <label>公司別<input list="purchase-company-options-v20505" value={form.company || ''} onChange={(event) => update('company', event.target.value)} placeholder="可選或手動輸入" /></label>
+              <label>使用單位<input list="purchase-department-options-v20505" value={form.department || ''} onChange={(event) => update('department', event.target.value)} placeholder="可選或手動輸入" /></label>
               <label>申請人<input value={form.requester} onChange={(event) => update('requester', event.target.value)} /></label>
               <label>使用人<input value={form.user || ''} onChange={(event) => update('user', event.target.value)} placeholder="實際使用人 / 部門" /></label>
             </div>
@@ -12025,8 +12062,11 @@ function normalizeArchiveFolderV67(value = {}, fallback = {}) {
   const cleanStatus = cleanUrl
     ? (next.status && next.status !== '\u672a\u5efa\u7acb' ? next.status : '\u5df2\u5efa\u7acb')
     : '\u672a\u5efa\u7acb';
+  const fallbackName = buildArchiveFolderNameV67(fallback);
+  const rawName = String(next.name || '').trim();
+  const cleanName = (!rawName || rawName.includes('未命名採購') || rawName.includes('未命名資料') || rawName.includes('未命名')) ? fallbackName : rawName;
   return {
-    name: next.name || buildArchiveFolderNameV67(fallback),
+    name: cleanName,
     url: cleanUrl,
     link: cleanUrl,
     status: cleanStatus,
@@ -13160,3 +13200,5 @@ export default App
 // FLOWDESK_V20_4_202_PURCHASE_FIELD_STANDARDIZATION
 
 // FLOWDESK_V20_4_204_DATA_INTEGRITY_CHECK_TOOL
+
+// FLOWDESK_V20_4_205_PURCHASE_DOC_ARCHIVE_COMPLETION_FIX
