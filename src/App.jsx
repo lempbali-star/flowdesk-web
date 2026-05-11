@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flowdeskCloud, hasSupabaseConfig, supabase } from './lib/supabaseClient.js'
 
-const FLOWDESK_APP_VERSION = '20.4.205'
+const FLOWDESK_APP_VERSION = '20.4.206'
 const FLOWDESK_VERSION_LABEL = `FlowDesk v${FLOWDESK_APP_VERSION}`
 const FLOWDESK_DEFAULT_PLATFORM_NAME = 'FlowDesk 工作流管理平台'
 const FLOWDESK_PLATFORM_NAME_STORAGE_KEY = 'flowdesk-platform-name-v20493'
@@ -523,7 +523,7 @@ const purchaseAcceptanceStatusOptions = ['未驗收', '驗收中', '已驗收']
 
 const purchaseCompanyOptionsV204202 = ['南僑投資控股', '南僑油脂', '南僑食品', '南僑化工', '皇家可口', '水晶肥皂', '南僑行銷', '其他']
 const purchaseDepartmentOptionsV204202 = ['資訊處', '人資', '財會', '總務', '採購', '桃園廠', '台南廠', '高雄營業所', '中央廚房', '蛋糕中心', '皇家可口桃園二廠', '皇家可口台南廠', '南僑油脂', '其他']
-const purchaseItemCategoryOptionsV204202 = ['筆電', '桌上型電腦 / 主機', '螢幕 / 顯示設備', '網路設備', '儲存 / 備份', '軟體 / 授權', '周邊配件', '印表 / 耗材', '通訊 / 會議設備', '辦公設備', '其他採購']
+const purchaseItemCategoryOptionsV204202 = ['筆電', '桌上型電腦 / 主機', '平板 / 行動裝置', '螢幕 / 顯示設備', '網路設備', '儲存 / 備份', '軟體 / 授權', '周邊配件', '印表 / 耗材', '通訊 / 會議設備', '辦公設備', '其他採購']
 
 function normalizePurchaseCategoryV204202(value = '', itemName = '') {
   const text = String(value || '').trim()
@@ -531,6 +531,9 @@ function normalizePurchaseCategoryV204202(value = '', itemName = '') {
   const guessed = guessPurchaseItemCategory(itemName)
   const aliasMap = {
     '電腦 / 筆電': '筆電',
+    '筆記型電腦': '筆電',
+    'Notebook': '筆電',
+    'NB': '筆電',
     '螢幕 / 顯示設備': '螢幕 / 顯示設備',
     '網路設備': '網路設備',
     '儲存 / 備份': '儲存 / 備份',
@@ -9222,7 +9225,9 @@ function normalizePurchaseStatLabel(value, fallback) {
 
 function guessPurchaseItemCategory(name = '') {
   const text = String(name || '').toLowerCase()
-  if (/筆電|notebook|laptop|macbook|thinkpad|elitebook|latitude|電腦|主機|pc|desktop/.test(text)) return '電腦 / 筆電'
+  if (/筆電|notebook|laptop|macbook|thinkpad|elitebook|latitude|nb/.test(text)) return '筆電'
+  if (/桌機|桌上型|主機|pc|desktop|workstation/.test(text)) return '桌上型電腦 / 主機'
+  if (/平板|ipad|tablet|手機|行動裝置/.test(text)) return '平板 / 行動裝置'
   if (/螢幕|monitor|display|顯示器/.test(text)) return '螢幕 / 顯示設備'
   if (/ap|wifi|wi-fi|router|路由|分享器|交換器|switch|防火牆|firewall|網路|網通/.test(text)) return '網路設備'
   if (/nas|硬碟|ssd|hdd|儲存|storage|備份|backup|ups/.test(text)) return '儲存 / 備份'
@@ -13202,3 +13207,5 @@ export default App
 // FLOWDESK_V20_4_204_DATA_INTEGRITY_CHECK_TOOL
 
 // FLOWDESK_V20_4_205_PURCHASE_DOC_ARCHIVE_COMPLETION_FIX
+
+// FLOWDESK_V20_4_206_PURCHASE_ITEM_CATEGORY_LAPTOP_FIX
